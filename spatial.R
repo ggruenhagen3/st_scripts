@@ -8,29 +8,31 @@ switch(wdstr,
        "/storage/scr" = { main_path = "/storage/scratch1/6/ggruenhagen3/" },
        "/storage/hom" = { main_path = "/storage/scratch1/6/ggruenhagen3/" },
        "/storage/cod" = { main_path = "/storage/scratch1/6/ggruenhagen3/" })
-brain_dir = paste0(main_path, "brain/brain_scripts/")
-data_dir  = paste0(main_path, "brain/data/")
-out_dir   = paste0(main_path, "brain/sp_results/")
-if (main_path == "/storage/scratch1/6/ggruenhagen3/") { data_dir = "/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/data/spatial/data/" }
+brain_dir = paste0(main_path, "brain/")
+data_dir  = paste0(main_path, "st/data/")
+out_dir   = paste0(main_path, "st/results/")
+if (main_path == "/storage/scratch1/6/ggruenhagen3/") { data_dir = "/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/data/st/data/" }
 source(paste0(brain_dir, "all_f.R"))
 setwd(out_dir)
 
 #*******************************************************************************
 # Load Objects =================================================================
 #*******************************************************************************
-all_merge = qs::qread(paste0(out_dir, "all_merge.qs"))
-spo = qs::qread(paste0(out_dir, "all_obj_list.qs"))
+all_merge = qs::qread(paste0(data_dir, "all_merge.qs"))
+spo = qs::qread(paste0(data_dir, "all_obj_list.qs"))
 
 #*******************************************************************************
 # Integration with BB ==========================================================
 #*******************************************************************************
-bb = readRDS(paste0(data_dir, "bb_sct_070522.rds"))
+bb = readRDS(paste0(brain_dir, "data/bb_sct_070522.rds"))
 bb_convert15 = data.frame(old = 0:14, new = c("8_Glut", "9_Glut", "4_GABA", "15_GABA/Glut", "1_RGC/MG", "10_Glut", "5_GABA", "11_Glut", "6_GABA", "2_OPC/Oligo", "12_Glut", "13_Glut", "14_Glut", "3_Peri", "7_GABA"))
 bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GABA/Glut", "9.1_Glut", "8.1_Glut", "1.1_RGC", "6_GABA", "5.1_GABA", "9.2_Glut", "8.2_Glut", "15.2_GABA", "11.1_Glut", "8.3_Glut", "8.4_Glut", "9.3_Glut", "4.2_GABA", "8.5_Glut", "5.2_GABA", "8.6_Glut", "8.7_Glut", "1.2_RGC", "4.3_GABA", "4.4_GABA", "9.4_Glut", "9.5_Glut", "8.8_Glut", "9.6_Glut", "4.5_GABA", "12_Glut", "8.9_Glut", "10.2_Glut", "2.1_OPC", "15.3_GABA", "11.2_Glut", "15.4_GABA", "4.6_GABA", "9.7_Glut", "13_Glut", "14_Glut", "4.7_GABA", "11.3_Glut", "9.8_Glut", "8-9_Glut", "15.5_GABA/Glut", "4.8_GABA", "1.3_MG", "2.2_Oligo", "15.6_Glut", "8.10_Glut", "8.11_Glut", "3_Peri", "15.7_Glut", "7_GABA"))
 bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
 bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 
-# Primary Clusters
+# ================ #
+# Primary Clusters #
+# ================ #
 anchors = FindTransferAnchors(reference = bb, query = all_merge, normalization.method = "SCT", npcs = 50)
 predictions15 = TransferData(anchorset = anchors, refdata = bb$names15, prediction.assay = TRUE, weight.reduction = all_merge[["pca"]], dims = 1:50)
 all_merge[["predictions15"]] = predictions15
@@ -44,6 +46,7 @@ all_merge$bb15 = factor(all_merge$bb15, levels = c("15_GABA/Glut", "14_Glut", "1
 # all_merge$bb15name = factor(bb_convert15$new[match(all_merge$bb15, bb_convert15$old)], levels = c("15_GABA/Glut", "14_Glut", "13_Glut", "12_Glut", "11_Glut", "10_Glut", "9_Glut", "8_Glut", "7_GABA", "6_GABA", "5_GABA", "4_GABA", "3_Peri", "2_OPC/Oligo", "1_RGC/MG"))
 Idents(all_merge) = "bb15"
 
+# Paint the "Scores" for each bb cluster on the spatial plots for all samples
 for(bb_clust in unique(GetTransferPredictions(all_merge))) {
   if (bb_clust != "Unassigned") {
     Cairo::Cairo(file = paste0(out_dir, "all_bb15_integration_", bb_clust, ".png"), width = 1800, height = 1800, res = 150)
@@ -52,11 +55,14 @@ for(bb_clust in unique(GetTransferPredictions(all_merge))) {
   }
 }
 
+# DimPlot of spots painted by their predicted bb cluster
 Cairo::Cairo(file = paste0(out_dir, "all_bb15_integration.png"), width = 2000, height = 1800, res = 150)
 print(DimPlot(all_merge, label = T, pt.size = 2, label.size = 6, label.box = F) + theme_void())
 dev.off()
 
-# Secondary Clusters
+# ================== #
+# Secondary Clusters #
+# ================== #
 anchors = FindTransferAnchors(reference = bb, query = all_merge, normalization.method = "SCT", npcs = 50)
 predictions53 = TransferData(anchorset = anchors, refdata = bb$names53, prediction.assay = TRUE, weight.reduction = all_merge[["pca"]], dims = 1:50)
 all_merge[["predictions53"]] = predictions53
@@ -77,11 +83,14 @@ for(bb_clust in unique(GetTransferPredictions(all_merge))) {
   }
 }
 
+# DimPlot of spots painted by their predicted bb cluster
 Cairo::Cairo(file = paste0(out_dir, "all_bb53_integration.png"), width = 2000, height = 1800, res = 150)
 print(DimPlot(all_merge, label = T, pt.size = 2, label.size = 6, label.box = F) + theme_void())
 dev.off()
 
-# Overlap of Markers
+# ================== #
+# Overlap of Markers #
+# ================== #
 st.umap.2 = read.csv("~/Downloads/all_merge_umap2_loose_degs_raw.csv")
 st.umap.2 = st.umap.2[which(st.umap.2$p_val_adj < 0.05 & abs(st.umap.2$avg_log2FC) > 0.1 & st.umap.2$pct.1 > 0.05),]
 bb15.deg = read.csv("~/research/brain/data/bb_all_cluster_15_degs.csv")
@@ -95,6 +104,7 @@ bb53.deg$old = bb53.deg$cluster
 bb53.deg$new = factor(bb_convert53$new[match(bb53.deg$cluster, bb_convert53$old)], levels = rev(convert53$new))
 bb53.deg$cluster = bb53.deg$new
 
+# Number of Markers per cluster
 ggplot(as.data.frame(table(st.umap.2$cluster)), aes(x = Var1, y = Freq, fill = Var1)) + geom_bar(stat = "identity") + theme_classic() + xlab("Cluster") + ylab("Number of Markers") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + NoLegend() + ggtitle("ST - UMAP2") 
 ggplot(as.data.frame(table(bb15.deg$cluster)), aes(x = Var1, y = Freq, fill = Var1)) + geom_bar(stat = "identity") + theme_classic() + xlab("Cluster") + ylab("Number of Markers") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + NoLegend() + ggtitle("BB - Primary")
 ggplot(as.data.frame(table(bb53.deg$cluster)), aes(x = Var1, y = Freq, fill = Var1)) + geom_bar(stat = "identity") + theme_classic() + xlab("Cluster") + ylab("Number of Markers") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + NoLegend() + ggtitle("BB - Secondary")
