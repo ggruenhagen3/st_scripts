@@ -1,6 +1,6 @@
-#################
-# BIG BRAIN APP #
-#################
+# =========== #
+# Spatial App #
+# =========== #
 library("Seurat")
 library("Matrix")
 library("reticulate")
@@ -45,6 +45,7 @@ ctrl_samples = c("c1", "c2")
 
 cur.num.ortho.cichlid = 0
 
+# UI ===========================================================================
 # Define UI for app
 ui <- fluidPage(
   
@@ -64,13 +65,13 @@ ui <- fluidPage(
     )
   ),
   
-  # App title ----
+  # App title
   # titlePanel("Paint Expression of Spots"),
   
-  # Sidebar layout with input and output definitions ----
+  # Sidebar layout with input and output definitions
   # sidebarLayout(
   div(
-    # Sidebar panel for inputs ----
+    # Sidebar panel for inputs
     # sidebarPanel(
     wellPanel(
       tags$style(type="text/css", '#leftPanel { width:200px; float:left;}'),
@@ -82,11 +83,11 @@ ui <- fluidPage(
       textOutput(outputId = "closest_human_gene"),
       selectizeInput(inputId = "all_gene_human", label = "Human Gene Name", choices = NULL, selected = "Celsr1", multiple = TRUE, options = list(maxOptions = 1000)),
       conditionalPanel(condition = "output.show_otho_cond_panel", id = "ortho.cond.panel",
-                       # textInput(inputId = "cichlid.ortho", label = "test", value = "test"),
-                       checkboxGroupInput(inputId = "cichlid.ortho", label = "MZ Orthologs",
-                                          choices = NULL,
-                                          selected = NULL,
-                                          inline = T),
+                       radioButtons(inputId = "cichlid.ortho", label = "MZ Orthologs",
+                       # checkboxGroupInput(inputId = "cichlid.ortho", label = "MZ Orthologs",
+                                          choices = "junk",
+                                          selected = "junk"),
+                                          # inline = T),
                        tags$head(tags$style('#info{background-color: white;
                                     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
                                     # border-style: solid;
@@ -127,7 +128,7 @@ ui <- fluidPage(
       
     ),
     
-    # Main panel for displaying outputs ----
+    # Main panel for displaying outputs
     # mainPanel(
     div(
       style = "flex-grow:1; resize:horizontal; overflow: hidden",
@@ -151,6 +152,7 @@ ui <- fluidPage(
   )
 )
 
+# Server =======================================================================
 # Define server logic
 server = function(input, output, session) {
   # updateSelectizeInput(session, "gene", choices = all_genes, server = TRUE)
@@ -171,7 +173,15 @@ server = function(input, output, session) {
   # Update num MZ orthologs choices based on input Human gene - reactive
   observeEvent(input$all_gene_human, {
     if (length(input$all_gene_human) > 0) {
-      updateCheckboxGroupInput(inputId = "cichlid.ortho", choices = gene_info$mzebra[which(gene_info$human == input$all_gene_human)], selected = findClosestCichlid(input$all_gene_human))
+      myValues = gene_info$mzebra[which(gene_info$human == input$all_gene_human)]
+      myENS = gene_info$ens[which(gene_info$human == input$all_gene_human)]
+      myENS[which(!is.na(myENS))] = paste0(" (", myENS[which(!is.na(myENS))], ")")
+      myENS[which(is.na(myENS))] = ""
+      pat.mart.agree = gene_info$human_pat[which(gene_info$human == input$all_gene_human)] == gene_info$human_mart[which(gene_info$human == input$all_gene_human)]
+      print(pat.mart.agree)
+      myNames = paste0(myValues, myENS)
+      myNames[which(pat.mart.agree)] = paste0(myNames, " ✓")
+      updateRadioButtons(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
     }
   }, ignoreNULL = FALSE, ignoreInit = T)
   
