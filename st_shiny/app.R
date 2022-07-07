@@ -172,7 +172,7 @@ allSamplesSFP = function(obj, feature, assay, slot, pt.size.multiplier = 1, zoom
       this.angle = switch(s, "c2a" = 155, "c2b" = 150, "c2c" = -125, "c2d" = 155,
                           "b2a" =  90, "b2b" =  95, "b2c" =  100, "b2d" =  85,
                           "c1a" =  90, "c1b" =  95, "c1c" =   98, "c1d" =  90,
-                          "b1a" =   0, "b1b" =   0, "b1c" = -108, "b1d" =   0)
+                          "b1a" =   0, "b1b" =   0, "b1c" = -120, "b1d" =   0)
       
       # Set the background color
       grid.rect(gp=gpar(fill=this.back.color, col=this.back.color)) # background color
