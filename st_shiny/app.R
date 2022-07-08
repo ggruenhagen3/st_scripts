@@ -18,7 +18,7 @@ library("ggpubr")
 options(warn=-1)
 
 # Load object
-obj = qs::qread("data/all_merge.qs")
+obj = qs::qread("data/st_070822.qs")
 obj@active.assay = "Spatial"
 
 # Set Some variables for the whole app

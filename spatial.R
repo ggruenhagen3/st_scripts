@@ -12,14 +12,14 @@ brain_dir = paste0(main_path, "brain/")
 data_dir  = paste0(main_path, "st/data/")
 out_dir   = paste0(main_path, "st/results/")
 if (main_path == "/storage/scratch1/6/ggruenhagen3/") { data_dir = "/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/data/st/data/" }
-source(paste0(brain_dir, "all_f.R"))
+source(paste0(brain_dir, "/brain_scripts/all_f.R"))
 setwd(out_dir)
 
 #*******************************************************************************
 # Load Objects =================================================================
 #*******************************************************************************
-all_merge = qs::qread(paste0(data_dir, "all_merge.qs"))
-spo = qs::qread(paste0(data_dir, "all_obj_list.qs"))
+all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
+spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 
 #*******************************************************************************
 # Integration with BB ==========================================================
@@ -39,7 +39,7 @@ all_merge[["predictions15"]] = predictions15
 
 DefaultAssay(all_merge) = "predictions15"
 SpatialFeaturePlot(all_merge, features = c("8-Glut"), pt.size.factor = 3) + plot_layout(ncol = 4)
-all_merge$bb15 = GetTransferPredictions(all_merge)
+all_merge$bb15 = GetTransferPredictions(all_merge, assay = "predictions15")
 all_merge$bb15 = str_replace(all_merge$bb15, "-", "_")
 all_merge$bb15[which(all_merge$bb15 == "Unassigned")] = NA
 all_merge$bb15 = factor(all_merge$bb15, levels = c("15_GABA/Glut", "14_Glut", "13_Glut", "12_Glut", "11_Glut", "10_Glut", "9_Glut", "8_Glut", "7_GABA", "6_GABA", "5_GABA", "4_GABA", "3_Peri", "2_OPC/Oligo", "1_RGC/MG"))
@@ -68,7 +68,7 @@ predictions53 = TransferData(anchorset = anchors, refdata = bb$names53, predicti
 all_merge[["predictions53"]] = predictions53
 
 DefaultAssay(all_merge) = "predictions53"
-all_merge$bb53 = GetTransferPredictions(all_merge)
+all_merge$bb53 = GetTransferPredictions(all_merge, assay = "predictions53")
 all_merge$bb53 = str_replace(all_merge$bb53, "-", "_")
 all_merge$bb53[which(all_merge$bb53 == "Unassigned")] = NA
 all_merge$bb53 = factor(all_merge$bb53, levels = c("15.7_Glut", "15.6_Glut", "15.5_GABA/Glut", "15.4_GABA", "15.3_GABA", "15.2_GABA", "15.1_GABA/Glut", "14_Glut", "13_Glut", "12_Glut", "11.3_Glut", "11.2_Glut", "11.1_Glut", "10.2_Glut", "10.1_Glut", "9.8_Glut", "9.7_Glut", "9.6_Glut", "9.5_Glut", "9.4_Glut", "9.3_Glut", "9.2_Glut", "9.1_Glut", "8-9_Glut", "8.11_Glut", "8.10_Glut", "8.9_Glut", "8.8_Glut", "8.7_Glut", "8.6_Glut", "8.5_Glut", "8.4_Glut", "8.3_Glut", "8.2_Glut", "8.1_Glut", "7_GABA", "6_GABA", "5.2_GABA", "5.1_GABA", "4.8_GABA", "4.7_GABA", "4.6_GABA", "4.5_GABA", "4.4_GABA", "4.3_GABA", "4.2_GABA", "4.1_GABA", "3_Peri", "2.2_Oligo", "2.1_OPC", "1.3_MG", "1.2_RGC", "1.1_RGC"))
@@ -225,9 +225,9 @@ for (s in names(spo)) {
   p6 = SpatialDimPlot(spo[[s]], label = TRUE, label.size = 3) + NoLegend()
   
   # Save the plots
-  Cairo::Cairo(file = paste0(out_dir, s, "_clustering.png"), width = 1800, height = 1200, res = 150)
-  print(wrap_plots(p1, p3, p5, p2, p4, p6, ncol = 3))
-  dev.off()
+  # Cairo::Cairo(file = paste0(out_dir, s, "_clustering.png"), width = 1800, height = 1200, res = 150)
+  # print(wrap_plots(p1, p3, p5, p2, p4, p6, ncol = 3))
+  # dev.off()
 }
 
 # Plot Quality Metrics for Each Spot: nCount (Number of UMIs) and nFeature (Number of Genes)
@@ -272,73 +272,63 @@ for (s in names(spo)[3:length(spo)]) {
 }
 
 # Merged object clustering
-# Default Method of Clustering
 all_merge = subset(all_merge, subset = nCount_Spatial > 0)
 all_merge = SCTransform(all_merge, assay = "Spatial", verbose = FALSE)
 all_merge = RunPCA(all_merge, assay = "SCT", verbose = FALSE)
-all_merge = FindNeighbors(all_merge, reduction = "pca", dims = 1:30)
-all_merge = FindClusters(all_merge, verbose = FALSE)
 all_merge = RunUMAP(all_merge, reduction = "pca", dims = 1:30)
-all_merge$all_default_cluster = all_merge$seurat_clusters
-p1 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle("PCA Clustering - Default Res")
+all_merge = FindNeighbors(all_merge, reduction = "umap", dims = 1:2)
+all_merge = FindClusters(all_merge, verbose = FALSE, resolution = 0.55)
+all_merge$cluster = all_merge$seurat_clusters
+all_merge$all_cluster = all_merge$seurat_clusters
+p1 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle("UMAP Clustering - Brianna Res")
+
+# Default Method of Clustering
+# all_merge = FindNeighbors(all_merge, reduction = "pca", dims = 1:30)
+# all_merge = FindClusters(all_merge, verbose = FALSE)
+# all_merge = RunUMAP(all_merge, reduction = "pca", dims = 1:30)
+# all_merge$all_default_cluster = all_merge$seurat_clusters
+# p1 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle("PCA Clustering - Default Res")
 
 # Clustering on UMAP Dimensions w/ default resolution (0.8)
 all_merge = FindNeighbors(all_merge, reduction = "umap", dims = 1:2)
 all_merge = FindClusters(all_merge, verbose = FALSE)
-all_merge$all_umap_cluster = all_merge$seurat_clusters
+all_merge$all_cluster_res_80 = all_merge$seurat_clusters
 p2 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle("UMAP Clustering - Default Res")
 
 # Clustering on UMAP Dimensions w/ low resolution (0.3)
 all_merge = FindNeighbors(all_merge, reduction = "umap", dims = 1:2)
 all_merge = FindClusters(all_merge, verbose = FALSE, resolution = 0.3)
-all_merge$all_umap_cluster2 = all_merge$seurat_clusters
+all_merge$all_cluster_res_30 = all_merge$seurat_clusters
 p3 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle("UMAP Clustering - Lower Res")
 
+# Reset to the clustering that Brianna likes best
+all_merge$seurat_clusters = all_merge$cluster
+Idents(all_merge) = all_merge$cluster
+
 # Save the Clustering Plots
-Cairo::Cairo(file = paste0(out_dir, "all_clustering.png"), width = 2000, height = 600, res = 150)
-print(wrap_plots(p1, p2, p3, ncol = 3))
-dev.off()
+# Cairo::Cairo(file = paste0(out_dir, "all_clustering.png"), width = 2000, height = 600, res = 150)
+# print(wrap_plots(p1, p2, p3, ncol = 3))
+# dev.off()
 
 # Add the clusters found from the merged object into the separate objects and plot
-all_on_separate_pca = list()
-all_on_separate_umap = list()
-all_on_separate_umap2 = list()
+all_on_separate  = list()
 for (s in names(spo)) {
-  spo[[s]]$all_default_cluster = all_merge$all_default_cluster[match(colnames(spo[[s]]), colnames(all_merge))]
-  spo[[s]]$all_umap_cluster    = all_merge$all_umap_cluster[match(colnames(spo[[s]]),    colnames(all_merge))]
-  spo[[s]]$all_umap_cluster2   = all_merge$all_umap_cluster2[match(colnames(spo[[s]]),   colnames(all_merge))]
+  spo[[s]]$cluster              = all_merge$cluster[match(colnames(spo[[s]]), colnames(all_merge))]
+  spo[[s]]$all_cluster_res_80   = all_merge$all_cluster_res_80[match(colnames(spo[[s]]),    colnames(all_merge))]
+  spo[[s]]$all_cluster_res_30   = all_merge$all_cluster_res_30[match(colnames(spo[[s]]),   colnames(all_merge))]
   
-  Idents(spo[[s]]) = spo[[s]]$all_default_cluster
+  Idents(spo[[s]]) = spo[[s]]$cluster
   p1 = SpatialDimPlot(spo[[s]], label = TRUE, label.size = 3) + NoLegend()
   
-  Idents(spo[[s]]) = spo[[s]]$all_umap_cluster
-  p2 = SpatialDimPlot(spo[[s]], label = TRUE, label.size = 3) + NoLegend()
-  
-  Idents(spo[[s]]) = spo[[s]]$all_umap_cluster2
-  p3 = SpatialDimPlot(spo[[s]], label = TRUE, label.size = 3) + NoLegend()
-  
-  all_on_separate_pca[[s]] = p1
-  all_on_separate_umap[[s]] = p2
-  all_on_separate_umap2[[s]] = p3
+  all_on_separate[[s]] = p1
 }
 
-# Merged PCA clusters back on separate objects
-Cairo::Cairo(file = paste0(out_dir, "all_pca_cluster_on_separate.png"), width = 2400, height = 2400, res = 150)
-print(wrap_plots(all_on_separate_pca, ncol = 4))
-dev.off()
-
-# UMAP w/ default resolution (0.8) clusters back on separate objects
-Cairo::Cairo(file = paste0(out_dir, "all_umap_cluster_on_separate.png"), width = 2400, height = 2400, res = 150)
-print(wrap_plots(all_on_separate_umap, ncol = 4))
-dev.off()
-
-# UMAP w/ low resolution (0.3) clusters back on separate objects
-Cairo::Cairo(file = paste0(out_dir, "all_umap_cluster2_on_separate.png"), width = 2400, height = 2400, res = 150)
+# Clusters from merged object back on separate objects
+Cairo::Cairo(file = paste0(out_dir, "all_cluster_on_separate.png"), width = 2400, height = 2400, res = 150)
 print(wrap_plots(all_on_separate_umap2, ncol = 4))
 dev.off()
 
 # Show the clusters by sample
-Idents(all_merge) = all_merge$all_umap_cluster2
 all_merge$sample = factor(all_merge$sample, levels = unique(all_merge$sample))
 Cairo::Cairo(file = paste0(out_dir, "all_clustering_split_by_sample_color_by_umap2.png"), width = 2400, height = 2400, res = 150)
 print(DimPlot(all_merge, reduction = "umap", label = T, split.by = "sample", ncol = 4))
@@ -346,17 +336,84 @@ dev.off()
 
 names(all_merge@images) = levels(all_merge$sample)
 
+# Before Saving, Go to the Integration w/ BB section to add that data into the object
+Idents(all_merge) = all_merge$cluster
+DefaultAssay(all_merge) = "SCT"
+all_merge@active.assay = "SCT"
+for (s in names(spo)) {
+  spo[[s]]$bb15 = all_merge$bb15[match(colnames(spo[[s]]), colnames(all_merge))]
+  spo[[s]]$bb53 = all_merge$bb53[match(colnames(spo[[s]]), colnames(all_merge))]
+}
+
 # Save the merged object
-saveRDS(all_merge, paste0(out_dir, "all_merge.rds"))
-qs::qsave(all_merge, paste0(out_dir, "all_merge.qs"))
+saveRDS(all_merge,   paste0(out_dir, "st_070822.rds"))
+qs::qsave(all_merge, paste0(out_dir, "st_070822.qs"))
 
 # Save the list of samples
-saveRDS(spo, paste0(out_dir, "all_obj_list.rds"))
-qs::qsave(spo, paste0(out_dir, "all_obj_list.qs"))
+saveRDS(spo,   paste0(out_dir, "st_obj_list_070822.rds"))
+qs::qsave(spo, paste0(out_dir, "st_obj_list_070822.qs"))
 
 # Save each sample separately
 for (s in names(spo)) {
   saveRDS(spo[[s]], paste0(out_dir, "/sample_objs/", s, ".rds"))
 }
 
+#*******************************************************************************
+# Trash Can ====================================================================
+#*******************************************************************************
 
+# # Look at clustering at multiple resolutions
+# for (this.res in seq(0.3, 0.8, by = 0.05)) {
+#   all_merge = FindNeighbors(all_merge, reduction = "umap", dims = 1:2)
+#   all_merge = FindClusters(all_merge, verbose = FALSE, resolution = this.res)
+#   all_merge$all_umap_cluster2 = all_merge$seurat_clusters
+#   p2 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle(paste0("UMAP Clustering - ", this.res))
+#   
+#   Cairo::Cairo(file = paste0(out_dir, "all_cluster_multi_res/all_umap_res_", this.res, ".png"), width = 1200, height = 1200, res = 150)
+#   print(p2)
+#   dev.off()
+# } # resolution = 0.55 looks the best
+
+# # Manual Rotation of Images
+# coords2 = coords
+# coords2$px = coords2$imagecol
+# coords2$py = -coords2$imagerow
+# coords3 = coords2[, c("px", "py")]
+# alpha = 45 # positive rotates counterclockwise.
+# rotm <- matrix(c(cos(alpha),sin(alpha),-sin(alpha),cos(alpha)),ncol=2)
+# coords.test = coords2[, c("imagerow", "imagecol")]
+# coords.test <- as.data.frame(t(rotm %*% (t(coords.test))))
+# coords3 <- as.data.frame(t(rotm %*% (t(coords3))))
+# coords2$rot.px = coords3[,1]
+# coords2$rot.py = coords3[,2]
+# 
+# big.img.raster.real = img.grob$raster
+# big.img.raster.dummy = big.img.raster.real
+# big.img.raster.dummy[which(big.img.raster.dummy != "#000000ff")] = "#000000ff"
+# big.img.raster.dummy[my.x.min:my.x.max, my.y.min:my.y.max] = "#ff0000"
+# m.img.dummy = magick::image_read(big.img.raster.dummy)
+# m.img.dummy = magick::image_rotate(m.img.dummy, degrees = -alpha)
+# m.img.dummy.grob = rasterGrob(m.img.dummy)
+# m.img.dummy.grob$raster[which(!m.img.dummy.grob$raster %in% bad.dummy.cols)] = "#ff0000"
+# 
+# good.idx = as.data.frame(which(m.img.dummy.grob$raster == "#ff0000ff", arr.ind = T))
+# new.x.min = min(good.idx[,1])
+# new.x.max = max(good.idx[,1])
+# new.y.min = min(good.idx[,2])
+# new.y.max = max(good.idx[,2])
+# m.img.real = magick::image_read(big.img.raster.real)
+# m.img.real = magick::image_rotate(m.img.real, degrees = -alpha)
+# m.img.real.grob = rasterGrob(m.img.real)
+# m.img.real.grob.raster = m.img.real.grob$raster
+# m.img.real.grob.raster = m.img.real.grob.raster[new.x.min:new.x.max, new.y.min:new.y.max]
+# m.img.real.grob$raster = m.img.real.grob.raster
+# m.img.real.grob$width  = unit(x = 1, units = "npc")
+# m.img.real.grob$height = unit(x = 1, units = "npc")
+# 
+# big.img.raster.df = melt(as.matrix(img.grob$raster))
+# colnames(big.img.raster.df)[1:2] = c("orig.x", "orig.y")
+# big.img.raster.df$contains_spot = F
+# big.img.raster.df$contains_spot[which(big.img.raster.df$orig.x > my.x.min & big.img.raster.df$orig.x < my.x.max & big.img.raster.df$orig.y > my.y.min & big.img.raster.df$orig.y < my.y.max)] = T
+# big.img.raster.df[, c("rot.x", "rot.y")] <- as.data.frame(t(rotm %*% (t( big.img.raster.df[,1:2] ))))
+# big.img.raster.df$m.x = 0
+# big.img.raster.df$m.y = 0
