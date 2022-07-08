@@ -35,7 +35,7 @@ gene_names <- rownames(obj@assays$Spatial)
 sample_pt_size = c(4, 3, 3, 4, 3, 3, 3, 4, 3, 4, 4, 4, 3)
 names(sample_pt_size) = levels(obj$sample)
 
-num_clusters = max(as.vector(obj$all_umap_cluster2))
+num_clusters = max(as.vector(obj$cluster))
 clusters = 1:num_clusters
 cluster_choices = c(clusters)
 
@@ -500,8 +500,8 @@ server = function(input, output, session) {
     plist = list()
     plist[[1]] = FeaturePlot(this.obj, features = gene, order = T, pt.size = 0.9*(input$pt.size.multiplier*2)) + theme_void() + coord_fixed() + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
     if (cluster_comp) {
-      cluster.df = data.frame(table(this.obj$all_umap_cluster2))
-      cluster.df$pos = data.frame(table(this.obj$all_umap_cluster2[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
+      cluster.df = data.frame(table(this.obj$cluster))
+      cluster.df$pos = data.frame(table(this.obj$cluster[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
       cluster.df$pct = (cluster.df$pos/cluster.df$Freq) * 100
       cluster.df$round_pct = format(round(cluster.df$pct, 1), nsmall = 1)
       cluster.df$round_pct[which(cluster.df$pct == 0)] = 0
