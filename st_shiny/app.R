@@ -23,6 +23,8 @@ obj@active.assay = "Spatial"
 
 # Set Some variables for the whole app
 gene_info = read.table("data/gene_info.txt", sep="\t", stringsAsFactors = F, header = T)
+gene_info = gene_info[which(! duplicated(gene_info$mzebra) ),]
+
 human_genes = sort(unique(gene_info$human))
 human_gene_names = human_genes
 human_logic = paste0("input.gene == '", human_genes,"' || ", collapse = '')
@@ -281,7 +283,6 @@ ui <- fluidPage(
                                     border-radius: 3px;
                                    }'))
       )
-      # # conditionalPanel(condition = "input.all_gene_human != null && cur.num.ortho.cichlid > 1",
       
     ),
     
@@ -332,25 +333,32 @@ server = function(input, output, session) {
     if (length(input$all_gene_human) > 0) {
       myValues = gene_info$mzebra[which(gene_info$human == input$all_gene_human)]
       myENS = gene_info$ens[which(gene_info$human == input$all_gene_human)]
+      myENS[which(startsWith(myENS, "ENSMZEG"))] = NA
       myENS[which(!is.na(myENS))] = paste0(" (", myENS[which(!is.na(myENS))], ")")
       myENS[which(is.na(myENS))] = ""
       pat.mart.agree = gene_info$human_pat[which(gene_info$human == input$all_gene_human)] == gene_info$human_mart[which(gene_info$human == input$all_gene_human)]
-      print(pat.mart.agree)
       myNames = paste0(myValues, myENS)
-      myNames[which(pat.mart.agree)] = paste0(myNames, " ✓")
+      myNames[which(pat.mart.agree)] = paste0(myNames[which(pat.mart.agree)], " ✓")
       updateRadioButtons(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
     }
   }, ignoreNULL = FALSE, ignoreInit = T)
   
   findClosestCichlid = function(human_gene) {
-    this_cichlid_genes = gene_info[which(gene_info$human == human_gene),1]
+    this_rows = gene_info[which(gene_info$human == human_gene),]
+    this_cichlid_genes = this_rows[, 1]
     if (length(this_cichlid_genes) > 1) {
-      upper_cichlid_gene <- this_cichlid_genes[which(startsWith(tolower(this_cichlid_genes), tolower(human_gene)))]
-      if (length(upper_cichlid_gene) == 1) {
-        cichlid_gene <- upper_cichlid_gene
+      starts_with_hgnc = startsWith(tolower(this_cichlid_genes), tolower(human_gene))
+      print(starts_with_hgnc)
+      if (length(which(starts_with_hgnc)) > 0) {
+        cichlid_gene <- this_cichlid_genes[which(starts_with_hgnc)[1]]
       } else {
-        cur.num.ortho.cichlid <<- length(upper_cichlid_gene)
-        cichlid_gene <- this_cichlid_genes[1]
+        ens_starts_with_hgnc = startsWith(tolower(this_rows$ens), tolower(human_gene))
+        print(ens_starts_with_hgnc)
+        if (length(which(ens_starts_with_hgnc)) > 0) {
+          cichlid_gene <- this_cichlid_genes[which(ens_starts_with_hgnc)[1]]
+        } else {
+          cichlid_gene <- this_cichlid_genes[1]
+        }
       } # end bad multiple
     } else {
       cichlid_gene <- this_cichlid_genes
