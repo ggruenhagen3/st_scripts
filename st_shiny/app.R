@@ -44,6 +44,8 @@ cluster_choices = c(clusters)
 bhve_samples = c("b1", "b2")
 ctrl_samples = c("c1", "c2")
 
+discrete.colors = c("#f8e16c", "#00c49a", "#156064", "#ffecd100")
+
 # Functions ====================================================================
 # 07/19/22
 mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = FALSE) {
@@ -328,7 +330,7 @@ ui <- fluidPage(
                          inline = F),
       sliderInput(inputId = "my.ncol", "Number of Columns", value = 4, min = 1, max = 13),
       sliderInput(inputId = "pt.size.multiplier", "Point Size", value = 0.5, min = 0, max = 1),
-      checkboxInput(inputId = "toInfo", label = "Display Gene Info", value = F, width = NULL),
+      checkboxInput(inputId = "toInfo", label = "Display Gene Info", value = T, width = NULL),
       
       # Gene Info Panel
       # conditionalPanel(condition = paste0("input.toInfo && input.gene != null && ", human_logic),
@@ -377,14 +379,6 @@ server = function(input, output, session) {
   # updateSelectizeInput(session, "gene", choices = all_genes, server = TRUE)
   updateSelectizeInput(session, "all_gene_human",   choices = human_gene_names, server = TRUE)
   updateSelectizeInput(session, "all_gene_cichlid", choices = gene_names, server = TRUE)
-  
-  # Update MZ choices based on input Human gene - reactive
-  # mz_choices = reactive({
-  #   gene_info$mzebra[which(gene_info$human == input$gene)]
-  # })
-  # observe({
-  #   updateSelectizeInput(session, "mz", choices = mz_choices(), server = TRUE, selected = mz_choices()[1])
-  # })
   
   output$show_otho_cond_panel = reactive({ length(input$all_gene_human) > 0 })
   outputOptions(output, "show_otho_cond_panel", suspendWhenHidden = FALSE)
@@ -445,207 +439,95 @@ server = function(input, output, session) {
     return(human_gene)
   }
   
-  findOvlPCells <- function(genes) {
-    clean_genes <- c()
-    pos_cells <- c()
-    for (gene in genes) {
-      gene_lower <- tolower(gene)
-      gene_upper <- toupper(gene)
-      gene_title <- str_to_title(gene)
-      if (gene_lower %in% gene_names) {
-        gene <- gene_lower
-      } else if (gene_upper %in% gene_names) {
-        gene <- gene_upper
-      } else if (gene_title %in% gene_names) {
-        gene <- gene_title
-      }
-      clean_genes <- c(gene, clean_genes)
-      expr <- FetchData(object = obj, vars = gene, slot = "counts")
-      pos_cells <- c(colnames(bb)[which(x = expr > 0)], pos_cells)
-    }
-    
-    # Find the overlap of the positive cells
-    num_genes <- length(genes)
-    counts <- table(pos_cells)
-    ovlp_cells <- rownames(counts[counts >= num_genes])
-    obj <- SetIdent(obj, cells=ovlp_cells, value="overlapping_cells")
-    obj <- SetIdent(obj, cells=setdiff(WhichCells(obj), ovlp_cells), value="non_overlapping_cells")
-    obj$ovlp <- obj@active.ident
-    return(obj$ovlp)
-  }
-  
-  createBarPlot <- function(gene, average) {
-    summary = createSummary(gene)
-    
-    df = data.frame()
-    print(head(summary))
-    for (cluster in clusters) {
-      df = rbind(df, t(c("bhve", 
-                         cluster, 
-                         sum(summary[which(summary$Sample %in% bhve_samples & summary$Cluster == cluster),4]),
-                         sum(summary[which(summary$Sample %in% bhve_samples & summary$Cluster == cluster),3]))))
-      df = rbind(df, t(c("ctrl", 
-                         cluster, 
-                         sum(summary[which(summary$Sample %in% ctrl_samples & summary$Cluster == cluster),4]),
-                         sum(summary[which(summary$Sample %in% ctrl_samples & summary$Cluster == cluster),3]))))
-    }
-    colnames(df) <- c("condition", "cluster_num", "cells_expr", "cells_in_category")
-    df[,3] = as.numeric(as.vector(df[,3]))
-    df[,4] = as.numeric(as.vector(df[,4]))
-    df$pct = df$cells_expr / df$cells_in_category * 100
-    df$value = df$cells_expr
-    if(average)
-      df$value = df$pct
-    
-    print(head(df))
-    
-    my_title <- paste("Number of Cells Expressing", paste(gene, collapse = ' and '), "per Cluster")
-    my_ylab <- "Number of Cells"
-    if (average == TRUE) {
-      my_title <- paste("% Cells Expressing", paste(gene, collapse = ' and '), "per Cluster")
-      my_ylab <- "% Cells"
-    }
-    p <- ggplot(df, aes(fill=condition, x=cluster_num, y=value)) +
-      geom_bar(position="dodge", stat="identity") +
-      theme_minimal() +
-      ggtitle(my_title) +
-      xlab("Cluster") +
-      ylab(my_ylab) +
-      # scale_x_continuous(breaks = clusters) +
-      geom_text(aes(label=value), vjust=1.6, color="black", position = position_dodge(0.9), size=3.5)
-    theme_minimal()
-    p
-  }
-  
-  createSplPlot <- function(cluster, resolution, dims, npcs, geneMode, origClust) {
-    obj <- createSpltObj(cluster, resolution, dims, npcs, geneMode)
-    if (origClust) {
-      print("Displaying two plots")
-      p1 <- DimPlot(obj, reduction = "umap", label = TRUE, pt.size = 1.5) + ggtitle("New Clusters")
-      Idents(obj) <- obj$orig.cluster 
-      p2 <- DimPlot(obj, reduction = "umap", label = TRUE, pt.size = 1.5) + ggtitle("Old Clusters")
-      plot_grid(p1,p2)
-    } else {
-      DimPlot(obj, reduction = "umap", split.by = "cond", label = TRUE, pt.size = 1.5)
-    }
-  }
-  
-  createSplFeaturePlot <- function(gene, cluster, resolution, dims, npcs, geneMode) {
-    obj <- createSpltObj(cluster, resolution, dims, npcs, geneMode)
-    FeaturePlot(obj, features = c(gene), split.by = "cond", reduction = "umap", pt.size = 1.5, label=TRUE, order = TRUE)
-  }
-  
-  oldCreateSpatialPlot = function(gene, split, samples) {
-    # obj@active.assay <- "SCT"
-    if (split == "cond") {
-      print("Not yet implemented.")
-    } else {
-      this.obj <- obj[,which(obj$sample %in% samples)]
-      plist = SpatialFeaturePlot(this.obj, images = samples, features = gene, ncol = 4, combine = F)
-      names(plist) = samples
-      plist2 = list()
-      gene.values = FetchData(object = this.obj, vars = gene)
-      max.val = max(gene.values)
-      min.val = min(gene.values)
-      for (s in names(plist)) { plist[[s]]$layers[[1]]$aes_params$point.size.factor = sample_pt_size[s]*(input$pt.size.multiplier*2) }
-      for (s in names(plist)) { plist2[[s]] = plist[[s]] + ggplot2::scale_fill_gradientn(colors = rev(brewer.pal(11, "Spectral")), limits = c(min.val, max.val)) }
-      wrap_plots(plist2, ncol = input$my.ncol, guides = "collect") & theme(legend.position = "bottom")
-      # & plot_annotation(theme = theme(plot.background = element_rect(fill ="#b5b5b5")))
-    }
-  }
-  
-  createSpatialPlot = function(gene, split, samples) {
-    # obj@active.assay <- "SCT"
-    if (split == "cond") {
-      print("Not yet implemented.")
-    }
-    if (all(levels(obj$sample)%in% samples)) {
-      allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2)
-    }
-  }
+  # oldCreateSpatialPlot = function(gene, split, samples) {
+  #   # obj@active.assay <- "SCT"
+  #   if (split == "cond") {
+  #     print("Not yet implemented.")
+  #   } else {
+  #     this.obj <- obj[,which(obj$sample %in% samples)]
+  #     plist = SpatialFeaturePlot(this.obj, images = samples, features = gene, ncol = 4, combine = F)
+  #     names(plist) = samples
+  #     plist2 = list()
+  #     gene.values = FetchData(object = this.obj, vars = gene)
+  #     max.val = max(gene.values)
+  #     min.val = min(gene.values)
+  #     for (s in names(plist)) { plist[[s]]$layers[[1]]$aes_params$point.size.factor = sample_pt_size[s]*(input$pt.size.multiplier*2) }
+  #     for (s in names(plist)) { plist2[[s]] = plist[[s]] + ggplot2::scale_fill_gradientn(colors = rev(brewer.pal(11, "Spectral")), limits = c(min.val, max.val)) }
+  #     wrap_plots(plist2, ncol = input$my.ncol, guides = "collect") & theme(legend.position = "bottom")
+  #     # & plot_annotation(theme = theme(plot.background = element_rect(fill ="#b5b5b5")))
+  #   }
+  # }
+  # 
+  # createSpatialPlot = function(gene, split, samples) {
+  #   # obj@active.assay <- "SCT"
+  #   if (split == "cond") {
+  #     print("Not yet implemented.")
+  #   }
+  #   if (all(levels(obj$sample)%in% samples)) {
+  #     allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2)
+  #   }
+  # }
   
   createUmapPlot = function(gene, split, samples, cluster_comp = F, sample_comp = F) {
-    # obj@active.assay <- "SCT"
+    
     this.obj <- obj[,which(obj$sample %in% samples)]
     plist = list()
-    plist[[1]] = FeaturePlot(this.obj, features = gene, order = T, pt.size = 0.9*(input$pt.size.multiplier*2)) + theme_void() + coord_fixed() + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    
+    if (length(gene) > 1) {
+      for (f in gene) {
+        if (! f %in% rownames(this.obj@assays$Spatial@counts)) {
+          message(paste0("Error. Feature, ", f, ", was not found in the this.object."))
+          return (NULL)
+        }
+      }
+      this.obj$all_value_sum = colSums(this.obj@assays$Spatial@counts[c(gene[1], gene[2], gene[2]),] > 0)
+      this.obj$all_value_sum = plyr::revalue(as.character(this.obj$all_value_sum), replace = c("0" = "none", "1" = gene[1], "2" = gene[2], "3" = "both"))
+      this.obj$all_value_sum = factor(this.obj$all_value_sum, levels = c("both", gene, "none"))
+      
+      this.df = data.frame(this.obj@reductions$umap@cell.embeddings[,1:2])
+      this.df$all_value_sum = this.obj$all_value_sum
+      this.df = this.df[order(this.df$all_value_sum, decreasing = T),]
+      plist[[1]] = wrap_elements(plot = ggplot(this.df, aes(x = UMAP_1, y = UMAP_2, color = all_value_sum)) + geom_point(size = 0.9*(input$pt.size.multiplier*2)) + scale_color_manual(values = c(discrete.colors[1:(length(discrete.colors)-1)], "gray80"), name = NULL) + theme_void() + coord_fixed() + ggtitle(paste(gene, collapse = " + ")) + theme(plot.title = element_text(hjust = 0.5, face = "bold")))
+      if (cluster_comp) {
+        cluster.df = data.frame(table(this.obj$cluster))
+        cluster.df$pos = data.frame(table(this.obj$cluster[which( this.obj$all_value_sum == "both" )]))[,2]
+      }
+      if (sample_comp) {
+        sample.df = data.frame(table(this.obj$sample))
+        sample.df$pos = data.frame(table(this.obj$sample[which( this.obj$all_value_sum == "both" )]))[,2]
+      }
+    } else {
+      plist[[1]] = FeaturePlot(this.obj, features = gene, order = T, pt.size = 0.9*(input$pt.size.multiplier*2)) + theme_void() + coord_fixed() + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+      if (cluster_comp) {
+        cluster.df = data.frame(table(this.obj$cluster))
+        cluster.df$pos = data.frame(table(this.obj$cluster[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
+      }
+      if (sample_comp) {
+        sample.df = data.frame(table(this.obj$sample))
+        sample.df$pos = data.frame(table(this.obj$sample[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
+      }
+    }
+    
     if (cluster_comp) {
-      cluster.df = data.frame(table(this.obj$cluster))
-      cluster.df$pos = data.frame(table(this.obj$cluster[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
       cluster.df$pct = (cluster.df$pos/cluster.df$Freq) * 100
       cluster.df$round_pct = format(round(cluster.df$pct, 1), nsmall = 1)
       cluster.df$round_pct[which(cluster.df$pct == 0)] = 0
       plist[[2]] = ggplot(cluster.df, aes(x = Var1, y = pct, fill = Var1)) + geom_bar(stat  = "identity") + xlab("Cluster") + ylab("% of Spots in Cluster") + scale_x_discrete(expand = c(0,0)) + scale_y_continuous(expand = c(0,0)) + ggtitle("Comp. by Cluster") + theme_classic() + NoLegend() + geom_text(aes(label=round_pct), vjust=1.25, hjust = 0.5, color="black", position = position_dodge(0.9), size=3)
     }
     if (sample_comp) {
-      sample.df = data.frame(table(this.obj$sample))
-      sample.df$pos = data.frame(table(this.obj$sample[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
       sample.df$pct = (sample.df$pos/sample.df$Freq) * 100
       sample.df$round_pct = format(round(sample.df$pct, 1), nsmall = 1)
       sample.df$round_pct[which(sample.df$pct == 0)] = 0
       plist[[length(plist)+1]] = ggplot(sample.df, aes(x = Var1, y = pct, fill = Var1)) + geom_bar(stat  = "identity") + xlab("Sample") + ylab("% of Spots in Sample") + scale_x_discrete(expand = c(0,0)) + scale_y_continuous(expand = c(0,0)) + ggtitle("Comp. by Sample") + theme_classic() + NoLegend() + geom_text(aes(label=round_pct), vjust=1.25, hjust = 0.5, color="black", position = position_dodge(0.9), size=3)
     }
-    
+
     if (! (cluster_comp && sample_comp)) {
       wrap_plots(plist, ncol = 1)
     } else {
-      # (plist[[1]] | (plist[[2]] / plist[[3]])) 
+      # (plist[[1]] | (plist[[2]] / plist[[3]]))
       wrap_plots(plist, ncol = 1)
     }
     
-  }
-  
-  createOvlpPlot <- function(gene, split) {
-    if (length(gene) > 1) {
-      
-      obj$ovlp <- findOvlPCells(gene)
-      
-      Idents(obj) <- obj$ovlp
-      obj <- obj
-      if (split == "sample") {
-        Idents(obj) <- obj$sample
-        only_b1_c1 <- obj[,WhichCells(obj,idents = c("b1", "c1"))]
-        obj <- only_b1_c1
-      }
-      
-      Idents(obj) <- obj$ovlp
-      DimPlot(obj, reduction="umap", group.by = "ident", split.by=split, pt.size=2, order=TRUE)
-      
-    } else if (length(gene) == 1) {
-      Idents(obj) <- obj$seurat_clusters
-      obj <- obj
-      if (split == "sample") {
-        Idents(obj) <- obj$sample
-        only_b1_c1 <- obj[,WhichCells(obj,idents = c("b1", "c1"))]
-        obj <- only_b1_c1
-        Idents(obj) <- obj$seurat_clusters
-      }
-      # obj@active.assay <- "RNA"
-      FeaturePlot(obj, features = c(gene), split.by = split, reduction = "umap", pt.size = 1.5, label=TRUE, order = TRUE) 
-    }
-  }
-  
-  createSummary <- function(gene) {
-    obj$ovlp <- findOvlPCells(gene)
-    Idents(obj) <- obj$ovlp
-    
-    sample_clust = paste("overlapping_cells", obj$sample, obj$seurat_clusters)
-    ovlp_sample_clust = paste(obj$ovlp, obj$sample, obj$seurat_clusters)
-    pos_levels = expand.grid("overlapping_cells", unique(obj$sample), unique(obj$seurat_clusters))
-    pos_levels = paste(pos_levels[,1], pos_levels[,2], pos_levels[,3])
-    
-    ovlp_sample_clust = factor(ovlp_sample_clust, levels = pos_levels)
-    ovlp_sample_clust = ovlp_sample_clust[which(! is.na(ovlp_sample_clust) )]
-    
-    df = as.data.frame(table(ovlp_sample_clust))
-    df_all = as.data.frame(table(sample_clust))
-    df$all = df_all[match(df[,1], df_all[,1]), 2]
-    df$pct = df[,2] / df$all * 100
-    df2 = data.frame(do.call('rbind', strsplit(as.character(df[,1]), ' ', fixed=TRUE)))
-    df = cbind(df2[,2:3], df[,c(3,2,4)])
-    colnames(df) = c("Sample", "Cluster", "# Cells in Category", "# Cells Expressing", "% Cells Expressing")
-    
-    return(df)
   }
   
   geneInfo = function(gene) {
@@ -674,22 +556,6 @@ server = function(input, output, session) {
     }
     return(str)
   }
-  
-  # geneParser = function() {
-  #   if (length(input$gene) < 1) { return(NULL) }
-  #   mz_gene = input$gene
-  #   if (! input$gene %in% gene_names)
-  #     mz_gene = input$mz
-  #   return(mz_gene)
-  # }
-  
-  # numCichlidOrtho = function() {
-  #   if (length(input$all_gene_human) > 0) {
-  #     return(length(which(gene_info$human == gene)))
-  #   }
-  #   return(0)
-  # }
-  # output$ortho.cichlid = numCichlidOrtho()
   
   output$info = renderText({
     
@@ -732,7 +598,7 @@ server = function(input, output, session) {
       if (length(gene) == 1) {
         suppressMessages(allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2))
       } else {
-        suppressMessages(allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2, pal = c("#f8e16c", "#00c49a", "#156064", "#ffecd100")))
+        suppressMessages(allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2, pal = discrete.colors))
       }
     }
 
