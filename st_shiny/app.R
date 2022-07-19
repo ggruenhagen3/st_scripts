@@ -303,11 +303,11 @@ ui <- fluidPage(
       textOutput(outputId = "closest_human_gene"),
       selectizeInput(inputId = "all_gene_human", label = "Human Gene Name", choices = NULL, selected = "Celsr1", multiple = TRUE, options = list(maxOptions = 1000)),
       conditionalPanel(condition = "output.show_otho_cond_panel", id = "ortho.cond.panel",
-                       radioButtons(inputId = "cichlid.ortho", label = "MZ Orthologs",
-                       # checkboxGroupInput(inputId = "cichlid.ortho", label = "MZ Orthologs",
+                       # radioButtons(inputId = "cichlid.ortho", label = "MZ Orthologs",
+                       checkboxGroupInput(inputId = "cichlid.ortho", label = "MZ Orthologs",
                                           choices = "junk",
-                                          selected = "junk"),
-                                          # inline = T),
+                                          selected = "junk",
+                                          inline = T),
                        tags$head(tags$style('#info{background-color: white;
                                     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
                                     # border-style: solid;
@@ -400,7 +400,8 @@ server = function(input, output, session) {
       pat.mart.agree = gene_info$human_pat[which(gene_info$human == input$all_gene_human)] == gene_info$human_mart[which(gene_info$human == input$all_gene_human)]
       myNames = paste0(myValues, myENS)
       myNames[which(pat.mart.agree)] = paste0(myNames[which(pat.mart.agree)], " ✓")
-      updateRadioButtons(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
+      # updateRadioButtons(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
+      updateCheckboxGroupInput(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
     }
   }, ignoreNULL = FALSE, ignoreInit = T)
   
@@ -720,17 +721,19 @@ server = function(input, output, session) {
   # Normal Plot (All Samples)
   output$sp_plot <- renderPlot({
     
-    if (length(input$all_gene_cichlid) > 0) {
-      gene <- input$all_gene_cichlid
-      if (length(input$all_gene_cichlid) == 1) {
+    if (length(input$all_gene_cichlid) > 0 || length(input$all_gene_cichlid) == 0 && length(input$all_gene_human) > 0 && length(input$cichlid.ortho) > 0 && input$cichlid.ortho %in% gene_info$mzebra[which(gene_info$human == input$all_gene_human)]) {
+      if (length(input$all_gene_cichlid) > 0) {
+        gene = input$all_gene_cichlid
+      } else {
+        print(input$cichlid.ortho)
+        gene = input$cichlid.ortho
+      }
+
+      if (length(gene) == 1) {
         suppressMessages(allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2))
       } else {
         suppressMessages(allSamplesSFP(obj, gene, "Spatial", "data", pt.size.multiplier = input$pt.size.multiplier*2, pal = c("#f8e16c", "#00c49a", "#156064", "#ffecd100")))
       }
-    } else if (length(input$all_gene_cichlid) == 0 && length(input$all_gene_human) > 0 && length(input$cichlid.ortho) > 0 && input$cichlid.ortho %in% gene_info$mzebra[which(gene_info$human == input$all_gene_human)]) {
-      print(input$cichlid.ortho)
-      gene = input$cichlid.ortho
-      suppressMessages(createSpatialPlot(gene, 'split', input$samples))
     }
 
   })
