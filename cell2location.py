@@ -51,6 +51,12 @@ mod.save(f"{ref_run_name}", overwrite=True)  # Save model
 adata_file = f"{ref_run_name}/bb_with_trained_model.h5ad"
 adata_ref.write(adata_file)
 
+from matplotlib import pyplot as plt
+mod.plot_history(20)
+# plt.show()
+plt.savefig("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/mod_train.png")
+plt.clf()
+
 """
 Load the model:
 adata_file = f"{ref_run_name}/sc.h5ad"
@@ -64,3 +70,8 @@ inf_aver = inf_aver.loc[intersect, :].copy()
 
 # prepare anndata for cell2location model
 cell2location.models.Cell2location.setup_anndata(adata=adata_vis, batch_key="sample")
+
+
+mod_8_20 = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=20)
+mod_8_20 = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=200)
+mod.view_anndata_setup()
