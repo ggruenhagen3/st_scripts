@@ -17,7 +17,7 @@ library("grid")
 library("ggpubr")
 
 # Functions
-mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL) {
+mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F) {
   #' My version of SpatialFeaturePlot for a single object.
   #' 
   #' Input either an object+feature+assay+slot or coords+values+image grob.
@@ -38,26 +38,35 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   #' @param col.max max value for coloring (helpful for consistent color scale across multiple plots)
   #' 
   #' @return ggplot object
-  #' 
-  # TODO: assays
-  # TODO: metadata
   
   # Input Checking
   if (is.null(obj)) {
-    if (is.null(coords) || is.null(values) || is.null(img.grob)) { message("No object input, but coords, values, and/or img.grob were not specified."); return(NULL); }
+    if (is.null(coords) || is.null(values) || is.null(img.grob)) { message("Error. No object input, but coords, values, and/or img.grob were not specified."); return(NULL); }
     coords$value = values
   } else {
-    if (is.null(feature) || is.null(assay) || is.null(slot)) { message("Object was input, but no feature, assay, and/or slot were specified.") }
+    if (is.null(feature) || is.null(assay) || is.null(slot)) { message("Error. Object was input, but no feature, assay, and/or slot were specified."); return(NULL) }
     coords = GetTissueCoordinates(object = obj)
-    coords$value = FetchData(object = obj, vars = feature, slot = slot)[,1]
+    
+    # See if feature is a gene or metadata
+    if (feature %in% rownames(obj[[assay]])) {
+      obj@active.assay = assay
+      coords$value = FetchData(object = obj, vars = feature, slot = slot)[,1]
+    } else if (feature %in% colnames(obj@meta.data)) {
+      coords$value = obj@meta.data[,feature]
+    } else {
+      message(paste0("Error. Feature, ", feature, ", was not found in the assay nor in the metadata for the object."))
+      return (NULL)
+    }
+    
     img.grob = GetImage(obj)
   }
   
-  # Finding Cooridinates of the Tissue
+  # Finding Coordinates of the Tissue
   my.imagerow.min = min(coords$imagerow)
   my.imagecol.min = min(coords$imagecol)
   my.imagerow.max = max(coords$imagerow)
   my.imagecol.max = max(coords$imagecol)
+  myratio = (my.imagerow.max - my.imagerow.min) / (my.imagecol.max - my.imagecol.min)
   
   # Adjusting the tissue window: zoom out or zoom in
   my.x.width = my.imagerow.max - my.imagerow.min
@@ -73,15 +82,35 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   img.grob.test.grob$raster = img.grob.test
   
   # Set color range
-  if (is.null(col.min) && is.null(col.max)) { col.min = min(coords$value); col.max = max(coords$value); }
+  if (!discrete & is.null(col.min) && is.null(col.max)) { col.min = min(coords$value); col.max = max(coords$value); }
+  
+  # Remove spots with zero expression
+  if (rm.zero) { coords = coords[which(coords$value != 0),] }
   
   # Plot
-  p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend()
+  if (points.as.text) {
+    # This is for plotting the number of the cluster at each spot instead of plotting spots as points
+    this.angle = 0
+    if (rot.text) { this.angle = angle }
+    p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(shape = 1, size = my.pt.size, stroke = 0) + geom_text(size = my.pt.size*0.8, angle = -this.angle, aes(label = value)) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+  } else {
+    if (discrete) {
+      # Discrete Color Scales
+      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0) + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+    } else {
+      # Continuous Color Scales
+      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+    }
+    if (col.ident) {
+      # Identity Color Scale
+      p = p + scale_color_identity() 
+    }
+  }
   
   return(p)
 }
 
-allSamplesSFP = function(obj, feature, assay, slot, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral")))) {
+allSamplesSFP = function(obj, feature, assay = "SCT", slot = "data", points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F) {
   #' My version of SpatialFeaturePlot for all samples. Plots are angled to the correct orientation.
   #' 
   #' @param obj Seurat object that contains all samples
@@ -92,9 +121,8 @@ allSamplesSFP = function(obj, feature, assay, slot, pt.size.multiplier = 1, zoom
   #' @param pal color pallette
   #' 
   #' @return nothing
-  #' 
-  #TODO assays
-  #TODO metadata
+  
+  obj@active.assay = assay
   
   # Samples to Plot
   real.samples = c("c2a", "c2b", "c2c", "c2d", "b2a", "b2b", "b2c", "b2d", "c1a", "c1b", "c1c", "c1d", "b1c")
@@ -102,15 +130,53 @@ allSamplesSFP = function(obj, feature, assay, slot, pt.size.multiplier = 1, zoom
   
   # Get all values for feature
   value_list = list()
-  for (s in real.samples) {
-    value_list[[s]] = FetchData(object = obj, vars = feature, cells = colnames(obj)[which(obj$sample == s)], slot = slot)[,1]
+  isDiscrete = F
+  if (length(feature) == 1) {
+    for (s in real.samples) {
+      # See if feature is a gene or metadata
+      if (feature %in% rownames(obj[[assay]])) {
+        value_list[[s]] = FetchData(object = obj, vars = feature, cells = colnames(obj)[which(obj$sample == s)], slot = slot)[,1]
+      } else if (feature %in% colnames(obj@meta.data)) {
+        value_list[[s]] = obj@meta.data[colnames(obj)[which(obj$sample == s)], feature]
+      } else {
+        message(paste0("Error. Feature, ", feature, ", was not found in the assay nor in the metadata for the object."))
+        return (NULL)
+      }
+    }
+    min.val = min(unlist(value_list))
+    max.val = max(unlist(value_list))
+  } else {
+    isDiscrete = T
+    message("Multiple features selected. Using binary expression values from Spatial counts.")
+    
+    for (f in feature) {
+      if (! f %in% rownames(obj@assays$Spatial@counts)) {
+        message(paste0("Error. Feature, ", f, ", was not found in the object."))
+        return (NULL)
+      }
+    all_value_sum = colSums(obj@assays$Spatial@counts[c(feature[1], feature[2], feature[2]),] > 0)
+    all_value_sum = plyr::revalue(as.character(all_value_sum), replace = c("0" = "none", "1" = feature[1], "2" = feature[2], "3" = "both"))
+    all_value_sum = factor(all_value_sum, levels = c("both", feature, "none"))
+    for (s in real.samples) {
+        this.value = all_value_sum[which(obj$sample == s)]
+        value_list[[s]] = this.value
+      }
+    }
+    min.val = "dummy"
+    max.val = "dummy"
   }
-  min.val = min(unlist(value_list))
-  max.val = max(unlist(value_list))
+  
   
   # Point Sizes
-  sample_pt_size = c(2.25, 1.5, 1.5, 2, 1.5, 1.5, 1.5, 2, 1.25, 2, 2, 2, 1.5)
+  sample_pt_size = c(2.3, 1.75, 1.75, 2.1, 1.4, 1.5, 1.5, 1.8, 1.25, 2.3, 2, 2, 1.3)
   names(sample_pt_size) = real.samples
+  
+  # Angle to rotate plots
+  angle.df = as.data.frame(c("c2a" = 155, "c2b" = 145, "c2c" = -115, "c2d" = 155,
+                             "b2a" =  90, "b2b" =  95, "b2c" =  100, "b2d" =  85,
+                             "c1a" =  90, "c1b" =  95, "c1c" =   98, "c1d" =  90,
+                             "b1a" =   0, "b1b" =   0, "b1c" = -118, "b1d" =   0))
+  colnames(angle.df) = "angle"
   
   # Create all the separate sample plots
   p_list = list()
@@ -118,11 +184,21 @@ allSamplesSFP = function(obj, feature, assay, slot, pt.size.multiplier = 1, zoom
     this.coords = GetTissueCoordinates(object = obj, image = s)
     this.values = value_list[[s]]
     this.img.grob = GetImage(obj, image = s)
-    p_list[[s]] = mySingleSFP(coords = this.coords, values = this.values, img.grob = this.img.grob, my.pt.size = sample_pt_size[s]*pt.size.multiplier, zoom.out.factor = 0.05, col.min = min.val, col.max = max.val)
+    this.angle = angle.df[s, "angle"]
+    p_list[[s]] = mySingleSFP(coords = this.coords, assay = assay, slot = slot, values = this.values, img.grob = this.img.grob, points.as.text = F, rot.text = T, my.pt.size = sample_pt_size[s]*pt.size.multiplier, zoom.out.factor = 0.05, pal = pal, col.min = min.val, col.max = max.val, angle = this.angle, discrete = isDiscrete, rm.zero = rm.zero, col.ident = col.ident)
   }
   
   # Get color legend
-  leg_p = ggplot(data.frame(a = 1, b = 1), aes(a, b, color = a)) + geom_point() + scale_color_gradientn(colors=pal(100), limits = c(min.val, max.val), name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank())
+  if (isDiscrete) {
+    leg_p = ggplot(data.frame(a = this.value, b = 1), aes(a, b, color = this.value)) + geom_point() + scale_color_manual(values=pal, name = NULL, drop = F) + theme(legend.position = 'bottom', legend.background = element_blank(), legend.key=element_blank()) + guides(color = guide_legend(ncol=2, by.row=T,  override.aes = list(size=3)))
+  } else if (col.ident) {
+    print(head(unique(unlist(value_list))))
+    leg_p = ggplot(data.frame(a = unique(unlist(value_list)), b = 1), aes(a, b, color = a)) + geom_point() + scale_color_identity(name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank())     
+  } else {
+    print(min.val)
+    print(max.val)
+    leg_p = ggplot(data.frame(a = 1, b = 1), aes(a, b, color = a)) + geom_point() + scale_color_gradientn(colors=pal(100), limits = c(min.val, max.val), name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank()) 
+  }
   leg_p_grob = get_legend(leg_p)
   
   # Create a grid of plots using viewports 
@@ -142,10 +218,7 @@ allSamplesSFP = function(obj, feature, assay, slot, pt.size.multiplier = 1, zoom
                                   "b2a" = "#AEADAD", "b2b" = "#AEADAD", "b2c" = "#AEADAD", "b2d" = "#AEADAD",
                                   "c1a" = "#B6B6B5", "c1b" = "#B6B6B5", "c1c" = "#B6B6B5", "c1d" = "#B6B6B5",
                                   "b1a" = "#B4B3B2", "b1b" = "#B4B3B2", "b1c" = "#B4B3B2", "b1d" = "#B4B3B2")
-      this.angle = switch(s, "c2a" = 155, "c2b" = 145, "c2c" = -115, "c2d" = 155,
-                             "b2a" =  90, "b2b" =  95, "b2c" =  100, "b2d" =  85,
-                             "c1a" =  90, "c1b" =  95, "c1c" =   98, "c1d" =  90,
-                             "b1a" =   0, "b1b" =   0, "b1c" = -115, "b1d" =   0)
+      this.angle = angle.df[s, "angle"]
       
       # Set the background color
       grid.rect(gp=gpar(fill=this.back.color, col=this.back.color)) # background color

@@ -47,8 +47,8 @@ ctrl_samples = c("c1", "c2")
 discrete.colors = c("#f8e16c", "#00c49a", "#156064", "#ffecd100")
 
 # Functions ====================================================================
-# 07/19/22
-mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = FALSE) {
+# 07/25/22
+mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F) {
   #' My version of SpatialFeaturePlot for a single object.
   #' 
   #' Input either an object+feature+assay+slot or coords+values+image grob.
@@ -92,11 +92,12 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
     img.grob = GetImage(obj)
   }
   
-  # Finding Cooridinates of the Tissue
+  # Finding Coordinates of the Tissue
   my.imagerow.min = min(coords$imagerow)
   my.imagecol.min = min(coords$imagecol)
   my.imagerow.max = max(coords$imagerow)
   my.imagecol.max = max(coords$imagecol)
+  myratio = (my.imagerow.max - my.imagerow.min) / (my.imagecol.max - my.imagecol.min)
   
   # Adjusting the tissue window: zoom out or zoom in
   my.x.width = my.imagerow.max - my.imagerow.min
@@ -114,26 +115,33 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   # Set color range
   if (!discrete & is.null(col.min) && is.null(col.max)) { col.min = min(coords$value); col.max = max(coords$value); }
   
+  # Remove spots with zero expression
+  if (rm.zero) { coords = coords[which(coords$value != 0),] }
+  
   # Plot
   if (points.as.text) {
+    # This is for plotting the number of the cluster at each spot instead of plotting spots as points
     this.angle = 0
-    if (rot.text) {
-      this.angle = angle
-    }
-    p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(shape = 1, size = my.pt.size) + geom_text(size = my.pt.size*0.8, angle = -this.angle, aes(label = value)) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend()  
+    if (rot.text) { this.angle = angle }
+    p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(shape = 1, size = my.pt.size, stroke = 0) + geom_text(size = my.pt.size*0.8, angle = -this.angle, aes(label = value)) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
   } else {
     if (discrete) {
-      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size) + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend()
+      # Discrete Color Scales
+      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0) + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
     } else {
-      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend()
+      # Continuous Color Scales
+      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+    }
+    if (col.ident) {
+      # Identity Color Scale
+      p = p + scale_color_identity() 
     }
   }
-  # 
   
   return(p)
 }
 
-allSamplesSFP = function(obj, feature, assay = "SCT", slot = "data", points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral")))) {
+allSamplesSFP = function(obj, feature, assay = "SCT", slot = "data", points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F) {
   #' My version of SpatialFeaturePlot for all samples. Plots are angled to the correct orientation.
   #' 
   #' @param obj Seurat object that contains all samples
@@ -191,14 +199,14 @@ allSamplesSFP = function(obj, feature, assay = "SCT", slot = "data", points.as.t
   
   
   # Point Sizes
-  sample_pt_size = c(2.25, 1.5, 1.5, 2, 1.5, 1.5, 1.5, 2, 1.25, 2, 2, 2, 1.5)
+  sample_pt_size = c(2.3, 1.75, 1.75, 2.1, 1.4, 1.5, 1.5, 1.8, 1.25, 2.3, 2, 2, 1.3)
   names(sample_pt_size) = real.samples
   
   # Angle to rotate plots
   angle.df = as.data.frame(c("c2a" = 155, "c2b" = 145, "c2c" = -115, "c2d" = 155,
                              "b2a" =  90, "b2b" =  95, "b2c" =  100, "b2d" =  85,
                              "c1a" =  90, "c1b" =  95, "c1c" =   98, "c1d" =  90,
-                             "b1a" =   0, "b1b" =   0, "b1c" = -100, "b1d" =   0))
+                             "b1a" =   0, "b1b" =   0, "b1c" = -118, "b1d" =   0))
   colnames(angle.df) = "angle"
   
   # Create all the separate sample plots
@@ -208,13 +216,18 @@ allSamplesSFP = function(obj, feature, assay = "SCT", slot = "data", points.as.t
     this.values = value_list[[s]]
     this.img.grob = GetImage(obj, image = s)
     this.angle = angle.df[s, "angle"]
-    p_list[[s]] = mySingleSFP(coords = this.coords, assay = assay, slot = slot, values = this.values, img.grob = this.img.grob, points.as.text = F, rot.text = T, my.pt.size = sample_pt_size[s]*pt.size.multiplier, zoom.out.factor = 0.05, pal = pal, col.min = min.val, col.max = max.val, angle = this.angle, discrete = isDiscrete)
+    p_list[[s]] = mySingleSFP(coords = this.coords, assay = assay, slot = slot, values = this.values, img.grob = this.img.grob, points.as.text = F, rot.text = T, my.pt.size = sample_pt_size[s]*pt.size.multiplier, zoom.out.factor = 0.05, pal = pal, col.min = min.val, col.max = max.val, angle = this.angle, discrete = isDiscrete, rm.zero = rm.zero, col.ident = col.ident)
   }
   
   # Get color legend
   if (isDiscrete) {
     leg_p = ggplot(data.frame(a = this.value, b = 1), aes(a, b, color = this.value)) + geom_point() + scale_color_manual(values=pal, name = NULL, drop = F) + theme(legend.position = 'bottom', legend.background = element_blank(), legend.key=element_blank()) + guides(color = guide_legend(ncol=2, by.row=T,  override.aes = list(size=3)))
+  } else if (col.ident) {
+    print(head(unique(unlist(value_list))))
+    leg_p = ggplot(data.frame(a = unique(unlist(value_list)), b = 1), aes(a, b, color = a)) + geom_point() + scale_color_identity(name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank())     
   } else {
+    print(min.val)
+    print(max.val)
     leg_p = ggplot(data.frame(a = 1, b = 1), aes(a, b, color = a)) + geom_point() + scale_color_gradientn(colors=pal(100), limits = c(min.val, max.val), name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank()) 
   }
   leg_p_grob = get_legend(leg_p)
