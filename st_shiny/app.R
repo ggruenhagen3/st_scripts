@@ -12,26 +12,30 @@ library("DT")
 library("qs")
 library("RColorBrewer")
 library("patchwork")
-library("shinyjs")
+# library("shinyjs")
 library("grid")
-library("ggpubr")
+# library("ggpubr")
+library("cowplot")
 options(warn=-1)
 
 # Load object
-obj = qs::qread("data/st_070822.qs")
+# all_merge_diet = DietSeurat(all_merge, counts = F, data = T, assays = "Spatial", dimreducs = "umap")
+obj = qs::qread("data/st_diet_080322.qs")
 obj@active.assay = "Spatial"
 
 # Set Some variables for the whole app
-gene_info = read.table("data/gene_info.txt", sep="\t", stringsAsFactors = F, header = T)
+gene_info = read.table("data/gene_info_2.txt", sep="\t", stringsAsFactors = F, header = T)
 gene_info = gene_info[which(! duplicated(gene_info$mzebra) ),]
+gene_info$human_description[which(gene_info$human_description == "")] = NA
+gene_info$mzebra_description = do.call('rbind', strsplit(as.character(gene_info$mzebra_description),' [Source',fixed=TRUE) )[,1]
+gene_info$human_description = do.call('rbind', strsplit(as.character(gene_info$human_description),' [Source',fixed=TRUE) )[,1]
 
+gene_info$human_orig = gene_info$human
+gene_info$human = toupper(gene_info$label)
+gene_info$human[which(startsWith(gene_info$human, "LOC"))] = gene_info$human_orig[which(startsWith(gene_info$human, "LOC"))]
+human_genes = sort(unique(toupper(gene_info$human)))
 human_genes = sort(unique(gene_info$human))
 human_gene_names = human_genes
-human_logic = paste0("input.gene == '", human_genes,"' || ", collapse = '')
-human_logic = substr(human_logic, 1, nchar(human_logic)-3)
-human_logic2 = paste0("input.all_gene_human == '", human_genes,"' || ", collapse = '')
-human_logic2 = substr(human_logic2, 1, nchar(human_logic2)-3)
-all_genes = unique(c(gene_info$mzebra, gene_info$human))
 gene_names <- rownames(obj@assays$Spatial)
 
 sample_pt_size = c(4, 3, 3, 4, 3, 3, 3, 4, 3, 4, 4, 4, 3)
@@ -181,11 +185,11 @@ allSamplesSFP = function(obj, feature, assay = "SCT", slot = "data", points.as.t
     message("Multiple features selected. Using binary expression values from Spatial counts.")
     
     for (f in feature) {
-      if (! f %in% rownames(obj@assays$Spatial@counts)) {
+      if (! f %in% rownames(obj@assays$Spatial@data)) {
         message(paste0("Error. Feature, ", f, ", was not found in the object."))
         return (NULL)
       }
-      all_value_sum = colSums(obj@assays$Spatial@counts[c(feature[1], feature[2], feature[2]),] > 0)
+      all_value_sum = colSums(obj@assays$Spatial@data[c(feature[1], feature[2], feature[2]),] > 0)
       all_value_sum = plyr::revalue(as.character(all_value_sum), replace = c("0" = "none", "1" = feature[1], "2" = feature[2], "3" = "both"))
       all_value_sum = factor(all_value_sum, levels = c("both", feature, "none"))
       for (s in real.samples) {
@@ -345,10 +349,6 @@ ui <- fluidPage(
       sliderInput(inputId = "pt.size.multiplier", "Point Size", value = 0.5, min = 0, max = 1),
       checkboxInput(inputId = "toInfo", label = "Display Gene Info", value = T, width = NULL),
       
-      # Gene Info Panel
-      # conditionalPanel(condition = paste0("input.toInfo && input.gene != null && ", human_logic),
-      #                  selectizeInput(inputId = "mz", label = "Orthologous MZ Genes", choices = NULL, multiple = TRUE, options = list(maxOptions = 1000))
-      # ),
       conditionalPanel(condition = "input.toInfo && (input.all_gene_cichlid != null || input.all_gene_human != null)",
                        strong("Gene Info"),
                        textOutput(outputId = "info", container = pre),
@@ -400,12 +400,16 @@ server = function(input, output, session) {
   observeEvent(input$all_gene_human, {
     if (length(input$all_gene_human) > 0) {
       myValues = gene_info$mzebra[which(gene_info$human == input$all_gene_human)]
-      myENS = gene_info$ens[which(gene_info$human == input$all_gene_human)]
-      myENS[which(startsWith(myENS, "ENSMZEG"))] = NA
-      myENS[which(!is.na(myENS))] = paste0(" (", myENS[which(!is.na(myENS))], ")")
-      myENS[which(is.na(myENS))] = ""
+      # myENS = gene_info$ens[which(gene_info$human == input$all_gene_human)]
+      # myENS[which(startsWith(myENS, "ENSMZEG"))] = NA
+      # myENS[which(!is.na(myENS))] = paste0(" (", myENS[which(!is.na(myENS))], ")")
+      # myENS[which(is.na(myENS))] = ""
+      this.symbol = gene_info$nd_symbol[which(gene_info$human == input$all_gene_human)]
+      this.symbol[which(startsWith(this.symbol, "LOC") | startsWith(this.symbol, "zgc:") | startsWith(this.symbol, "si:"))] = NA
+      this.symbol[which(!is.na(this.symbol))] = paste0(" (", this.symbol[which(!is.na(this.symbol))], ")")
+      this.symbol[which(is.na(this.symbol))] = ""
       pat.mart.agree = gene_info$human_pat[which(gene_info$human == input$all_gene_human)] == gene_info$human_mart[which(gene_info$human == input$all_gene_human)]
-      myNames = paste0(myValues, myENS)
+      myNames = paste0(myValues, this.symbol)
       myNames[which(pat.mart.agree)] = paste0(myNames[which(pat.mart.agree)], " ✓")
       # updateRadioButtons(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
       updateCheckboxGroupInput(session = getDefaultReactiveDomain(), inputId = "cichlid.ortho", choiceNames = myNames, choiceValues = myValues, selected = findClosestCichlid(input$all_gene_human))
@@ -488,12 +492,12 @@ server = function(input, output, session) {
     
     if (length(gene) > 1) {
       for (f in gene) {
-        if (! f %in% rownames(this.obj@assays$Spatial@counts)) {
+        if (! f %in% rownames(this.obj@assays$Spatial@data)) {
           message(paste0("Error. Feature, ", f, ", was not found in the this.object."))
           return (NULL)
         }
       }
-      this.obj$all_value_sum = colSums(this.obj@assays$Spatial@counts[c(gene[1], gene[2], gene[2]),] > 0)
+      this.obj$all_value_sum = colSums(this.obj@assays$Spatial@data[c(gene[1], gene[2], gene[2]),] > 0)
       this.obj$all_value_sum = plyr::revalue(as.character(this.obj$all_value_sum), replace = c("0" = "none", "1" = gene[1], "2" = gene[2], "3" = "both"))
       this.obj$all_value_sum = factor(this.obj$all_value_sum, levels = c("both", gene, "none"))
       
@@ -513,11 +517,11 @@ server = function(input, output, session) {
       plist[[1]] = FeaturePlot(this.obj, features = gene, order = T, pt.size = 0.9*(input$pt.size.multiplier*2)) + theme_void() + coord_fixed() + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
       if (cluster_comp) {
         cluster.df = data.frame(table(this.obj$cluster))
-        cluster.df$pos = data.frame(table(this.obj$cluster[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
+        cluster.df$pos = data.frame(table(this.obj$cluster[which( this.obj@assays$Spatial@data[gene,] > 0 )]))[,2]
       }
       if (sample_comp) {
         sample.df = data.frame(table(this.obj$sample))
-        sample.df$pos = data.frame(table(this.obj$sample[which( this.obj@assays$Spatial@counts[gene,] > 0 )]))[,2]
+        sample.df$pos = data.frame(table(this.obj$sample[which( this.obj@assays$Spatial@data[gene,] > 0 )]))[,2]
       }
     }
     
@@ -560,8 +564,12 @@ server = function(input, output, session) {
           str = paste0(str, "\n# of Close MZ Genes:\n", length(human_description), "\n")
         } else {
           mzebra = gene_info$mzebra[which(gene_info$human == gene)]
+          mzebra_label = gene_info$label[which(gene_info$human == gene)]
+          mzebra_ens = gene_info$ens[which(gene_info$human == gene)]
           mzebra_description = gene_info$mzebra_description[which(gene_info$human == gene)]
           str = paste0(str, "Closest MZ Gene:\n", mzebra, "\n")
+          str = paste0(str, "\nClosest MZ Label:\n", mzebra_label, "\n")
+          str = paste0(str, "\nClosest MZ ENS:\n", mzebra_ens, "\n")
           str = paste0(str, "\nMZ Description:\n\"", mzebra_description, '"\n')    
         }
         str = paste0(str, "\nHuman Description:\n\"", human_description[1], '"\n')
