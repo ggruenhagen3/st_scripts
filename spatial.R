@@ -31,6 +31,14 @@ bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GAB
 bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
 bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 
+#------------------------------------#
+# Cell2location Secondary - Separate #
+#------------------------------------#
+# for (s in names(spo)) {
+#   
+# }
+s_mean = read.csv(paste0(out_dir, "cell2location/bb_secondary/", s, "/means.csv"))
+
 #-------------------------#
 # Cell2location Secondary #
 #-------------------------#
