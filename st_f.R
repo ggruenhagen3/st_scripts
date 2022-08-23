@@ -120,7 +120,7 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   return(p)
 }
 
-myMultiSFP = function(obj, samples = NULL, feature, assay = "SCT", slot = "data", same.col.scale = T, points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F, high.res = F) {
+myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data", same.col.scale = T, points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F, high.res = F) {
   #' My version of SpatialFeaturePlot for all samples. Plots are angled to the correct orientation.
   #' 
   #' @param obj Seurat object that contains all samples
