@@ -1293,6 +1293,45 @@ dev.off()
 # Trash Can ====================================================================
 #*******************************************************************************
 
+means = read.csv(paste0(out_dir, "cell2location/bb_secondary/cell2location_spatial_output_means.csv"))
+rownames(means) = means$X
+means$X = NULL
+colnames(means) = str_replace(colnames(means), "meanscell_abundance_w_sf_", "")
+means_round = round(means)
+all_merge$sum = rowSums(means)
+
+for (i in as.character(0)) {
+  all_merge$tmp = means_round[,i]
+  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, ".pdf"), width = 8, height = 8, onefile = F)
+  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, ".png"), width = 1800, height = 1800, res = 150)
+  print(myMultiSFP(all_merge, feature = "tmp", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
+  dev.off()
+  
+  pct_sample = unlist(lapply(levels(all_merge$sample), function(x) range01(all_merge$tmp[which(all_merge$sample ==x)])*100))
+  names(pct_sample) = unlist(lapply(levels(all_merge$sample), function(x) colnames(all_merge)[which(all_merge$sample ==x)]))
+  all_merge$tmp2 = 0
+  all_merge$tmp2[names(pct_sample)] = pct_sample
+  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, "_max.pdf"), width = 8, height = 8, onefile = F)
+  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, "_max.png"), width = 1800, height = 1800, res = 150)
+  print(myMultiSFP(all_merge, feature = "tmp2", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
+  dev.off()
+  
+  all_merge$tmp = (means_round[,i] / all_merge$sum) * 100
+  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct.pdf"), width = 8, height = 8, onefile = F)
+  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct.png"), width = 1800, height = 1800, res = 150)
+  print(myMultiSFP(all_merge, feature = "tmp", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
+  dev.off()
+  
+  pct_sample = unlist(lapply(levels(all_merge$sample), function(x) range01(all_merge$tmp[which(all_merge$sample ==x)])*100))
+  names(pct_sample) = unlist(lapply(levels(all_merge$sample), function(x) colnames(all_merge)[which(all_merge$sample ==x)]))
+  all_merge$tmp2 = 0
+  all_merge$tmp2[names(pct_sample)] = pct_sample
+  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct_max.pdf"), width = 8, height = 8, onefile = F)
+  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct_max.png"), width = 1800, height = 1800, res = 150)
+  print(myMultiSFP(all_merge, feature = "tmp2", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
+  dev.off()
+}
+
 # Label Tissue Halves
 angle.df = as.data.frame(c("c2a" = 195, "c2b" = 208, "c2c" = -115, "c2d" = 210,
                            "b2a" =  -90, "b2b" =  -95, "b2c" =  -100, "b2d" =  -85,
