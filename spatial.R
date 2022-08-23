@@ -34,10 +34,34 @@ bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 #------------------------------------#
 # Cell2location Secondary - Separate #
 #------------------------------------#
-# for (s in names(spo)) {
-#   
-# }
-s_mean = read.csv(paste0(out_dir, "cell2location/bb_secondary/", s, "/means.csv"))
+all_merge_hi$class2_81_84 = "#FDE72500"
+my.thresh = 0.4
+this.samples = names(spo)
+for (s in this.samples) {
+  s_mean = read.csv(paste0(out_dir, "cell2location/bb_secondary/", s, "/means.csv"))
+  rownames(s_mean) = s_mean$X
+  s_mean = s_mean[,2:ncol(s_mean)]
+  colnames(s_mean) = str_replace(colnames(s_mean), "meanscell_abundance_w_sf_", "")
+  col_order = convert53$new[which(convert53$new %in% colnames(s_mean))]
+  s_mean = s_mean[, c( col_order, paste0("RGC", 0:10) )]
+  df84_81_2 = data.frame(class2 = s_mean[, "RGC2"], class84 = s_mean[, "8.4_Glut"], class81 = s_mean[, "8.1_Glut"], row.names = rownames(s_mean))
+  
+  min_max_value = min(c(max(df84_81_2$class81), max(df84_81_2$class84)))
+  
+  df84_81_2$class84[which(df84_81_2$class84 > min_max_value)] = min_max_value
+  df84_81_2$class81[which(df84_81_2$class81 > min_max_value)] = min_max_value
+  
+  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
+  df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)] # scaled across all samples
+  df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
+  df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
+  all_merge_hi$class2_81_84[rownames(df84_81_2)] = df84_81_2$dif84_81_col
+}
+
+pdf(paste0(out_dir, paste0("cell2loc_sep_class2_81_84_", my.thresh, "_2.pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, feature = "class2_81_84", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+dev.off()
+
 
 #-------------------------#
 # Cell2location Secondary #
@@ -1165,7 +1189,9 @@ ggplot(fish_stats_melt, aes(x = Fish.ID, y = value, color = variable, group = va
 # Prep BB Data
 bb = readRDS(paste0(brain_dir, "data/bb_sct_070522.rds"))
 rgc_sub = readRDS("~/research/brain/data/rgc_subclusters_reclustered_q_c_nb_scores.rds")
+bb_convert15 = data.frame(old = 0:14, new = c("8_Glut", "9_Glut", "4_GABA", "15_GABA/Glut", "1_RGC/MG", "10_Glut", "5_GABA", "11_Glut", "6_GABA", "2_OPC/Oligo", "12_Glut", "13_Glut", "14_Glut", "3_Peri", "7_GABA"))
 bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GABA/Glut", "9.1_Glut", "8.1_Glut", "1.1_RGC", "6_GABA", "5.1_GABA", "9.2_Glut", "8.2_Glut", "15.2_GABA", "11.1_Glut", "8.3_Glut", "8.4_Glut", "9.3_Glut", "4.2_GABA", "8.5_Glut", "5.2_GABA", "8.6_Glut", "8.7_Glut", "1.2_RGC", "4.3_GABA", "4.4_GABA", "9.4_Glut", "9.5_Glut", "8.8_Glut", "9.6_Glut", "4.5_GABA", "12_Glut", "8.9_Glut", "10.2_Glut", "2.1_OPC", "15.3_GABA", "11.2_Glut", "15.4_GABA", "4.6_GABA", "9.7_Glut", "13_Glut", "14_Glut", "4.7_GABA", "11.3_Glut", "9.8_Glut", "8-9_Glut", "15.5_GABA/Glut", "4.8_GABA", "1.3_MG", "2.2_Oligo", "15.6_Glut", "8.10_Glut", "8.11_Glut", "3_Peri", "15.7_Glut", "7_GABA"))
+bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
 bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 bb$rgc_sub = bb$names53
 bb$rgc_sub[colnames(rgc_sub)] = paste0("RGC", rgc_sub$seurat_clusters)
@@ -1180,13 +1206,16 @@ my.thresh = 40
 spo_hi = list()
 for (s in names(spo)) {
   message(s)
-  message("Integrating with BB")
+  message("Integrating with BB Secondary with RGC")
   names(spo[[s]]@images) = s
   anchors = FindTransferAnchors(reference = bb, query = spo[[s]], normalization.method = "SCT", npcs = 50, verbose = F)
   predictionsRGC = TransferData(anchorset = anchors, refdata = bb$rgc_sub, prediction.assay = TRUE, weight.reduction = spo[[s]][["pca"]], dims = 1:50, verbose = F)
   spo[[s]][["predictionsRGC"]] = predictionsRGC
-  DefaultAssay(spo[[s]]) = "predictionsRGC"
-  spo[[s]]$bbrgc = GetTransferPredictions(spo[[s]], assay = "predictionsRGC")
+  
+  message("Integrating with BB Primary")
+  anchors = FindTransferAnchors(reference = bb, query = spo[[s]], normalization.method = "SCT", npcs = 50, verbose = F)
+  predictions15 = TransferData(anchorset = anchors, refdata = bb$names15, prediction.assay = TRUE, weight.reduction = spo[[s]][["pca"]], dims = 1:50, verbose = F)
+  spo[[s]][["predictions15"]] = predictions15
 
   message("Making High Res Image")
   spo_hi[[s]] = spo[[s]]
@@ -1201,16 +1230,13 @@ for (s in names(spo)) {
   hires@key = real.slice@key
   spo_hi[[s]]@images[[s]]= hires
   
-  df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
-  df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
-  df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
+  df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class9 = as.vector(range01(spo[[s]]@assays$predictions15["9-Glut",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
   df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
   if (!all(is.na(df84_81_2$dif84_81))) {
     df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
     df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
     df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-    df84_81_2$scale_col = df84_81_2$dif84_81_col
-    df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
+    df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thresh)] = "#5b35bd"
     spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
     # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
   } else {
@@ -1219,24 +1245,24 @@ for (s in names(spo)) {
   }
 }
 
-for (s in names(spo_hi)) {
-  df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
-  df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
-  df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
-  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-  if (!all(is.na(df84_81_2$dif84_81))) {
-    df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
-    df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-    df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-    df84_81_2$scale_col = df84_81_2$dif84_81_col
-    df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
-    spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
-    # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
-  } else {
-    message("Setting all to 0.")
-    spo_hi[[s]]$class2_81_84 = 0
-  }
-}
+# for (s in names(spo_hi)) {
+#   df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
+#   df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
+#   df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
+#   df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
+#   if (!all(is.na(df84_81_2$dif84_81))) {
+#     df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
+#     df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
+#     df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
+#     df84_81_2$scale_col = df84_81_2$dif84_81_col
+#     df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
+#     spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
+#     # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
+#   } else {
+#     message("Setting all to 0.")
+#     spo_hi[[s]]$class2_81_84 = 0
+#   }
+# }
 
 # dif84_81_abs_max = max(abs(df84_81_2$dif84_81))
 # my_thresh_raw = 0.25
@@ -1257,6 +1283,23 @@ for (s in names(spo_hi)) {
 #     spo_hi[[s]]$class2_81_84 = 0
 #   }
 # }
+my.thresh2 = 30
+for (s in names(spo)) {
+  df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class9 = as.vector(range01(spo[[s]]@assays$predictions15["9-Glut",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
+  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
+  if (!all(is.na(df84_81_2$dif84_81))) {
+    df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
+    df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
+    df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thresh)] = "#5b35bd"
+    df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh2)] = "#FF9E24"
+    spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
+    # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
+  } else {
+    message("Setting all to 0.")
+    spo_hi[[s]]$class2_81_84 = 0
+  }
+}
+
 
 tmp = merge(spo_hi[[names(spo_hi)[1]]], spo_hi[[names(spo_hi)[2]]])
 for (s in names(spo)[3:length(spo_hi)]) {
@@ -1264,8 +1307,12 @@ for (s in names(spo)[3:length(spo_hi)]) {
   tmp = merge(tmp, spo_hi[[s]])
 }
 
-pdf(paste0(out_dir, paste0("class2_81_84_10_", my.thresh, "_only3.pdf")), width = 12, height = 12, onefile = F)
+pdf(paste0(out_dir, paste0("class2_81_84_11_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
 print(myMultiSFP(tmp, feature = "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+dev.off()
+
+pdf(paste0(out_dir, paste0("9_Glut.pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, assay = "predictions15", feature = "9-Glut", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, high.res = T ))
 dev.off()
 
 # 8.1_Glut, 8.4_Glut, RGC2 Figure
