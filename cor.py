@@ -17,14 +17,12 @@ global cond_labels
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='Find the correlation')
-    parser.add_argument('perm_num', metavar='perm_num', type = int, help='The current permutation number. This is used for the seed.')
-    parser.add_argument('num_perm', metavar='num_perm', type = int, help='The number of permutations to complete.')
     parser.add_argument("-o", "--output_folder", help="Output Folder", nargs="?",
                         default="/storage/home/hcoda1/6/ggruenhagen3/scratch/st/results/",
                         const="/storage/home/hcoda1/6/ggruenhagen3/scratch/st/results/")
     parser.add_argument("-a", "--do_abs", help="Take the absolute value of the correlations?", action="store_true")
     args = parser.parse_args()
-    return args.perm_num, args.num_perm, args.cluster15, args.cluster53, args.gene, args.output_folder, args.no_perm, args.cor_only, args.do_abs, args.sum_ns, args.replicate_match, args.ieg, args.no_bvc
+    return args.output_folder, args.do_abs
 
 def corOnlyAndWrite(this_idx, output_path):
     """
@@ -68,7 +66,7 @@ def main():
 
     # Read Inputs
     global do_abs
-    perm_num, num_perm, cluster15, cluster53, gene, output_folder, no_perm, cor_only, do_abs, sum_ns, replicate_match, ieg, no_bvc = parseArgs()
+    output_folder, do_abs = parseArgs()
 
     # Make Sparse Matrix
     # import pandas
