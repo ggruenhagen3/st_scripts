@@ -31,7 +31,7 @@ def corOnlyAndWrite(this_idx, output_path):
     :param output_path: Output path of h5 correlation matrix file
     :return success: Function completed? True/False
     """
-    cor = pandas.DataFrame(data=sparse_corrcoef(data_mat[:, this_idx].todense()), index=gene_labels, columns=gene_labels)
+    cor = pandas.DataFrame(data=sparse_corrcoef(data_mat[:, this_idx].todense()))
     if do_abs:
         print("Taking absolute value of correlations")
         cor = cor.abs()
