@@ -82,13 +82,13 @@ def main():
     global data_mat
     global gene_labels
     global cond_labels
-    data_mat = sparse.load_npz("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_data_mat.npz")
-    gene_labels = pandas.read_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_rownames.csv").iloc[:, 1].to_numpy()
+    data_mat = sparse.load_npz("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/st_sct_data.npz")
+    gene_labels = pandas.read_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/st_sct_data_names.csv").iloc[:, 1].to_numpy()
 
     # Change file name based on input
-    base_name = "real_"
+    base_name = "real"
     if do_abs:
-        base_name = base_name + "abs_"
+        base_name = base_name + "_abs"
 
     # Find Correlations
     print("Finding Correlations")
