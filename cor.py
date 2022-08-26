@@ -10,6 +10,7 @@ import argparse
 import h5py
 import multiprocessing
 from itertools import repeat
+from scipy.stats import t
 
 global data_mat
 global gene_labels
@@ -21,55 +22,48 @@ def parseArgs():
                         default="/storage/home/hcoda1/6/ggruenhagen3/scratch/st/results/",
                         const="/storage/home/hcoda1/6/ggruenhagen3/scratch/st/results/")
     parser.add_argument("-a", "--do_abs", help="Take the absolute value of the correlations?", action="store_true")
+    parser.add_argument("-p", "--calc_p", help="Calculate the p-value", action="store_true")
+    parser.add_argument("-t", "--one_tail", help="Calculate a ONE tailed p-value", action="store_true")
     args = parser.parse_args()
-    return args.output_folder, args.do_abs
+    return args.output_folder, args.do_abs, args.calc_p, args.one_tail
 
-def corOnlyAndWrite(this_idx, output_path):
+def corOnlyAndWrite(this_idx, output_path, calc_p, one_tail):
     """
     Given idexes of cells, create a matrix and find correlations only
     :param this_idx: Indexes of columns
     :param output_path: Output path of h5 correlation matrix file
     :return success: Function completed? True/False
     """
+
+    # Find the correlation (Pearson)
     cor = pandas.DataFrame(data=sparse_corrcoef(data_mat[:, this_idx].todense()))
     if do_abs:
         print("Taking absolute value of correlations")
         cor = cor.abs()
     else:
         print("NOT taking absolute value of correlations. Using raw values.")
-    h5f = h5py.File(output_path, 'w')
+    h5f = h5py.File(output_path + ".h5", 'w')
     h5f.create_dataset('name', data=cor)
     h5f.close()
-    return True
-
-def corPAndWrite(this_idx, output_path):
-    """
-    Given idexes of cells, create a matrix and find correlations only
-    :param this_idx: Indexes of columns
-    :param output_path: Output path of h5 correlation matrix file
-    :return success: Function completed? True/False
-    """
-    cor = pandas.DataFrame(data=sparse_corrcoef(data_mat[:, this_idx].todense()))
-    if do_abs:
-        print("Taking absolute value of correlations")
-        cor = cor.abs()
-    else:
-        print("NOT taking absolute value of correlations. Using raw values.")
 
     # Find the p-value
-    n_obs = data_mat.shape[1]
-    dof = n_obs - 2
-    t_stat = cor / math.sqrt( (1 - cor**2) / dof )
-    if two_tailed:
-        p = 2 * (1 - t.cdf(abs(t_stat), dof))
-    else:
-        print("Right tailed p-value")
-        p = 1 - t.cdf(abs(t_stat), dof)
+    if calc_p:
+        n_obs = data_mat.shape[1]
+        dof = n_obs - 2
+        t_stat = cor / np.sqrt( (1 - cor**2) / dof )
+        if one_tail:
+            print("Right tailed p-value")
+            p = pandas.DataFrame(1 - t.cdf(abs(t_stat), dof))
+        else:
+            print("Two tailed p-value")
+            p = pandas.DataFrame(2 * (1 - t.cdf(abs(t_stat), dof)))
 
-    h5f = h5py.File(output_path, 'w')
-    h5f.create_dataset('name', data=cor)
-    h5f.close()
+        h5f = h5py.File(output_path + "_p.h5", 'w')
+        h5f.create_dataset('name', data=p)
+        h5f.close()
+
     return True
+
 
 def sparse_corrcoef(A, B=None):
     """
@@ -95,7 +89,7 @@ def main():
 
     # Read Inputs
     global do_abs
-    output_folder, do_abs = parseArgs()
+    output_folder, do_abs, calc_p, one_tail = parseArgs()
 
     # Make Sparse Matrix
     # import pandas
@@ -120,8 +114,8 @@ def main():
     # Find Correlations
     print("Finding Correlations")
     base_name = base_name + "_cor"
-    output_path = output_folder + "/" + base_name + ".h5"
-    all_cor_success = corOnlyAndWrite(range(0, data_mat.shape[1]), output_path)
+    output_path = output_folder + "/" + base_name
+    all_cor_success = corOnlyAndWrite(range(0, data_mat.shape[1]), output_path, calc_p, one_tail)
 
 if __name__ == '__main__':
     main()
