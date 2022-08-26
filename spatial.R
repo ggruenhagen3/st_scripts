@@ -729,6 +729,23 @@ deg84_81_81 = deg84_81[which(deg84_81$p_val_adj < 0.05 & !is.na(deg84_81$human) 
 deg84_81_84 = deg84_81[which(deg84_81$p_val_adj < 0.05 & !is.na(deg84_81$human) & deg84_81$human %in% rownames(slide.seq) & deg84_81$pct.2 > 0.4 & deg84_81$pct.1 < 0.3 & deg84_81$otherpct.1 < 0.2),]
 
 #*******************************************************************************
+# Correlations =================================================================
+#*******************************************************************************
+library("rhdf5")
+h5f = H5Fopen("~/scratch/st/results/sct_data_cor.h5")
+mat = h5f$name
+h5closeAll()
+
+genes = data.frame(gene = rownames(all_merge@assays$SCT@data), sum = rowSums(all_merge@assays$SCT@data), raw_sum = rowSums(all_merge@assays$Spatial@counts[rownames(all_merge@assays$SCT@data),]))
+rownames(mat) = colnames(mat) = genes$gene
+# mat = mat[genes$gene[which(genes$raw_sum > 20)], genes$gene[which(genes$raw_sum > 20)]]
+mat[upper.tri(mat, diag = T)] = NA
+genes$cor_max = NA
+genes$cor_max = sapply(rownames(mat), function(x) max(mat[x,], na.rm = T))
+genes$cor_max_gene = sapply(rownames(mat), function(x) colnames(mat)[which.max(mat[x,])] )
+genes$cor_max_raw_sum = genes$raw_sum[match(genes$cor_max_gene, genes$gene)]
+
+#*******************************************************************************
 # BHVE vs CTRL DEGs ============================================================
 #*******************************************************************************
 b2.samples = c("b2a", "b2b", "b2c", "b2d")
@@ -1340,43 +1357,43 @@ dev.off()
 # Trash Can ====================================================================
 #*******************************************************************************
 
+all_merge_hi = qs::qread(paste0(data_dir, "all_merge_hi.qs"))
 means = read.csv(paste0(out_dir, "cell2location/bb_secondary/cell2location_spatial_output_means.csv"))
 rownames(means) = means$X
 means$X = NULL
 colnames(means) = str_replace(colnames(means), "meanscell_abundance_w_sf_", "")
 means_round = round(means)
-all_merge$sum = rowSums(means)
+all_merge_hi$sum = rowSums(means)
 
-for (i in as.character(0)) {
-  all_merge$tmp = means_round[,i]
-  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, ".pdf"), width = 8, height = 8, onefile = F)
-  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, ".png"), width = 1800, height = 1800, res = 150)
-  print(myMultiSFP(all_merge, feature = "tmp", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
-  dev.off()
+for (i in as.character(0:52)) {
+  print(paste0("---- ", i, " ----"))
+  this.name = bb_convert53$new[match(i, bb_convert53$old)]
+  this.name = str_replace(this.name, "/", "_")
+  all_merge_hi$tmp = means_round[,i]
+  # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name, ".svg"), width = 7, height = 7, onefile = F)
+  # myMultiSFP(all_merge_hi, feature = "tmp", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T)
+  # dev.off()
   
-  pct_sample = unlist(lapply(levels(all_merge$sample), function(x) range01(all_merge$tmp[which(all_merge$sample ==x)])*100))
-  names(pct_sample) = unlist(lapply(levels(all_merge$sample), function(x) colnames(all_merge)[which(all_merge$sample ==x)]))
-  all_merge$tmp2 = 0
-  all_merge$tmp2[names(pct_sample)] = pct_sample
-  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, "_max.pdf"), width = 8, height = 8, onefile = F)
-  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, "_max.png"), width = 1800, height = 1800, res = 150)
-  print(myMultiSFP(all_merge, feature = "tmp2", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
+  pct_sample = unlist(lapply(levels(all_merge_hi$sample), function(x) range01(all_merge_hi$tmp[which(all_merge_hi$sample ==x)])*100))
+  names(pct_sample) = unlist(lapply(levels(all_merge_hi$sample), function(x) colnames(all_merge_hi)[which(all_merge_hi$sample ==x)]))
+  all_merge_hi$tmp2 = 0
+  all_merge_hi$tmp2[names(pct_sample)] = pct_sample
+  grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell_max/", this.name, ".svg"), width = 7, height = 7, onefile = F)
+  print(myMultiSFP(all_merge_hi, feature = "tmp2", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T))
   dev.off()
-  
-  all_merge$tmp = (means_round[,i] / all_merge$sum) * 100
-  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct.pdf"), width = 8, height = 8, onefile = F)
-  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct.png"), width = 1800, height = 1800, res = 150)
-  print(myMultiSFP(all_merge, feature = "tmp", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
-  dev.off()
-  
-  pct_sample = unlist(lapply(levels(all_merge$sample), function(x) range01(all_merge$tmp[which(all_merge$sample ==x)])*100))
-  names(pct_sample) = unlist(lapply(levels(all_merge$sample), function(x) colnames(all_merge)[which(all_merge$sample ==x)]))
-  all_merge$tmp2 = 0
-  all_merge$tmp2[names(pct_sample)] = pct_sample
-  # pdf(paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct_max.pdf"), width = 8, height = 8, onefile = F)
-  Cairo::Cairo(file = paste0(out_dir, "cell2location/bb_secondary/results/", i, "_pct_max.png"), width = 1800, height = 1800, res = 150)
-  print(myMultiSFP(all_merge, feature = "tmp2", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100))))
-  dev.off()
+  # 
+  # all_merge_hi$tmp = (means_round[,i] / all_merge_hi$sum) * 100
+  # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_pct/", this.name, ".svg"), width = 7, height = 7, onefile = F)
+  # myMultiSFP(all_merge_hi, feature = "tmp", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T)
+  # dev.off()
+  # 
+  # pct_sample = unlist(lapply(levels(all_merge_hi$sample), function(x) range01(all_merge_hi$tmp[which(all_merge_hi$sample ==x)])*100))
+  # names(pct_sample) = unlist(lapply(levels(all_merge_hi$sample), function(x) colnames(all_merge_hi)[which(all_merge_hi$sample ==x)]))
+  # all_merge_hi$tmp2 = 0
+  # all_merge_hi$tmp2[names(pct_sample)] = pct_sample
+  # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_pct_max/", this.name, ".svg"), width = 7, height = 7, onefile = F)
+  # myMultiSFP(all_merge_hi, feature = "tmp2", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T)
+  # dev.off()
 }
 
 # Label Tissue Halves
