@@ -42,6 +42,35 @@ def corOnlyAndWrite(this_idx, output_path):
     h5f.close()
     return True
 
+def corPAndWrite(this_idx, output_path):
+    """
+    Given idexes of cells, create a matrix and find correlations only
+    :param this_idx: Indexes of columns
+    :param output_path: Output path of h5 correlation matrix file
+    :return success: Function completed? True/False
+    """
+    cor = pandas.DataFrame(data=sparse_corrcoef(data_mat[:, this_idx].todense()))
+    if do_abs:
+        print("Taking absolute value of correlations")
+        cor = cor.abs()
+    else:
+        print("NOT taking absolute value of correlations. Using raw values.")
+
+    # Find the p-value
+    n_obs = data_mat.shape[1]
+    dof = n_obs - 2
+    t_stat = cor / math.sqrt( (1 - cor**2) / dof )
+    if two_tailed:
+        p = 2 * (1 - t.cdf(abs(t_stat), dof))
+    else:
+        print("Right tailed p-value")
+        p = 1 - t.cdf(abs(t_stat), dof)
+
+    h5f = h5py.File(output_path, 'w')
+    h5f.create_dataset('name', data=cor)
+    h5f.close()
+    return True
+
 def sparse_corrcoef(A, B=None):
     """
     Find correlations in sparse matrix
