@@ -103,7 +103,7 @@ def main():
     global data_mat
     global gene_labels
     global cond_labels
-    data_mat = sparse.load_npz("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/st_spatial_counts.npz")
+    data_mat = sparse.load_npz("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/st_sct_data.npz")
     # gene_labels = pandas.read_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/st_sct_data_names.csv").iloc[:, 1].to_numpy()
 
     # Change file name based on input
