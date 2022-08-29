@@ -1,3 +1,5 @@
+print("This line of code came from my work desktop.")
+
 #*******************************************************************************
 # Load Libraries ===============================================================
 #*******************************************************************************
@@ -736,14 +738,42 @@ h5f = H5Fopen("~/scratch/st/results/sct_data_cor.h5")
 mat = h5f$name
 h5closeAll()
 
+# p-values
+h5f = H5Fopen("~/scratch/st/results/sct_data_cor_one_p.h5")
+mat_p = h5f$name
+h5closeAll()
+
+# mat_p_adj = do.call("rbind", lapply(1:nrow(mat_p), function(x) p.adjust(mat_p[x,], method = "bonferroni") ))
+
 genes = data.frame(gene = rownames(all_merge@assays$SCT@data), sum = rowSums(all_merge@assays$SCT@data), raw_sum = rowSums(all_merge@assays$Spatial@counts[rownames(all_merge@assays$SCT@data),]))
 rownames(mat) = colnames(mat) = genes$gene
+rownames(mat_p_adj) = colnames(mat_p_adj) = genes$gene
 # mat = mat[genes$gene[which(genes$raw_sum > 20)], genes$gene[which(genes$raw_sum > 20)]]
 mat[upper.tri(mat, diag = T)] = NA
 genes$cor_max = NA
-genes$cor_max = sapply(rownames(mat), function(x) max(mat[x,], na.rm = T))
-genes$cor_max_gene = sapply(rownames(mat), function(x) colnames(mat)[which.max(mat[x,])] )
+genes$cor_max = unlist(lapply(rownames(mat), function(x) max(mat[x,], na.rm = T)))
+genes$cor_max_p = c(NA, unlist(lapply(1:nrow(mat), function(x) mat_p[x, which.max(mat[x,])] )))
+# genes$cor_max_p_adj = c(NA, unlist(lapply(1:nrow(mat), function(x) mat_p_adj[x, which.max(mat[x,])] )))
+genes$cor_max_gene = c(NA, unlist(lapply(rownames(mat), function(x) colnames(mat)[which.max(mat[x,])] )))
 genes$cor_max_raw_sum = genes$raw_sum[match(genes$cor_max_gene, genes$gene)]
+
+no_na_ind = which(!is.na(mat), arr.ind = T)
+mat_v = as.vector(mat_p[no_na_ind])
+mat_v_adj = p.adjust(mat_v, method = "bonferroni")
+mat_p_adj2 = matrix(NA, nrow = nrow(mat), ncol = ncol(mat), dimnames = list(genes$gene, genes$gene))
+mat_p_adj2[no_na_ind] = mat_v_adj
+
+cor_to_write = as.data.frame(which(mat_p_adj2 < 0.05, arr.ind=T))
+cor_to_write$gene1 = rownames(mat)[cor_to_write$row]
+cor_to_write$gene2 = rownames(mat)[cor_to_write$col]
+cor_to_write$r = mat[cbind(cor_to_write$row, cor_to_write$col)]
+cor_to_write$p = mat_p[cbind(cor_to_write$row, cor_to_write$col)]
+cor_to_write$p_adj = mat_p_adj2[cbind(cor_to_write$row, cor_to_write$col)]
+# cor_to_write = cor_to_write[which(! duplicated( paste0(cor_to_write$row, "_", cor_to_write$col) )),]
+cor_to_write$row = cor_to_write$col = NULL
+cor_to_write = cor_to_write[order(cor_to_write$r, decreasing = T),]
+data.table::fwrite(cor_to_write, "~/scratch/st/results/spatail_two_tail_p_adj_sig.csv")
+
 
 #*******************************************************************************
 # BHVE vs CTRL DEGs ============================================================
@@ -1352,6 +1382,11 @@ all_merge_for_bb_hi$class2_81_84 = df84_81_2$dif84_81_col
 pdf(paste0(out_dir, paste0("class2_81_84_6_", my.thresh, "_only3.pdf")), width = 12, height = 12)
 print(myMultiSFP(all_merge_for_bb_hi, samples = c("c2c", "b2b", "b1c"), "class2_81_84", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
 dev.off()
+
+#*******************************************************************************
+# CDG ==========================================================================
+#*******************************************************************************
++
 
 #*******************************************************************************
 # Trash Can ====================================================================
