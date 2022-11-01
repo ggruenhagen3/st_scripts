@@ -184,7 +184,7 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
   if (!same.col.scale) { min.val = NULL; max.val = NULL; }
   
   # Point Sizes
-  sample_pt_size = c(2.3, 1.75, 2, 2.1, 1.4, 1.5, 1.5, 1.5, 1.25, 2.3, 1.6, 2, 1.3)
+  sample_pt_size = c(2.3, 1.75, 2, 2.1, 1.4, 1.5, 1.5, 1.5, 1.25, 2.3, 2, 2, 1.3)
   names(sample_pt_size) = real.samples
   
   # Angle to rotate plots
@@ -221,17 +221,17 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
   this.ncol = 4
   # if (length(all.samples) < 4) { this.ncol = length(all.samples) }
   all.samples.mtx = matrix(all.samples, ncol = this.ncol, byrow = T)
-  print(all.samples)
   print(all.samples.mtx)
   grid.newpage()
-  # top.vp = viewport(width=1, height=1, xscale=c(0, nrow(all.samples.mtx)), yscale=c(0,ncol(all.samples.mtx), name = "top.vp"))
-  pushViewport(viewport(width=1, height=1, xscale=c(0, nrow(all.samples.mtx)), yscale=c(0,ncol(all.samples.mtx))))
+  # pushViewport(viewport(width=1, height=1, xscale=c(0, nrow(all.samples.mtx)), yscale=c(0,ncol(all.samples.mtx))))
+  pushViewport(viewport(width=1, height=1, xscale=c(0, ncol(all.samples.mtx)), yscale=c(0,nrow(all.samples.mtx))))
   for(i in 1:nrow(all.samples.mtx)){
     for(j in 1:ncol(all.samples.mtx)){
       s = as.character(all.samples.mtx[i,j])
       this.x = j-0.5 # coordinate for the position on the grid
       this.y = nrow(all.samples.mtx)-i+0.5 # coordinate for the position on the grid
-      vp = viewport(x=unit(this.x,"native"), y=unit(this.y,"native"), width=unit(1,"native"), height=unit(1,"native"), clip="on") # current cell of the grid
+      # print(paste0(s, ": x=", this.x, ", y=", this.y))
+      vp = viewport(x=unit(this.x,"native"), y=unit(this.y,"native"), width=unit(1,"native"), height=unit(1,"native"), clip=T) # current cell of the grid
       pushViewport(vp) # starts the viewport window
       
       # Determine background color and reorientation-angle of the sample
@@ -257,7 +257,7 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
       # Create a viewport within the current viewport (the one that represents the cell of the grid) 
       # This allows me to adjust the angle of the plots
       # vp2 = viewport(width = unit(0.9, "npc"), height = unit(0.9, "npc"), angle = this.angle, clip = T)
-      vp2 = viewport(width = unit(this.zoom, "npc"), height = unit(this.zoom, "npc"), angle = this.angle, clip = "off")
+      vp2 = viewport(width = unit(this.zoom, "npc"), height = unit(this.zoom, "npc"), angle = this.angle, clip = T)
       pushViewport(vp2)
       if (s %in% real.samples) {
         grid.draw(ggplotGrob(p_list[[s]]))
