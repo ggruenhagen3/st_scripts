@@ -1204,7 +1204,8 @@ for (s in levels(all_merge_hi$sample)) {
 }
 
 pdf(paste0(out_dir, "high_res_cluster.pdf"), width = 12, height = 12, onefile = F)
-print(allSamplesSFP( all_merge_hi, "cluster.num", pal = scales::hue_pal(), rm.zero = F, high.res = T, points.as.text = T, pt.size.multiplier = 1.4 ))
+# print( myMultiSFP( all_merge_hi, "cluster.num", pal = scales::hue_pal(), rm.zero = F, high.res = T, points.as.text = T, pt.size.multiplier = 1.4 ))
+print( myMultiSFP( all_merge_hi, "cluster.num", pal = scales::hue_pal(), rm.zero = F, high.res = T, points.as.text = F, pt.size.multiplier = 1 ))
 dev.off()
 
 #*******************************************************************************
@@ -1604,46 +1605,60 @@ all_merge_rgc = subset(all_merge, cells = spots.rgc)
 allSamplesSFP(all_merge_rgc, "rgc1.top")
 
 pdf(paste0(out_dir, "npy_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "npy", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#5cc456")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#5cc456"
+myMultiSFP(all_merge_hi, feature = "npy", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC101480282_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC101480282", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#a03fba")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#a03fba"
+myMultiSFP(all_merge_hi, feature = "LOC101480282", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "ucn_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "ucn", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#a30e07")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#a30e07"
+myMultiSFP(all_merge_hi, feature = "ucn", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC101482567_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC101482567", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#7656c4")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#7656c4"
+myMultiSFP(all_merge_hi, feature = "LOC101482567", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "nkx2-1_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "nkx2-1", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#0423bf")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#0423bf"
+myMultiSFP(all_merge_hi, feature = "nkx2-1", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "dlx5_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "dlx5", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#56c49c")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#56c49c"
+myMultiSFP(all_merge_hi, feature = "dlx5", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "gad1_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "gad1", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#a661c2")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#a661c2"
+myMultiSFP(all_merge_hi, feature = "gad1", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "slc17a6_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "slc17a6", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#5cc456")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#5cc456"
+myMultiSFP(all_merge_hi, feature = "slc17a6", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC101475168_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC101475168", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#f2de41")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#f2de41"
+myMultiSFP(all_merge_hi, feature = "LOC101475168", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC101468574_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC101468574", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#23b5de")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#23b5de"
+myMultiSFP(all_merge_hi, feature = "LOC101468574", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC101487165_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC101487165", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#a03fba")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#a03fba"
+myMultiSFP(all_merge_hi, feature = "LOC101487165", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC106675461_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC106675461", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#db7a39")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#db7a39"
+myMultiSFP(all_merge_hi, feature = "LOC106675461", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "LOC101485677_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "LOC101485677", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#288f62")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#288f62"
+myMultiSFP(all_merge_hi, feature = "LOC101485677", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 pdf(paste0(out_dir, "th_dif_remove_zero_alpha_alpha.pdf"), width = 12, height = 12, onefile = F)
-myMultiSFP(all_merge_hi, feature = "th", pt.size.multiplier = 1.3, same.col.scale = F, pal = colorRampPalette(c("gray40", "#dbb43d")), high.res = T, rm.zero = F, scale.alpha = T)
+this.col = "#dbb43d"
+myMultiSFP(all_merge_hi, feature = "th", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
 dev.off()
 # # Look at clustering at multiple resolutions
 # for (this.res in seq(0.3, 0.8, by = 0.05)) {
