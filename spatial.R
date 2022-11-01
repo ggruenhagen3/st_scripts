@@ -1,5 +1,3 @@
-print("This line of code came from my work desktop.")
-
 #*******************************************************************************
 # Load Libraries ===============================================================
 #*******************************************************************************
@@ -22,6 +20,7 @@ setwd(out_dir)
 #*******************************************************************************
 gene_info = read.table(paste0(main_path, "/all_research/gene_info_2.txt"), header = T, stringsAsFactors = F)
 all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
+all_merge_hi = qs::qread(paste0(data_dir, "all_merge_hi.qs"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 
 #*******************************************************************************
@@ -172,7 +171,9 @@ FeaturePlot(all_merge, "max_num", order = T, pt.size = 0.8, label = F) + theme_v
 FeaturePlot(all_merge, "max_pct", order = T, pt.size = 0.8, label = F) + theme_void() + coord_fixed() + scale_color_viridis()
 
 stat.df = data.frame(max_num = all_merge$max_num, max_pct = all_merge$max_pct, combo = all_merge$max_num * all_merge$max_pct)
-ggplot(stat.df, aes(x = max_num, y = max_pct)) + geom_point(alpha = 0.25) + theme_bw() + xlab("Max # Cells from a Cell Type") + ylab("Max % from a Cell Type")
+pdf("percent_and_count_scatter.pdf", width = 5, height = 5)
+print(ggplot(stat.df, aes(x = max_num, y = max_pct)) + geom_point(alpha = 0.25) + theme_bw() + xlab("Max # Cells from a Cell Type") + ylab("Max % from a Cell Type"))
+dev.off()
 
 # Number of Cell Types with >10% in a spot
 my.pct = 0.1
@@ -202,7 +203,8 @@ coords = GetTissueCoordinates(object = all_merge_hi, image = "c2c")
 coords$spot = 1:nrow(coords)
 coords[, colnames(c2l_mean_num2)] = c2l_mean_num2[rownames(coords),]
 rownames(coords) = NULL
-pdf("c2c_pi_chart.pdf", width = 12, height = 12, onefile = F)
+# pdf("c2c_pi_chart.pdf", width = 12, height = 12, onefile = F)
+Cairo::Cairo("c2c_pi_chart.png", width = 2400, height = 1600, res = 240)
 # print(ggplot() + geom_scatterpie(data = coords, aes(x=imagecol, y=-imagerow, group = spot), cols = colnames(c2l_mean_num2), color=NA, alpha = 0.8) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void()) + coord_fixed() + scale_fill_manual(values = c(hue_pal()(48), 'gray60'), name = "cell type")
 print(ggplot() + geom_scatterpie(data = coords, aes(x=imagecol, y=-imagerow, group = spot), cols = colnames(c2l_mean_num2), color=NA, alpha = 0.8) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void() + coord_fixed())
 dev.off()
@@ -210,17 +212,19 @@ dev.off()
 c2l_mean_num2_round = round(c2l_mean_num2)
 coords_multi = data.frame()
 for (i in 1:nrow(c2l_mean_num2_round)) {
-  this_non_zero_cell_type = colnames(c2l_mean_num2_round)[which(c2l_mean_num2_round[i,] != 0)]
-  for (this_ct in this_non_zero_cell_type) {
-    coords_multi = rbind(coords_multi, 
-                         data.frame(spot = rep(rownames(c2l_mean_num2_round)[i], c2l_mean_num2_round[i, this_ct]), 
-                                    imagerow = rep(coords$imagerow[i], c2l_mean_num2_round[i, this_ct]), 
-                                    imagecol = rep(coords$imagecol[i], c2l_mean_num2_round[i, this_ct]), 
-                                    ct = rep(this_ct, c2l_mean_num2_round[i, this_ct])) ) 
+  if (startsWith(rownames(c2l_mean_num2_round)[i], "c2c_")) {
+    this_non_zero_cell_type = colnames(c2l_mean_num2_round)[which(c2l_mean_num2_round[i,] != 0)]
+    for (this_ct in this_non_zero_cell_type) {
+      coords_multi = rbind(coords_multi, 
+                           data.frame(spot = rep(rownames(c2l_mean_num2_round)[i], c2l_mean_num2_round[i, this_ct]), 
+                                      imagerow = rep(coords[rownames(c2l_mean_num2_round)[i], "imagerow"], c2l_mean_num2_round[i, this_ct]), 
+                                      imagecol = rep(coords[rownames(c2l_mean_num2_round)[i], "imagecol"], c2l_mean_num2_round[i, this_ct]), 
+                                      ct = rep(this_ct, c2l_mean_num2_round[i, this_ct])) ) 
+    }
   }
-  
 }
 coords_multi$value = all_merge$cluster[coords_multi$spot]
+coords_multi$best_ct = all_merge$bb53_c2l[coords_multi$spot]
 coords_multi$ct = factor(coords_multi$ct, levels = convert53$new)
 
 img.grob = GetImage(all_merge_hi, image = "c2c")
@@ -228,10 +232,13 @@ img.grob.test = img.grob$raster[min(coords$imagerow):max(coords$imagerow), min(c
 img.grob.test.grob = img.grob
 img.grob.test.grob$raster = img.grob.test
 
-pdf("c2c_with_mini_cells_no_circle.pdf", width = 12, height = 12, onefile = F)
+# pdf("c2c_with_mini_cells_no_circle.pdf", width = 12, height = 12, onefile = F)
+# pdf("c2c_with_mini_cells_w_circle.pdf", width = 12, height = 8, onefile = F)
+Cairo::CairoPNG("c2c_with_mini_cells_w_circle.png", width = 3000, height = 1950, res = 240)
 # print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + annotation_custom(img.grob.test.grob) + ggforce::geom_mark_hull(aes(fill = value, group = spot), expand = unit(4, "mm"), radius = unit(4, "mm"), size = 0, color = NA) + geom_point(size = 0.75, position = position_jitter(width = 2.5, height = 2.5), aes(color = ct)) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void() + coord_fixed() + guides(fill="none"))
 # print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + annotation_custom(img.grob.test.grob) + ggforce::geom_mark_hull(aes(fill = value, group = spot), expand = unit(4, "mm"), radius = unit(4, "mm"), size = 0, color = NA, alpha = 0.5) + geom_point(size = 0.75, position = position_jitter(width = 8, height = 8), aes(color = ct)) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void() + coord_fixed() + guides(fill="none"))
-print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + geom_point(size = 0.75, position = position_jitter(width = 8, height = 8), aes(color = ct)) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void() + coord_fixed() + guides(fill="none"))
+# print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + geom_point(size = 0.75, position = position_jitter(width = 8, height = 8), aes(color = ct)) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void() + coord_fixed() + guides(fill="none"))
+print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + ggforce::geom_mark_hull(aes(fill = best_ct, group = spot), expand = unit(3.3, "mm"), radius = unit(3.3, "mm"), size = 0, color = NA, alpha = 0.5) + geom_point(size = 0.75, position = position_jitter(width = 7, height = 7), aes(color = ct)) + scale_x_continuous(expand=c(0.1,0.1)) + scale_y_continuous(expand=c(0.1,0.1)) + theme_void() + coord_fixed() + guides(fill="none"))
 dev.off()
 
 # ---------------- #
@@ -427,9 +434,10 @@ dev.off()
 # 8.1_Glut, 8.4_Glut, RGC2 Figure
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
-this.pal = c("#ed2828", "#3F4788", "#FDE725")
+this.pal = c("#04D9FF", "#3F4788", "#FDE725")
 my.thresh = 50
-df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100)
+my.thesh2 = 60
+df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class4 = as.vector(range01(all_merge@assays$predictions15["4-GABA",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100, class9 = as.vector(range01(all_merge@assays$predictions15["9-Glut",]))*100)
 # df84_81_2$class = colnames(df84_81_2)[max.col(df84_81_2, ties.method="first")]
 # df_col = data.frame(class = c("class2", "class81", "class84"), col = this.pal)
 # df84_81_2$class_col = df_col$col[match(df84_81_2$class, df_col$class)]
@@ -443,13 +451,27 @@ df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
 df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
 df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
 df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
+df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thesh2)] = "#d600ff"
 df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-df84_81_2$scale_col = df84_81_2$dif84_81_col
-df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
+df84_81_2$dif84_81_col[which(df84_81_2$class4 >= my.thresh)] = "#04D9FF"
+# df84_81_2$scale_col = df84_81_2$dif84_81_col
+# df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
 all_merge_hi$class2_81_84 = df84_81_2$dif84_81_col
 
-pdf(paste0(out_dir, paste0("class2_81_84_4_", my.thresh, ".pdf")), width = 12, height = 12)
-print(allSamplesSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+pdf(paste0(out_dir, paste0("class2_81_84_4_9_4_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+dev.off()
+
+pdf(paste0(out_dir, paste0("class2_81_84_4_9_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+dev.off()
+
+my.col = "#27e5fa"
+all_merge_hi$glut11 = as.vector(range01(all_merge@assays$predictions15["11-Glut",])) * 100
+all_merge_hi$glut11 = all_merge_hi$glut11 > 10
+all_merge_hi$glut11 = plyr::revalue(as.character(all_merge_hi$glut11), c("TRUE" = my.col, "FALSE" = "#27e5fa00"))
+pdf(paste0(out_dir, paste0("glu11", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, "glut11", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
 dev.off()
 
 # ---------------- #
@@ -773,6 +795,28 @@ cor_to_write$p_adj = mat_p_adj2[cbind(cor_to_write$row, cor_to_write$col)]
 cor_to_write$row = cor_to_write$col = NULL
 cor_to_write = cor_to_write[order(cor_to_write$r, decreasing = T),]
 data.table::fwrite(cor_to_write, "~/scratch/st/results/spatail_two_tail_p_adj_sig.csv")
+
+library("WGCNA")
+this_rowSums = rowSums(all_merge@assays$Spatial@counts)
+good_genes = names(this_rowSums)[which(this_rowSums > 0 & names(this_rowSums) %in% rownames(all_merge@assays$SCT@data))]
+data_mat_c = t(all_merge@assays$SCT@data[good_genes,])
+powers = c(c(1:10), seq(from = 12, to=20, by=2))
+sft_c = pickSoftThreshold(data_mat_c, powerVector = powers, verbose = 5)
+adjacency = adjacency(data_mat_c, type = "signed", power = 1)
+TOM = adjacency
+dissTOM = 1-TOM
+
+df = data.frame(mod1 = 0, mod2 = 0, mod3 = 0, mod4 = 0, gene = colnames(data_mat_c), row.names = colnames(data_mat_c))
+this.m = "ward.D"
+geneTree = hclust(as.dist(dissTOM), method = this.m)
+pred1 = cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = 1, pamRespectsDendro = FALSE, minClusterSize = 30);
+pred2 = cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 30);
+pred3 = cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = 3, pamRespectsDendro = FALSE, minClusterSize = 30);
+pred4 = cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = 4, pamRespectsDendro = FALSE, minClusterSize = 30);
+di1 = clValid::dunn(as.dist(dissTOM), clusters = pred1); di2 = clValid::dunn(as.dist(dissTOM), clusters = pred2); di3 = clValid::dunn(as.dist(dissTOM), clusters = pred3); di4 = clValid::dunn(as.dist(dissTOM), clusters = pred4);
+df$mod1 = pred1; df$mod2 = pred2; df$mod3 = pred3; df$mod4 = pred4;
+write.csv(df, "~/scratch/st/results/wgcna_power1_ds_1_3_minclustsize30_082922.csv")
+
 
 
 #*******************************************************************************
@@ -1160,7 +1204,8 @@ for (s in levels(all_merge_hi$sample)) {
 }
 
 pdf(paste0(out_dir, "high_res_cluster.pdf"), width = 12, height = 12, onefile = F)
-print(allSamplesSFP( all_merge_hi, "cluster.num", pal = scales::hue_pal(), rm.zero = F, high.res = T, points.as.text = T, pt.size.multiplier = 1.4 ))
+# print( myMultiSFP( all_merge_hi, "cluster.num", pal = scales::hue_pal(), rm.zero = F, high.res = T, points.as.text = T, pt.size.multiplier = 1.4 ))
+print( myMultiSFP( all_merge_hi, "cluster.num", pal = scales::hue_pal(), rm.zero = F, high.res = T, points.as.text = F, pt.size.multiplier = 1 ))
 dev.off()
 
 #*******************************************************************************
@@ -1386,7 +1431,10 @@ dev.off()
 #*******************************************************************************
 # CDG ==========================================================================
 #*******************************************************************************
-+
+cdg = c("cobl", "ddr1", "fhod3", "grik5", "LOC101476914", "LOC101477204", "LOC101479283", "LOC105941351", "nbeal2", "plekhf2", "plekhg4b", "wdr73")
+all_merge$cdg_score = colSums(all_merge@assays$Spatial@counts[cdg,] > 0)
+myMultiSFP(all_merge, "cdg_score", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, high.res = F)
+
 
 #*******************************************************************************
 # Trash Can ====================================================================
@@ -1556,7 +1604,62 @@ wrap_plots(p_list, ncol = 4)
 all_merge_rgc = subset(all_merge, cells = spots.rgc)
 allSamplesSFP(all_merge_rgc, "rgc1.top")
 
-
+pdf(paste0(out_dir, "npy_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#5cc456"
+myMultiSFP(all_merge_hi, feature = "npy", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC101480282_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#a03fba"
+myMultiSFP(all_merge_hi, feature = "LOC101480282", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "ucn_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#a30e07"
+myMultiSFP(all_merge_hi, feature = "ucn", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC101482567_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#7656c4"
+myMultiSFP(all_merge_hi, feature = "LOC101482567", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "nkx2-1_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#0423bf"
+myMultiSFP(all_merge_hi, feature = "nkx2-1", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "dlx5_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#56c49c"
+myMultiSFP(all_merge_hi, feature = "dlx5", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "gad1_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#a661c2"
+myMultiSFP(all_merge_hi, feature = "gad1", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "slc17a6_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#5cc456"
+myMultiSFP(all_merge_hi, feature = "slc17a6", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC101475168_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#f2de41"
+myMultiSFP(all_merge_hi, feature = "LOC101475168", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC101468574_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#23b5de"
+myMultiSFP(all_merge_hi, feature = "LOC101468574", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC101487165_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#a03fba"
+myMultiSFP(all_merge_hi, feature = "LOC101487165", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC106675461_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#db7a39"
+myMultiSFP(all_merge_hi, feature = "LOC106675461", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "LOC101485677_dif_remove_zero_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#288f62"
+myMultiSFP(all_merge_hi, feature = "LOC101485677", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
+pdf(paste0(out_dir, "th_dif_remove_zero_alpha_alpha.pdf"), width = 12, height = 12, onefile = F)
+this.col = "#dbb43d"
+myMultiSFP(all_merge_hi, feature = "th", pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(c(darken(this.col, amount = 0.1), this.col)), high.res = T, rm.zero = F, scale.alpha = T)
+dev.off()
 # # Look at clustering at multiple resolutions
 # for (this.res in seq(0.3, 0.8, by = 0.05)) {
 #   all_merge = FindNeighbors(all_merge, reduction = "umap", dims = 1:2)

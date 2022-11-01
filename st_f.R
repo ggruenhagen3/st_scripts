@@ -17,7 +17,7 @@ library("grid")
 library("ggpubr")
 
 # Functions
-mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F) {
+mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F, scale.alpha = F) {
   #' My version of SpatialFeaturePlot for a single object.
   #' 
   #' Input either an object+feature+assay+slot or coords+values+image grob.
@@ -90,21 +90,23 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   # Remove spots with zero expression
   if (rm.zero) { coords = coords[which(coords$value != 0),] }
   
+  if(scale.alpha) { scale.alpha = "value"; alpha.min = 0.1; } else { scale.alpha = "1"; alpha.min = 1; }
+  
   # Plot
   if (points.as.text) {
     # This is for plotting the number of the cluster at each spot instead of plotting spots as points
     this.angle = 0
     if (rot.text) { this.angle = angle }
-    p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value))   + annotation_custom(img.grob.test.grob) + geom_text(size = my.pt.size*0.8, fontface = "bold", angle = -this.angle, aes(label = value)) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+    p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value", alpha = scale.alpha))   + annotation_custom(img.grob.test.grob) + geom_text(size = my.pt.size*0.8, fontface = "bold", angle = -this.angle, aes(label = value)) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
     # p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value))   + annotation_custom(img.grob.test.grob) + geom_point(shape = 1, size = my.pt.size, stroke = 0) + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
     # p = p + geom_text(size = my.pt.size*0.8, angle = -this.angle, aes(label = value))
   } else {
     if (discrete) {
       # Discrete Color Scales
-      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+      p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
     } else {
       # Continuous Color Scales
-      p = ggplot(coords, aes(x=imagecol, y=-imagerow, color = value)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio)
+      p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
       # coords$value = factor(coords$value, levels = sort(as.numeric(unique(coords$value))))
       # coords = coords[which(coords$value != 29),]
       # coords$spot = rownames(coords)
@@ -120,7 +122,7 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   return(p)
 }
 
-myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data", same.col.scale = T, points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F, high.res = F) {
+myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data", same.col.scale = T, points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F, high.res = F, scale.alpha = F) {
   #' My version of SpatialFeaturePlot for all samples. Plots are angled to the correct orientation.
   #' 
   #' @param obj Seurat object that contains all samples
@@ -138,7 +140,7 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
   real.samples = c("c2a", "c2b", "c2c", "c2d", "b2a", "b2b", "b2c", "b2d", "c1a", "c1b", "c1c", "c1d", "b1c")
   all.samples = c(real.samples[1:(length(real.samples)-1)], "b1a", "b1b", "b1c", "b1d")
   
-  if (!is.null(samples)) { real.samples = real.samples[which(real.samples %in% samples)] }
+  if (!is.null(samples)) { real.samples = real.samples[which(real.samples %in% samples)]; all.samples = all.samples[which(all.samples %in% samples)] }
   print(real.samples)
   
   # Get all values for feature
@@ -199,7 +201,7 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
     this.values = value_list[[s]]
     this.img.grob = GetImage(obj, image = s)
     this.angle = angle.df[s, "angle"]
-    p_list[[s]] = mySingleSFP(coords = this.coords, assay = assay, slot = slot, values = this.values, img.grob = this.img.grob, points.as.text = points.as.text, rot.text = T, my.pt.size = sample_pt_size[s]*pt.size.multiplier, zoom.out.factor = 0.05, pal = pal, col.min = min.val, col.max = max.val, angle = this.angle, discrete = isDiscrete, rm.zero = rm.zero, col.ident = col.ident)
+    p_list[[s]] = mySingleSFP(coords = this.coords, assay = assay, slot = slot, values = this.values, img.grob = this.img.grob, points.as.text = points.as.text, rot.text = T, my.pt.size = sample_pt_size[s]*pt.size.multiplier, zoom.out.factor = 0.05, pal = pal, col.min = min.val, col.max = max.val, angle = this.angle, discrete = isDiscrete, rm.zero = rm.zero, col.ident = col.ident, scale.alpha = scale.alpha)
   }
   
   # Get color legend
@@ -215,8 +217,12 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
   }
   leg_p_grob = get_legend(leg_p)
   
-  # Create a grid of plots using viewports 
-  all.samples.mtx = matrix(all.samples, ncol = 4, byrow = T)
+  # Create a grid of plots using viewports
+  this.ncol = 4
+  # if (length(all.samples) < 4) { this.ncol = length(all.samples) }
+  all.samples.mtx = matrix(all.samples, ncol = this.ncol, byrow = T)
+  print(all.samples)
+  print(all.samples.mtx)
   grid.newpage()
   # top.vp = viewport(width=1, height=1, xscale=c(0, nrow(all.samples.mtx)), yscale=c(0,ncol(all.samples.mtx), name = "top.vp"))
   pushViewport(viewport(width=1, height=1, xscale=c(0, nrow(all.samples.mtx)), yscale=c(0,ncol(all.samples.mtx))))
