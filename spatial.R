@@ -973,6 +973,38 @@ st.clust.deg.sub = st.clust.deg[which(st.clust.deg$pct.2 < 0.3 & st.clust.deg$pc
 write.csv(st.clust.deg.sub, "all_merge_cluster_markers_subsetpct2_070822.csv")
 
 #*******************************************************************************
+# B2 ===========================================================================
+#*******************************************************************************
+my.b2 = all_merge
+for (s in c("b2al", "b2ar", "b2bl", "b2br", "b2cl", "b2cr", "b2dl", "b2dr")) {
+  real.slice = all_merge@images[[substr(s, 1, 3)]]
+  hires = Read10X_Image(paste0("~/Downloads/sp_data/b2_modified/296_", toupper(substr(s, 3, 3)), "1_", toupper(substr(s, 4, 4)), "/"), image.name = "tissue_hires_image.png")
+  rownames(hires@coordinates) = paste0(substr(s, 1, 3), "_", rownames(hires@coordinates))
+  hires@coordinates = hires@coordinates[rownames(real.slice@coordinates),]
+  hires@scale.factors$lowres = hires@scale.factors$hires
+  hires@assay = real.slice@assay
+  hires@key = real.slice@key
+  my.b2@images[[s]]= hires
+  # SpatialFeaturePlot(b2d, feature = "egr1", images = "slice1", crop = T)
+}
+half_by_spot = read.csv(paste0(out_dir, "half.csv"))
+my.b2$half = half_by_spot$half[match(colnames(my.b2), half_by_spot$cell)]
+my.b2$sample.half = my.b2$sh = paste0(my.b2$sample, substr(my.b2$half, 1, 1))
+
+pdf(paste0(out_dir, "b2_test.pdf"), width = 8, height = 4, onefile = F)
+print(myB2SFP(my.b2, "egr1")) # when ncol = 4
+dev.off()
+
+pdf(paste0(out_dir, "b2_cluster_half.pdf"), width = 16, height = 2, onefile = F)
+print(myB2SFP(my.b2, "cluster.num", pal = scales::hue_pal())) # when ncol = 4
+dev.off()
+
+pdf(paste0(out_dir, "b2_cluster_markers.pdf"), width = 12, height = 6, onefile = F)
+my.labels = gene_info$label[match(top.deg$gene, gene_info$seurat_name)]
+print(DotPlot(my.b2, features = top.deg$gene) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + scale_color_viridis() + scale_x_discrete(labels = my.labels))
+dev.off()
+
+#*******************************************************************************
 # Initial clustering ===========================================================
 #*******************************************************************************
 

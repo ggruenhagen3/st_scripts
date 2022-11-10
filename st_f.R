@@ -17,7 +17,8 @@ library("grid")
 library("ggpubr")
 
 # Functions
-mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F, scale.alpha = F) {
+
+mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F, scale.alpha = F, doFlip) {
   #' My version of SpatialFeaturePlot for a single object.
   #' 
   #' Input either an object+feature+assay+slot or coords+values+image grob.
@@ -61,13 +62,21 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
     img.grob = GetImage(obj)
   }
   
+  if (doFlip) { 
+    coords$imagerow = nrow(img.grob$raster)-coords$imagerow
+    img.grob.test.grob = img.grob
+    img.grob.test.grob$raster = img.grob$raster[nrow(img.grob$raster):1,]
+    img.grob = img.grob.test.grob
+  }
+  
   # Finding Coordinates of the Tissue
   my.imagerow.min = min(coords$imagerow)
   my.imagecol.min = min(coords$imagecol)
   my.imagerow.max = max(coords$imagerow)
   my.imagecol.max = max(coords$imagecol)
   myratio = (my.imagerow.max - my.imagerow.min) / (my.imagecol.max - my.imagecol.min) # locks the aspect ratio of the image to prevent distortion/elongation
-  
+  if (doFlip) { my.ratio = 20 }
+    
   # Adjusting the tissue window: zoom out or zoom in
   my.x.width = my.imagerow.max - my.imagerow.min
   my.x.zoom = my.x.width * zoom.out.factor
@@ -119,6 +128,8 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
     }
   }
   
+  # if (doFlip) { p = p + coord_flip() + theme(aspect.ratio = myratio) }
+  
   return(p)
 }
 
@@ -135,10 +146,15 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
   #' @return nothing
   
   obj@active.assay = assay
+ 
   
   # Samples to Plot
   real.samples = c("c2a", "c2b", "c2c", "c2d", "b2a", "b2b", "b2c", "b2d", "c1a", "c1b", "c1c", "c1d", "b1c")
   all.samples = c(real.samples[1:(length(real.samples)-1)], "b1a", "b1b", "b1c", "b1d")
+  
+  # Point Sizes
+  sample_pt_size = c(2.3, 1.75, 2, 2.1, 1.4, 1.5, 1.5, 1.5, 1.25, 2.3, 2, 2, 1.3)
+  names(sample_pt_size) = real.samples
   
   if (!is.null(samples)) { real.samples = real.samples[which(real.samples %in% samples)]; all.samples = all.samples[which(all.samples %in% samples)] }
   print(real.samples)
@@ -182,10 +198,7 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
   }
   
   if (!same.col.scale) { min.val = NULL; max.val = NULL; }
-  
-  # Point Sizes
-  sample_pt_size = c(2.3, 1.75, 2, 2.1, 1.4, 1.5, 1.5, 1.5, 1.25, 2.3, 2, 2, 1.3)
-  names(sample_pt_size) = real.samples
+
   
   # Angle to rotate plots
   angle.df = as.data.frame(c("c2a" = 155, "c2b" = 145, "c2c" = -115, "c2d" = 155,
@@ -281,3 +294,148 @@ myMultiSFP = function(obj, feature, samples = NULL, assay = "SCT", slot = "data"
 }
 
 
+myB2SFP = function(obj, feature, sample.halves = NULL, assay = "SCT", slot = "data", same.col.scale = T, points.as.text = F, rot.text = T, pt.size.multiplier = 1, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), rm.zero = F, col.ident = F, scale.alpha = F) {
+  #' My version of SpatialFeaturePlot for all samples. Plots are angled to the correct orientation.
+  #' 
+  #' @param obj Seurat object that contains all samples
+  #' @param assay assay of Seurat object to pull data from
+  #' @param slot slot of Seurat object to pull data from
+  #' @param pt.size.multiplier multiplier to increase/decrease size of points for all samples proportionally
+  #' @param zoom.out.factor zoom_out on tissue window (larger number -> more zoomed out)
+  #' @param pal color pallette
+  #' 
+  #' @return nothing
+  
+  obj@active.assay = assay
+  samples = sample.halves
+  
+  # Samples to Plot
+  sample.df = data.frame(samples = c("b2al", "b2bl", "b2cl", "b2dl", "b2ar", "b2br", "b2cr", "b2dr"),
+                         zoom1 =   c(0.05,    0.05,   0.1,    0.2,    0.05,   0.05,   0.1,    0.1),
+                         angle =   c(90,      88,     82,     120,    90,     100,    115,    85),
+                         zoom  =   c(1,       0.84,   0.8,    0.75,   0.98,   0.9,    0.9,    0.75),
+                         pt.size = c(0.95,    1.15,   1.3,    1.2,    0.9,    0.85,   1.05,   1.10),
+                         flip =    c(T,       T,      T,      T,      F,      F,      F,      F))
+  sample.df$pt.size = sample.df$pt.size * 1.4
+  rownames(sample.df) = sample.df$samples
+  sample.df = sample.df[c("b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl"),]
+  
+  if (!is.null(samples)) { sample.df = sample.df[which(sample.df$samples %in% samples)] }
+  
+  # Get all values for feature
+  value_list = list()
+  isDiscrete = F
+  if (length(feature) == 1) {
+    for (s in sample.df$samples) {
+      # See if feature is a gene or metadata
+      if (feature %in% rownames(obj[[assay]])) {
+        value_list[[s]] = FetchData(object = obj, vars = feature, cells = colnames(obj)[which(obj$sh == s)], slot = slot)[,1]
+      } else if (feature %in% colnames(obj@meta.data)) {
+        value_list[[s]] = obj@meta.data[colnames(obj)[which(obj$sh == s)], feature]
+      } else {
+        message(paste0("Error. Feature, ", feature, ", was not found in the assay nor in the metadata for the object."))
+        return (NULL)
+      }
+    }
+    min.val = min(unlist(value_list))
+    max.val = max(unlist(value_list))
+  } else {
+    isDiscrete = T
+    message("Multiple features selected. Using binary expression values from Spatial counts.")
+    
+    for (f in feature) {
+      if (! f %in% rownames(obj@assays$Spatial@counts)) {
+        message(paste0("Error. Feature, ", f, ", was not found in the object."))
+        return (NULL)
+      }
+      all_value_sum = colSums(obj@assays$Spatial@counts[c(feature[1], feature[2], feature[2]),] > 0)
+      all_value_sum = plyr::revalue(as.character(all_value_sum), replace = c("0" = "none", "1" = feature[1], "2" = feature[2], "3" = "both"))
+      all_value_sum = factor(all_value_sum, levels = c("both", feature, "none"))
+      for (s in sample.df$samples) {
+        this.value = all_value_sum[which(obj$fish == "b2")]
+        value_list[[s]] = this.value
+      }
+    }
+    min.val = "dummy"
+    max.val = "dummy"
+  }
+  
+  if (!same.col.scale) { min.val = NULL; max.val = NULL; }
+  
+  # Create all the separate sample plots
+  p_list = list()
+  for (s in sample.df$samples) {
+    this.coords = GetTissueCoordinates(object = obj, image = s)
+    this.coords = this.coords[colnames(obj)[which(obj$sh == s)],]
+    this.values = value_list[[s]]
+    this.img.grob = GetImage(obj, image = s)
+    this.angle = sample.df[s, "angle"]
+    p_list[[s]] = mySingleSFP(coords = this.coords, assay = assay, slot = slot, 
+                              values = this.values, img.grob = this.img.grob, 
+                              points.as.text = points.as.text, rot.text = T, 
+                              my.pt.size = sample.df[s, "pt.size"]*pt.size.multiplier, 
+                              zoom.out.factor = sample.df[s, "zoom1"], pal = pal, 
+                              col.min = min.val, col.max = max.val, angle = this.angle, 
+                              discrete = isDiscrete, rm.zero = rm.zero, col.ident = col.ident, 
+                              scale.alpha = scale.alpha, doFlip = sample.df[s, "flip"])
+  }
+  
+  # Get color legend
+  if (isDiscrete) {
+    leg_p = ggplot(data.frame(a = this.value, b = 1), aes(a, b, color = this.value)) + geom_point() + scale_color_manual(values=pal, name = NULL, drop = F) + theme(legend.position = 'bottom', legend.background = element_blank(), legend.key=element_blank()) + guides(color = guide_legend(ncol=2, by.row=T,  override.aes = list(size=3)))
+  } else if (col.ident) {
+    print(head(unique(unlist(value_list))))
+    leg_p = ggplot(data.frame(a = unique(unlist(value_list)), b = 1), aes(a, b, color = a)) + geom_point() + scale_color_identity(name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank())     
+  } else {
+    print(min.val)
+    print(max.val)
+    leg_p = ggplot(data.frame(a = 1, b = 1), aes(a, b, color = a)) + geom_point() + scale_color_gradientn(colors=pal(100), limits = c(min.val, max.val), name = NULL) + theme(legend.position = 'bottom', legend.background = element_blank()) 
+  }
+  leg_p_grob = get_legend(leg_p)
+  
+  # Create a grid of plots using viewports
+  this.ncol = 8
+  # if (length(all.samples) < 4) { this.ncol = length(all.samples) }
+  all.samples.mtx = matrix(sample.df$samples, ncol = this.ncol, byrow = T)
+  print(all.samples.mtx)
+  grid.newpage()
+  # pushViewport(viewport(width=1, height=1, xscale=c(0, nrow(all.samples.mtx)), yscale=c(0,ncol(all.samples.mtx))))
+  pushViewport(viewport(width=1, height=1, xscale=c(0, ncol(all.samples.mtx)), yscale=c(0,nrow(all.samples.mtx))))
+  for(i in 1:nrow(all.samples.mtx)){
+    for(j in 1:ncol(all.samples.mtx)){
+      s = as.character(all.samples.mtx[i,j])
+      this.x = j-0.5 # coordinate for the position on the grid
+      this.y = nrow(all.samples.mtx)-i+0.5 # coordinate for the position on the grid
+      # print(paste0(s, ": x=", this.x, ", y=", this.y))
+      vp = viewport(x=unit(this.x,"native"), y=unit(this.y,"native"), width=unit(1,"native"), height=unit(1,"native"), clip=T) # current cell of the grid
+      pushViewport(vp) # starts the viewport window
+      
+      # Determine background color and reorientation-angle of the sample
+      this.zoom  = sample.df[s, "zoom"]
+      this.angle = sample.df[s, "angle"]
+      
+      # Create a viewport within the current viewport (the one that represents the cell of the grid) 
+      # This allows me to adjust the angle of the plots
+      # vp2 = viewport(width = unit(0.9, "npc"), height = unit(0.9, "npc"), angle = this.angle, clip = T)
+      vp2 = viewport(width = unit(this.zoom, "npc"), height = unit(this.zoom, "npc"), angle = this.angle, clip = T)
+      pushViewport(vp2)
+      if (s %in% sample.df$samples) {
+        grid.draw(ggplotGrob(p_list[[s]]))
+      } else if (s == "b1a") {
+        grid.text(as.character(feature), 0.5, 0.5, gp=gpar(cex=1.3))
+      } else if (s == "b1b") {
+        grid.draw(leg_p_grob)
+      }
+      popViewport() # pop back to the viewport that represents the cell of the grid
+      
+      # Sample Labels
+      if (! s %in% c("b1a", "b1b", "b1d")) {
+        grid.text(as.character(s), 0.1, 0.95, gp=gpar(cex=1))
+      } 
+      
+      upViewport()
+      
+    }
+  }
+  popViewport(1)
+}
