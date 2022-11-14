@@ -21,7 +21,7 @@ if (main_path == "/storage/scratch1/6/ggruenhagen3/") { data_dir = "/storage/cod
 source(paste0(brain_dir, "/brain_scripts/all_f.R"))
 setwd(out_dir)
 
-gene_info = read.table(paste0(main_path, "/gene_info_2.txt"), header = T, stringsAsFactors = F)
+gene_info = read.table(paste0(main_path, "/m_zebra_ref/gene_info_2.txt"), header = T, stringsAsFactors = F)
 all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 bb = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
