@@ -1,17 +1,11 @@
+# Read Input ===================================================================
+args = commandArgs(trailingOnly=TRUE)
+s = args[1]
+if (length(args) > 1) { my_n_cores = args[2] }
+message(paste0("Using paramters: s = ", s, ", my_n_cores = ", my_n_cores))
 
-
-obj_lr_path2 <- get_lr_path(object = obj,
-                           celltype_sender = 'SST',
-                           celltype_receiver = 'PVALB',
-                           ligand = 'Sst',
-                           receptor = 'Sstr2')
-
-# deconvolution makes obj@data$newdata
-# the number of cells per spot can be found in obj@meta[[1]]$cell_num
-
-# I could add the # of cells based on cell2location and the percentages based on cell2location
-
-# Mine =========================================================================
+# Load Libraries and Data ======================================================
+library("SpaTalk")
 wdstr = substr(getwd(), 1, 12)
 switch(wdstr,
        "C:/Users/mil" = { main_path = "C:/Users/miles/Downloads/";        },
@@ -29,47 +23,47 @@ setwd(out_dir)
 gene_info = read.table(paste0(main_path, "/all_research/gene_info_2.txt"), header = T, stringsAsFactors = F)
 all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
-
-st.counts =  spo[["b1c"]]@assays$Spatial@counts
-st.meta = data.frame(spot = colnames(st.counts), x = spo[["b1c"]]@images$slice1@coordinates$imagecol, y = -spo[["b1c"]]@images$slice1@coordinates$imagerow)
-st.celltype = read.csv(paste0(out_dir, "cell2location_spatial_output_means.csv"))
-st.celltype = st.celltype[match(colnames(st.counts), st.celltype$X),]
-rownames(st.celltype) = st.celltype$X
-st.celltype = st.celltype[,2:ncol(st.celltype)]
-colnames(st.celltype) = str_replace(colnames(st.celltype), "meanscell_abundance_w_sf_", "")
-st.celltype.char = unlist(lapply(1:nrow(st.celltype), function(x) colnames(st.celltype)[which.max(st.celltype[x,])]))
-
-library("SpaTalk")
 bb = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
-obj = createSpaTalk(st_data = st.counts, st_meta = st.meta, species = "Human", if_st_is_sc = F, spot_max_cell = 1000, celltype = st.celltype.char)
-my_dec_celltype(object = obj, sc_data = bb)
+# bb = readRDS("~/research/brain/data/bb_demux_102021.rds")
 
 # SpaTalk Helpers ==============================================================
-my_dec_celltype = function(object, sc_data, n_cores = 2, if_doParallel = T) {
-  st_coef = st.celltype
+my_dec_celltype = function(object, sc_data, sc_celltype, st_celltype, n_cores = 4, if_doParallel = T, iter_num = 1000) {
+  n.threads = n_cores
+  st_coef = st_celltype
   st_meta = object@meta[['rawmeta']]
   st_data = object@data[["rawdata"]]
+  st_dist = my_st_dist(st_meta)
   st_ndata = my_normalize_data(st_data)
   sc_ndata = sc_data@assays$RNA@data
+  sc_celltype = data.frame(cell = colnames(sc_data), celltype = sc_celltype, stringsAsFactors = F)
+  sc_celltype$celltype <- stringr::str_replace_all(sc_celltype$celltype, pattern = "-", replacement = "_")
   
   coef_name <- colnames(st_coef)
   coef_name <- coef_name[order(coef_name)]
   st_coef <- st_coef[ ,coef_name]
   st_coef = as.matrix(st_coef)
   object@coef <- st_coef
-  st_meta <- cbind(st_meta, my_coef_nor(st_coef))
-
-  st_dist <- object@dist
-  newmeta <- my_generate_newmeta_doParallel(st_meta, st_dist, 0.01, n_cores)
+  # st_meta <- cbind(st_meta, my_coef_nor(st_coef))
+  st_meta = cbind(st_meta, as.data.frame(st_coef))
+  
+  # st_dist <- object@dist
+  cl = parallel::makeCluster(n_cores)
+  doParallel::registerDoParallel(cl)
+  newmeta <- my_generate_newmeta_doParallel(st_meta, st_dist, 0.00000001, n_cores)
+  doParallel::stopImplicitCluster()
+  parallel::stopCluster(cl)
+  
   print(head(newmeta))
-  newmeta_cell <- my_generate_newmeta_cell(newmeta, st_ndata, sc_ndata, sc_celltype, iter_num, if_doParallel)
-
+  newmeta_cell <- my_generate_newmeta_cell(newmeta, st_ndata, sc_ndata, sc_celltype, iter_num, if_doParallel, n_cores)
+  
   newdata <- sc_ndata[, newmeta_cell$cell_id]
   colnames(newdata) <- newmeta_cell$cell
   object@data$newdata <- methods::as(newdata, Class = "dgCMatrix")
   object@meta$newmeta <- newmeta_cell
   st_meta[st_meta$spot %in% newmeta_cell$spot, ]$celltype <- "sure"
-  object@dist <- .st_dist(newmeta_cell)
+  message("Calcualte distance matrix (George)")
+  object@dist <- my_st_dist(newmeta_cell)
+  message("Done.")
   object@meta$rawmeta <- st_meta
   return(object)
 }
@@ -221,8 +215,10 @@ my_generate_newmeta_doParallel <- function(st_meta, st_dist, min_percent, n_core
   # generate new data
   st_meta <- st_meta[st_meta$label != "less nFeatures", ]
   cellname <- colnames(st_meta)[-c(1:7)]
+  cl <- parallel::makeCluster(n_cores)
+  doParallel::registerDoParallel(cl)
   newmeta <- foreach::foreach (i = 1:nrow(st_meta), .combine = rbind, .packages = "Matrix", .export = c("my_det_neighbor", "my_get_weight1", "my_get_weight2")) %dopar% {
-    print(i)
+    # for (i in 1:nrow(st_meta)) {
     newmeta_spot <- NULL
     newmeta_ratio <- NULL
     newmeta_cell <- NULL
@@ -231,40 +227,22 @@ my_generate_newmeta_doParallel <- function(st_meta, st_dist, min_percent, n_core
     spot_name <- st_meta$spot[i]
     spot_x <- st_meta$x[i]
     spot_y <- st_meta$y[i]
-    spot_cellnum <- st_meta$cell_num[i]
     spot_percent <- as.numeric(st_meta[i, -c(1:7)])
-    spot_percent <- spot_percent * spot_cellnum
-    spot_percent_floor <- floor(spot_percent)
-    spot_percent_dec <- spot_percent - spot_percent_floor
-    # cell_num < 1
-    spot_celltype <- which(spot_percent_dec > min_percent)
-    k <- 0
+    spot_percent[which(is.na(spot_percent))] = 0
+    spot_cellnum <- st_meta$cell_num[i]
+    spot_celltype <- which(spot_percent > 0)
     if (length(spot_celltype) > 0) {
-      spot_percent <- spot_percent_dec[spot_celltype]
-      spot_celltype <- cellname[spot_celltype]
-      for (j in 1:length(spot_celltype)) {
-        spot_percent1 <- spot_percent[j]
-        newmeta_ratio <- c(newmeta_ratio, spot_percent1)
-        newmeta_cell <- c(newmeta_cell, spot_celltype[j])
-        k <- k + 1
-      }
-    }
-    # cell_num >= 1
-    spot_celltype <- which(spot_percent_floor > 0)
-    if (length(spot_celltype) > 0) {
-      spot_percent <- spot_percent_floor[spot_celltype]
+      spot_percent <- spot_percent[spot_celltype]
       spot_celltype <- cellname[spot_celltype]
       spot_cell <- NULL
       for (j in 1:length(spot_celltype)) {
+        newmeta_ratio <- c(newmeta_ratio, rep(spot_percent[j], spot_percent[j]))
+        # newmeta_cell <- c(newmeta_cell, spot_celltype[j])
         spot_cell <- c(spot_cell, rep(spot_celltype[j], spot_percent[j]))
       }
-      for (j in 1:length(spot_cell)) {
-        spot_percent1 <- 1
-        newmeta_ratio <- c(newmeta_ratio, spot_percent1)
-        newmeta_cell <- c(newmeta_cell, spot_cell[j])
-        k <- k + 1
-      }
     }
+    newmeta_cell = spot_cell
+    k = spot_cellnum
     if (k > 0) {
       newmeta_spot <- c(newmeta_spot, rep(spot_name, k))
       if (k == 1) {
@@ -277,7 +255,7 @@ my_generate_newmeta_doParallel <- function(st_meta, st_dist, min_percent, n_core
         st_dist1 <- st_dist1[order(st_dist1)]
         st_dist1 <- st_dist1[1:n_neighbor]
         st_meta_neighbor <- st_meta[st_meta$spot %in% names(st_dist1), ]
-        st_meta_neighbor <- .det_neighbor(st_meta_neighbor, spot_x, spot_y, st_dist1)
+        st_meta_neighbor <- my_det_neighbor(st_meta_neighbor, spot_x, spot_y, st_dist1)
         if (nrow(st_meta_neighbor) == 0) {
           for (j in 1:k) {
             st_angle_new <- sample(x = c(1:360), size = 1)
@@ -290,11 +268,11 @@ my_generate_newmeta_doParallel <- function(st_meta, st_dist, min_percent, n_core
         } else {
           for (j in 1:k) {
             sc_name <- newmeta_cell[j]
-            sc_w1 <- .get_weight1(st_meta_neighbor, sc_name)
+            sc_w1 <- my_get_weight1(st_meta_neighbor, sc_name)
             set.seed(j)
             st_angle_new <- sample(x = c(1:360), size = 1, prob = as.numeric(sc_w1))
             spot_ratio <- st_meta[st_meta$spot == spot_name, sc_name]
-            st_dist_new <- .get_weight2(st_meta_neighbor, sc_name, st_dist1, st_angle_new, spot_ratio)
+            st_dist_new <- my_get_weight2(st_meta_neighbor, sc_name, st_dist1, st_angle_new, spot_ratio)
             newmeta_x1 <- spot_x + st_dist_new * cos(st_angle_new * pi/180)
             newmeta_y1 <- spot_y + st_dist_new * sin(st_angle_new * pi/180)
             newmeta_x <- c(newmeta_x, newmeta_x1)
@@ -306,19 +284,25 @@ my_generate_newmeta_doParallel <- function(st_meta, st_dist, min_percent, n_core
     } else {
       data.frame(spot = "NA", cell_ratio = "NA", celltype = "NA", x = "NA", y = "NA", stringsAsFactors = F)
     }
-  }
+  } # end foreach
+  doParallel::stopImplicitCluster()
+  parallel::stopCluster(cl)
   return(newmeta)
 }
 
-my_generate_newmeta_cell <- function(newmeta, st_ndata, sc_ndata, sc_celltype, iter_num, if_doParallel) {
+my_generate_newmeta_cell <- function(newmeta, st_ndata, sc_ndata, sc_celltype, iter_num, if_doParallel, n_cores) {
   newmeta_spotname <- unique(newmeta$spot)
   newmeta_cell <- NULL
   cat(crayon::cyan("Generating single-cell data for each spot", "\n"))
   if (if_doParallel) {
+    cl <- parallel::makeCluster(n_cores)
+    doParallel::registerDoParallel(cl)
     newmeta_cell <- foreach::foreach (i = 1:length(newmeta_spotname), .combine = "rbind", .packages = "Matrix", .export = "my_generate_newmeta_spot") %dopar% {
       spot_name <- newmeta_spotname[i]
       my_generate_newmeta_spot(spot_name, newmeta, st_ndata, sc_ndata, sc_celltype, iter_num)
     }
+    doParallel::stopImplicitCluster()
+    parallel::stopCluster(cl)
   } else {
     for (i in 1:length(newmeta_spotname)) {
       spot_name <- newmeta_spotname[i]
@@ -338,6 +322,7 @@ my_generate_newmeta_spot <- function(spot_name, newmeta, st_ndata, sc_ndata, sc_
   score_cor <- NULL
   spot_cell_id <- list()
   for (k in 1:iter_num) {
+    cat(paste0(k, "."))
     spot_cell_id_k <- NULL
     for (j in 1:nrow(newmeta_spot)) {
       spot_celltype <- newmeta_spot$celltype[j]
@@ -367,7 +352,76 @@ my_normalize_data <- function(rawdata) {
   return(rawdata)
 }
 
+my_st_dist <- function(st_meta) {
+  st_dist <- as.matrix(stats::dist(x = cbind(st_meta$x, st_meta$y)))
+  rownames(st_dist) <- st_meta[, 1]
+  colnames(st_dist) <- st_meta[, 1]
+  return(st_dist)
+}
 
-# cellname <- colnames(st_meta)[-c(1:7)] -> eL5 eL6 Endo HPC Micro Oligo PVALB Reln Smc SST VIP
-# This is weird because there's another 3 columns of celltype information that's being skipped?
->>>>>>> 53104b9b823328f0ba9a2469052799918b9f71c4
+# Main Body ====================================================================
+st.counts =  spo[[s]]@assays$Spatial@counts
+st.meta = data.frame(spot = colnames(st.counts), x = spo[[s]]@images$slice1@coordinates$imagecol, y = -spo[[s]]@images$slice1@coordinates$imagerow)
+
+# Cell2location integration results
+st.celltype = read.csv(paste0(out_dir, "cell2location_spatial_output_means.csv"))
+st.celltype = st.celltype[match(colnames(st.counts), st.celltype$X),]
+rownames(st.celltype) = st.celltype$X
+st.celltype = st.celltype[,2:ncol(st.celltype)]
+colnames(st.celltype) = str_replace(colnames(st.celltype), "meanscell_abundance_w_sf_", "")
+
+# Get the celltype with the most cells per spot
+st.celltype.char = unlist(lapply(1:nrow(st.celltype), function(x) colnames(st.celltype)[which.max(st.celltype[x,])]))
+st.celltype = round(st.celltype)
+zero.cell.st = which(rowSums(st.celltype) == 0)
+for (i in zero.cell.st) { this.st.celltype.char = st.celltype.char[i]; st.celltype[i, this.st.celltype.char] = 1; }
+
+# SpaTalk
+message("Creating Spatalk object (George)")
+obj = createSpaTalk(st_data = st.counts[,1:100], st_meta = st.meta[1:100,], species = "Human", if_st_is_sc = F, spot_max_cell = 1000, celltype = st.celltype.char[1:100])
+# When creating the SpaTalk object, there's a line that removes genes with 0 expression: st_data <- st_data[which(rowSums(st_data) > 0), ]
+# But I want a matrix in the end with every gene, so I'm going to modify the object's data to include the genes w/ 0 expression
+obj = new("SpaTalk", data = list(rawdata = st.counts[,1:100]), meta = list(rawmeta = obj@meta[['rawmeta']]),
+              para = list(species = 'Human', st_type = 'spot', spot_max_cell = 1000, if_skip_dec_celltype = T))
+obj@meta[['rawmeta']]$cell_num = rowSums(st.celltype[1:100,])
+message("Creating Single Cell Matrix (George)")
+obj = my_dec_celltype(object = obj, sc_data = bb, sc_celltype = as.vector(bb$seuratclusters53), st_celltype = st.celltype[1:100,], n_cores = my_n_cores)
+message("Saving object (George)")
+saveRDS(obj, paste0(out_dir, "/spatalk/", s, ".rds"))
+
+# Convert to Human Names
+# In cases of multiple mz -> hgnc, keep the mz with the greatest mean ranked expression in st and snRNA-seq
+message("Converting cichlid to human names (George)")
+sn.rank = rowSums(bb@assays$RNA@data)
+sn.rank = names(sort(sn.rank, decreasing = T))
+st.rank = rowSums(my_normalize_data(st.counts))
+st.rank = names(sort(st.rank, decreasing = T))
+
+all.rank = data.frame(mz = gene_info$seurat_name, hgnc = gene_info$human)
+all.rank$sn.rank = match(all.rank$mz, sn.rank)
+all.rank$st.rank = match(all.rank$mz, st.rank)
+all.rank$mean.rank = rowMeans(all.rank[, c("sn.rank", "st.rank")])
+all.rank = all.rank[order(all.rank$mean.rank, decreasing = F),]
+all.rank = all.rank[which(!duplicated(all.rank$hgnc) & !is.na(all.rank$hgnc)),]
+
+hraw = obj@data[['rawdata']][all.rank$mz,]
+hnew = obj@data[['newdata']][all.rank$mz,]
+rownames(hraw) = rownames(hnew) = all.rank$hgnc
+meta_w_celltype = obj@meta[['rawmeta']]
+meta_w_celltype$celltype = st.celltype.char[1:100]
+hobj = new("SpaTalk", data = list(rawdata = hraw, newdata = hnew), meta = list(rawmeta = meta_w_celltype, newmeta = obj@meta[['newmeta']]),
+           dist = obj@dist,
+           para = list(species = 'Human', st_type = 'spot', spot_max_cell = 1000, if_skip_dec_celltype = F))
+hobj@data$rawndata = hobj@data$rawdata
+
+# Cell-cell interactions
+# hobj <- find_lr_path(object = hobj, lrpairs = lrpairs, pathways = pathways)
+# hobj <- dec_cci(object = hobj, celltype_sender = '0', celltype_receiver = '1') # if_skip_dec_celltype has ta be F for this to work
+# obj_lr_path <- get_lr_path(object = hobj, celltype_sender = '0', celltype_receiver = '1', ligand = 'SEMA3F', receptor = 'PLXNA3') # if you don't put a valid ligand/receptor pair, you will get an error
+
+message("Finding CCI for all Cell Types and ligand/receptor pairs (George)")
+hobj <- dec_cci_all(object = hobj, n_cores = my_n_cores)
+message("Saving Human Object (George)")
+saveRDS(hobj, paste0(out_dir, "/spatalk/", s, "_human.rds"))
+message("All Done.")
+
