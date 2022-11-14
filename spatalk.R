@@ -1,6 +1,7 @@
 # Read Input ===================================================================
 args = commandArgs(trailingOnly=TRUE)
 s = args[1]
+my_n_cores = 24
 if (length(args) > 1) { my_n_cores = args[2] }
 message(paste0("Using paramters: s = ", s, ", my_n_cores = ", my_n_cores))
 
