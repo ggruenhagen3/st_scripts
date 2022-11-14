@@ -379,14 +379,14 @@ for (i in zero.cell.st) { this.st.celltype.char = st.celltype.char[i]; st.cellty
 
 # SpaTalk
 message("Creating Spatalk object (George)")
-obj = createSpaTalk(st_data = st.counts[,1:100], st_meta = st.meta[1:100,], species = "Human", if_st_is_sc = F, spot_max_cell = 1000, celltype = st.celltype.char[1:100])
+obj = createSpaTalk(st_data = st.counts, st_meta = st.meta, species = "Human", if_st_is_sc = F, spot_max_cell = 1000, celltype = st.celltype.char)
 # When creating the SpaTalk object, there's a line that removes genes with 0 expression: st_data <- st_data[which(rowSums(st_data) > 0), ]
 # But I want a matrix in the end with every gene, so I'm going to modify the object's data to include the genes w/ 0 expression
-obj = new("SpaTalk", data = list(rawdata = st.counts[,1:100]), meta = list(rawmeta = obj@meta[['rawmeta']]),
+obj = new("SpaTalk", data = list(rawdata = st.counts), meta = list(rawmeta = obj@meta[['rawmeta']]),
               para = list(species = 'Human', st_type = 'spot', spot_max_cell = 1000, if_skip_dec_celltype = T))
-obj@meta[['rawmeta']]$cell_num = rowSums(st.celltype[1:100,])
+obj@meta[['rawmeta']]$cell_num = rowSums(st.celltype)
 message("Creating Single Cell Matrix (George)")
-obj = my_dec_celltype(object = obj, sc_data = bb, sc_celltype = as.vector(bb$seuratclusters53), st_celltype = st.celltype[1:100,], n_cores = my_n_cores)
+obj = my_dec_celltype(object = obj, sc_data = bb, sc_celltype = as.vector(bb$seuratclusters53), st_celltype = st.celltype, n_cores = my_n_cores)
 message("Saving object (George)")
 saveRDS(obj, paste0(out_dir, "/spatalk/", s, ".rds"))
 
@@ -409,7 +409,7 @@ hraw = obj@data[['rawdata']][all.rank$mz,]
 hnew = obj@data[['newdata']][all.rank$mz,]
 rownames(hraw) = rownames(hnew) = all.rank$hgnc
 meta_w_celltype = obj@meta[['rawmeta']]
-meta_w_celltype$celltype = st.celltype.char[1:100]
+meta_w_celltype$celltype = st.celltype.char
 hobj = new("SpaTalk", data = list(rawdata = hraw, newdata = hnew), meta = list(rawmeta = meta_w_celltype, newmeta = obj@meta[['newmeta']]),
            dist = obj@dist,
            para = list(species = 'Human', st_type = 'spot', spot_max_cell = 1000, if_skip_dec_celltype = F))
