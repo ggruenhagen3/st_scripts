@@ -420,6 +420,8 @@ hobj@data$rawndata = hobj@data$rawdata
 # hobj <- dec_cci(object = hobj, celltype_sender = '0', celltype_receiver = '1') # if_skip_dec_celltype has ta be F for this to work
 # obj_lr_path <- get_lr_path(object = hobj, celltype_sender = '0', celltype_receiver = '1', ligand = 'SEMA3F', receptor = 'PLXNA3') # if you don't put a valid ligand/receptor pair, you will get an error
 
+message("Filter LRIs with downstream targets (George)")
+hobj <- find_lr_path(object = hobj, lrpairs = lrpairs, pathways = pathways)
 message("Finding CCI for all Cell Types and ligand/receptor pairs (George)")
 hobj <- dec_cci_all(object = hobj, use_n_cores = my_n_cores)
 message("Saving Human Object (George)")
