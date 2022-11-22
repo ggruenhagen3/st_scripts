@@ -1005,6 +1005,44 @@ print(DotPlot(my.b2, features = top.deg$gene) + theme(axis.text.x = element_text
 dev.off()
 
 #*******************************************************************************
+# Label Brain Structures =======================================================
+#*******************************************************************************
+library(plotly)
+library(crosstalk)
+library(DT)
+library(Seurat)
+this.sample = "b2a"
+this.df = GetTissueCoordinates(subset(all_merge, cells = colnames(all_merge)[which(all_merge$sample == this.sample)]))
+this.df$spot = rownames(this.df)
+this.df = this.df[, c("spot", "imagerow", "imagecol")]
+d = highlight_key(this.df)
+a = ggplotly(ggplot(d, aes(x = imagecol, y = -imagerow)) + geom_point()) %>% highlight("plotly_selected", dynamic = TRUE)
+
+options(persistent = TRUE)
+
+p <- datatable(d)
+
+plot_html = bscols(widths = c(6, 4), a, p)
+htmltools::save_html(plot_html, "C:/Users/miles/Downloads/interactive_plot.html")
+
+# Option 2
+label_spatial = function() {
+  plot(this.df2)
+  selectedPoints <- gatepoints::fhs(this.df2)
+  return(as.numeric(as.vector(selectedPoints)))
+}
+# b2a_labels = data.frame(spot = colnames())
+this.sample = "b2a"
+this.df = GetTissueCoordinates(subset(all_merge, cells = colnames(all_merge)[which(all_merge$sample == this.sample)]))
+this.df$label = ""
+this.df2 = data.frame(x = this.df$imagecol, y = -this.df$imagerow)
+this.idx = label_spatial()
+this.df$label[which(this.df$label == "" & 
+                    1:nrow(this.df) %in% this.idx)] = "Dd"
+# this.df$label[this.idx] = "Dl-v"
+ggplot(this.df, aes(x = imagecol, y = -imagerow, color = label)) + geom_point(size = 3) + theme_bw()
+
+#*******************************************************************************
 # Initial clustering ===========================================================
 #*******************************************************************************
 
