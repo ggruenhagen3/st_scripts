@@ -19,7 +19,8 @@ setwd(out_dir)
 # Load Objects =================================================================
 #*******************************************************************************
 gene_info = read.table(paste0(main_path, "/all_research/gene_info_2.txt"), header = T, stringsAsFactors = F)
-all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
+all_merge = readRDS("~/research/st/data/st_b2_111622.rds")
+# all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
 all_merge_hi = qs::qread(paste0(data_dir, "all_merge_hi.qs"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 
@@ -949,6 +950,7 @@ ggplot(perm_and_real, aes(x = avg_log2FC, y = neg_log_bon, color = col)) + geom_
 st.clust.deg = read.csv("all_merge_cluster_markers_loose_070822.csv")
 st.clust.deg = st.clust.deg[which(st.clust.deg$p_val_adj < 0.05 & abs(st.clust.deg$avg_log2FC) > 0.25 & st.clust.deg$pct.1 > 0.1),]
 st.clust.deg$hgnc = gene_info$human[match(st.clust.deg$gene, gene_info$mzebra)]
+st.clust.deg$label = gene_info$label[match(st.clust.deg$gene, gene_info$mzebra)]
 st.clust.deg$ens = gene_info$ens[match(st.clust.deg$gene, gene_info$mzebra)]
 st.clust.deg$avg_logFC = st.clust.deg$avg_log2FC
 st.clust.deg$abs.avg_logFC = abs(st.clust.deg$avg_logFC)
@@ -972,6 +974,17 @@ write.csv(st.clust.deg.sub, "all_merge_cluster_markers_3n_070822.csv")
 st.clust.deg.sub = st.clust.deg[which(st.clust.deg$pct.2 < 0.3 & st.clust.deg$pct.1 > 0.5),]
 write.csv(st.clust.deg.sub, "all_merge_cluster_markers_subsetpct2_070822.csv")
 
+bri.clust.mark = read.csv("~/Downloads/ST_fig1_B2topgenes_111622.csv")
+bri.clust.mark = bri.clust.mark[order(bri.clust.mark$cluster),]
+bri.clust.mark[which(bri.clust.mark$label == "gabrp"),] = data.frame(cluster = 8, seurat_name = "hspg2", label = "hspg2")
+bri.clust.mark[which(bri.clust.mark$label == "ucn"),] = data.frame(cluster = 16, seurat_name = "aqp9", label = "aqp9")
+bri.clust.mark[which(bri.clust.mark$label == "trh"),] = data.frame(cluster = 18, seurat_name = "pax6", label = "pax6")
+bri.clust.mark[which(bri.clust.mark$label == "id3"),] = data.frame(cluster = 24, seurat_name = "wdr49", label = "wdr49")
+bri.clust.mark$seurat_name = factor(bri.clust.mark$seurat_name, levels = bri.clust.mark$seurat_name)
+pdf(paste0(out_dir, "b2_cluster_markers_bri.pdf"), width = 12, height = 6, onefile = F)
+DotPlot(all_merge, features = bri.clust.mark$seurat_name) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + scale_color_viridis() + scale_x_discrete(labels = bri.clust.mark$label)
+dev.off()
+
 #*******************************************************************************
 # B2 ===========================================================================
 #*******************************************************************************
@@ -990,13 +1003,23 @@ for (s in c("b2al", "b2ar", "b2bl", "b2br", "b2cl", "b2cr", "b2dl", "b2dr")) {
 half_by_spot = read.csv(paste0(out_dir, "half.csv"))
 my.b2$half = half_by_spot$half[match(colnames(my.b2), half_by_spot$cell)]
 my.b2$sample.half = my.b2$sh = paste0(my.b2$sample, substr(my.b2$half, 1, 1))
+my.b2$sh = my.b2$sample.half
 
-pdf(paste0(out_dir, "b2_test.pdf"), width = 8, height = 4, onefile = F)
-print(myB2SFP(my.b2, "egr1")) # when ncol = 4
+all_merge$struct2 = factor(all_merge$struct, levels = c("Dm", "Dc-3", "Dd", "Dd-d", "Dl-g", "Dd-v", "Dl-v", "NT", "Dp", "Dc-5", "Dc-4", "Vs", "Vs-m", "Vs-l", "Vp", "Vd-c", "Vc", "Vv", "nPPa", "Vm", "Vl", "Vi", "E", "OB gml", "OB gc", "tract"))
+this.pal = c("#1B9CA6", "#077278", "#12b0b3ff", "#00929aff", "#a7ebd4ff", "#089e90ff", "#0f9783ff", "#6ccab8ff", "#1BA668ff", "#6aa943ff", "#7fce4bff", "#f24839ff", "#fb717fff", "#fb8082ff", "#fea7f8ff", "#f367f1ff", "#fd91ffff", "#ff8da2ff", "#ED256E", "#FBCBC7", "#6BBD34", "#96e89bff", "#2fb824ff", "#C95EE6", "#D582EC", "#8135DE")
+pdf(paste0(out_dir, "b2_brain_structure.pdf"), width = 16, height = 2, onefile = F)
+print(myB2SFP(all_merge, "struct2", pal = this.pal, showLegend = T ))
 dev.off()
 
+# all_merge$struct2 = factor(all_merge$struct, levels = c("Dm", "Dc-3", "Dd", "Dd-d", "Dl-g", "Dd-v", "Dl-v", "NT", "Dp", "Dc-5", "Dc-4", "Vs", "Vs-m", "Vs-l", "Vp", "Vd-c", "Vc", "Vv", "nPPa", "Vm", "Vl", "Vi", "E", "OB gml", "OB gc", "tract"))
+# this.pal = c("#1ba598ff", "#08858bff", "#00a2abff", "#00929aff", "#12b0b3ff", "#089e90ff", "#0f9783ff", "#6ccab8ff", "#1BA668ff", "#6aa943ff", "#7fce4bff", "#f24839ff", "#fb717fff", "#fb8082ff", "#ff8da2ff", "#f367f1ff", "#fd91ffff", "#fea7f8ff", "#96e89bff", "#a7ebd4ff", "#6BBD34", "#88D158", "#2fb824ff", "#C95EE6", "#D177EA", "#8135DE")
+# pdf(paste0(out_dir, "b2_test2.pdf"), width = 16, height = 2, onefile = F)
+# # print(myB2SFP(all_merge, "struct2", pal = scales::hue_pal()(length(unique(all_merge$struct2))), showLegend = T ))
+# print(myB2SFP(all_merge, "struct2", pal = this.pal, showLegend = T ))
+# dev.off()
+
 pdf(paste0(out_dir, "b2_cluster_half.pdf"), width = 16, height = 2, onefile = F)
-print(myB2SFP(my.b2, "cluster.num", pal = scales::hue_pal())) # when ncol = 4
+print(myB2SFP(all_merge, "cluster.num", pal = scales::hue_pal()))
 dev.off()
 
 pdf(paste0(out_dir, "b2_cluster_markers.pdf"), width = 12, height = 6, onefile = F)
@@ -1505,6 +1528,80 @@ cdg = c("cobl", "ddr1", "fhod3", "grik5", "LOC101476914", "LOC101477204", "LOC10
 all_merge$cdg_score = colSums(all_merge@assays$Spatial@counts[cdg,] > 0)
 myMultiSFP(all_merge, "cdg_score", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, high.res = F)
 
+#*******************************************************************************
+# Brain Structures =============================================================
+#*******************************************************************************
+all_merge$structure = "unclassified"
+for (s in levels(all_merge$sample)) {
+  this.struct = read.csv(paste0(out_dir, "structure_296_", toupper(substr(s, 3, 3)), "1.csv"))
+  this.struct[,1] = paste0(s, "_", this.struct[,1])
+  all_merge$structure[this.struct[,1]] = this.struct[,2]
+}
+all_merge$struct = all_merge$structure
+
+pdf(paste0(out_dir, "b2_geo_second_pass.pdf"), width = 16, height = 2, onefile = F)
+print(myB2SFP( all_merge, "structure", pal = scales::hue_pal()(length(unique(all_merge$structure))), showLegend = T ))
+dev.off()
+pdf(paste0(out_dir, "b2_test.pdf"), width = 16, height = 2, onefile = F)
+print(myB2SFP( all_merge, "structure", pal = scales::hue_pal()(length(unique(all_merge$structure))), showLegend = T, pt.size.multiplier = 0.75 ))
+dev.off()
+
+struct_clust_table = table(all_merge$struct, all_merge$seurat_clusters)
+struct_clust = data.frame(matrix(struct_clust_table, ncol = ncol(struct_clust_table), dimnames = dimnames(struct_clust_table)))
+struct_clust = struct_clust / rowSums(struct_clust)
+colnames(struct_clust) = 0:(ncol(struct_clust)-1)
+# stuct_clust.mat = as.matrix(struct_clust_table)
+
+struct_clust_melt = reshape2::melt(as.matrix(struct_clust))
+struct_clust_melt$Var2 = factor(struct_clust_melt$Var2)
+pdf(paste0( "brain_stuct_to_cluster.pdf"), width = 5, height = 4.5)
+ggplot(struct_clust_melt, aes(x = Var2, y = Var1, fill = value)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
+dev.off()
+
+top.deg = st.clust.deg %>% group_by(cluster) %>% slice(1:2)
+Idents(all_merge) = all_merge$struct
+pdf(paste0(out_dir, "b2_stuct_markers.pdf"), width = 12, height = 6, onefile = F)
+DotPlot(all_merge, features = top.deg$gene) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + scale_color_viridis() + scale_x_discrete(labels = top.deg$label)
+dev.off()
+
+#*******************************************************************************
+# CCI ==========================================================================
+#*******************************************************************************
+cci.p.list = list()
+for (s in c("b2a", "b2b", "b2c", "b2d")) {
+  this.spa = readRDS(paste0("~/research/st/data/cci/", s, "_human.rds"))
+  this.cci = this.spa@lrpair
+  this.cci.table = table(this.cci$celltype_sender, this.cci$celltype_receiver)
+  this.cci.mat = matrix(this.cci.table, ncol = length(unique(this.cci$celltype_sender)), dimnames = dimnames(this.cci.table))
+  this.cci.mat.melt = reshape2::melt(as.matrix(this.cci.mat))
+  colnames(this.cci.mat.melt) = c("Sender", "Receiver", "value")
+  this.cci.mat.melt$Sender = factor(convert53$new[match(this.cci.mat.melt$Sender, convert53$old)], levels = convert53$new)
+  this.cci.mat.melt$Receiver = factor(convert53$new[match(this.cci.mat.melt$Receiver, convert53$old)], levels = convert53$new)
+  this.cci.mat.melt$value[which(this.cci.mat.melt$value > 60)] = 60
+  p=ggplot(this.cci.mat.melt, aes(x = Receiver, y = Sender, fill = value)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) + coord_fixed() + ggtitle(paste0(s, ": 60+")) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+  cci.p.list[[s]] = p
+  print(p)
+}
+
+pdf(paste0(out_dir, "b2_bb53_cci.pdf"), width = 16, height = 16, onefile = F)
+print(cowplot::plot_grid(plotlist = cci.p.list))
+dev.off()
+
+# graph
+cc.res.mat.df = this.cci.mat.melt
+cc.res.mat.df = cc.res.mat.df[which(cc.res.mat.df$value >= 20),]
+# cc.res.mat.df$col = names_converter$col[match(cc.res.mat.df$clust1, names_converter$old)]
+my.nodes = data.frame(gene = unique(c(cc.res.mat.df$Sender, cc.res.mat.df$Receiver)), label = unique(c(cc.res.mat.df$Sender, cc.res.mat.df$Receiver)))
+# my.nodes$col= names_converter[match(my.nodes$label, names_converter$new.full), c("col")]
+# my.nodes$sum_cor = unlist(lapply(my.nodes$, function(x) sum(cc.res.mat.df$real[which(cc.res.mat.df$clust1 == x | cc.res.mat.df$clust2 == x)]) )) 
+# g1 = graph_from_data_frame(cc.res.mat.df, vertices = my.nodes)
+g1 = graph_from_data_frame(cc.res.mat.df)
+lfr = layout_with_fr(g1)
+plot.igraph(g1, edge.arrow.size=.5)
+
+tkid <- tkplot(g1, vertex.label=my.nodes$label, vertex.label.dist=1)
+l <- tkplot.getcoords(tkid)
+tk_close(tkid, window.close = T)
 
 #*******************************************************************************
 # Trash Can ====================================================================
