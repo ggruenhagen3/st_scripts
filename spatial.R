@@ -1589,19 +1589,28 @@ dev.off()
 
 # graph
 cc.res.mat.df = this.cci.mat.melt
-cc.res.mat.df = cc.res.mat.df[which(cc.res.mat.df$value >= 20),]
-# cc.res.mat.df$col = names_converter$col[match(cc.res.mat.df$clust1, names_converter$old)]
+cc.res.mat.df = cc.res.mat.df[which(cc.res.mat.df$value >= 30),]
+cc.res.mat.df$col = convert53$col[match(cc.res.mat.df$Sender, convert53$new)]
 my.nodes = data.frame(gene = unique(c(cc.res.mat.df$Sender, cc.res.mat.df$Receiver)), label = unique(c(cc.res.mat.df$Sender, cc.res.mat.df$Receiver)))
-# my.nodes$col= names_converter[match(my.nodes$label, names_converter$new.full), c("col")]
-# my.nodes$sum_cor = unlist(lapply(my.nodes$, function(x) sum(cc.res.mat.df$real[which(cc.res.mat.df$clust1 == x | cc.res.mat.df$clust2 == x)]) )) 
-# g1 = graph_from_data_frame(cc.res.mat.df, vertices = my.nodes)
-g1 = graph_from_data_frame(cc.res.mat.df)
+my.nodes$col = convert53[match(my.nodes$label, convert53$new), c("col")]
+my.nodes$sum = unlist(lapply(my.nodes$label, function(x) sum(cc.res.mat.df$value[which(cc.res.mat.df$Sender == x | cc.res.mat.df$Receiver == x)]) ))
+g1 = graph_from_data_frame(cc.res.mat.df, vertices = my.nodes)
+V(g1)$color = my.nodes$col
+V(g1)$size = log2(my.nodes$sum)
+V(g1)$label.color = "black"
+V(g1)$frame.color = NA
+E(g1)$color = E(g1)$col
 lfr = layout_with_fr(g1)
-plot.igraph(g1, edge.arrow.size=.5)
+plot.igraph(g1, edge.arrow.size=.2)
+
 
 tkid <- tkplot(g1, vertex.label=my.nodes$label, vertex.label.dist=1)
 l <- tkplot.getcoords(tkid)
 tk_close(tkid, window.close = T)
+
+pdf("C:/Users/miles/Downloads/b2a_cci_thresh30.pdf", width = 7, height = 7)
+plot.igraph(g1, layout = l, edge.arrow.size = 0.5)
+dev.off()
 
 #*******************************************************************************
 # Trash Can ====================================================================

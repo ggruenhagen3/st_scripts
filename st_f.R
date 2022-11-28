@@ -18,7 +18,7 @@ library("ggpubr")
 
 # Functions
 
-mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F, scale.alpha = F, doFlip) {
+mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, coords = NULL, values = NULL, img.grob = NULL, points.as.text = F, rot.text = T, my.pt.size = 0.8, zoom.out.factor = 0.05, pal = colorRampPalette(colors = rev(brewer.pal(11, "Spectral"))), col.min = NULL, col.max = NULL, angle = NULL, discrete = F, rm.zero = F, col.ident = F, scale.alpha = F, doFlip = F, interactive = FALSE) {
   #' My version of SpatialFeaturePlot for a single object.
   #' 
   #' Input either an object+feature+assay+slot or coords+values+image grob.
@@ -128,7 +128,7 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
     }
   }
   
-  # if (doFlip) { p = p + coord_flip() + theme(aspect.ratio = myratio) }
+  # if (interactive) { p = ggplotly(ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value")) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + NoLegend()) %>% highlight("plotly_selected", dynamic = TRUE) }
   
   return(p)
 }
