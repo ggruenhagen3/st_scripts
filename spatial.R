@@ -1565,6 +1565,25 @@ tkid <- tkplot(g1, vertex.label=my.nodes$label, vertex.label.dist=1)
 l <- tkplot.getcoords(tkid)
 tk_close(tkid, window.close = T)
 
+# Single cell spatial
+stsc.meta = data.frame()
+for (s in c("b2a", "b2b", "b2c", "b2d")) {
+  this.obj = readRDS(paste0("~/research/st/data/infer_cell/", s, ".rds"))
+  if (s == "b2a") { stsc.mat = this.obj@data$newdata } else { stsc.mat = cbind(stsc.mat, this.obj@data$newdata) }
+  stsc.meta = rbind(stsc.meta, this.obj@meta$newmeta)
+}
+stsc.meta$cell = paste0("C", 1:nrow(stsc.meta))
+colnames(stsc.mat) = paste0("C", 1:nrow(stsc.meta))
+
+pdf("~/research/st/results/testing_stsc_mini.pdf", width = 16, height = 2)
+print(myB2SFP(all_merge, "egr1", stsc.list = list(stsc.mat, stsc.meta), pal = colorRampPalette(viridis(100))))
+dev.off()
+Cairo::CairoPNG("~/research/st/results/testing_stsc_mini.png", width = 4000, height = 500, res = 240)
+print(myB2SFP(all_merge, "egr1", stsc.list = list(stsc.mat, stsc.meta), pal = colorRampPalette(viridis(100))))
+dev.off()
+
+
+
 #*******************************************************************************
 # Trash Can ====================================================================
 #*******************************************************************************
