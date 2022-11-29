@@ -1612,6 +1612,48 @@ pdf("C:/Users/miles/Downloads/b2a_cci_thresh30.pdf", width = 7, height = 7)
 plot.igraph(g1, layout = l, edge.arrow.size = 0.5)
 dev.off()
 
+# Single cell spatial
+stsc.meta = data.frame()
+for (s in c("b2a", "b2b", "b2c", "b2d")) {
+  this.obj = readRDS(paste0("~/research/st/data/infer_cell/", s, ".rds"))
+  if (s == "b2a") { stsc.mat = this.obj@data$newdata } else { stsc.mat = cbind(stsc.mat, this.obj@data$newdata) }
+  stsc.meta = rbind(stsc.meta, this.obj@meta$newmeta)
+}
+stsc.meta$cell = paste0("C", 1:nrow(stsc.meta))
+colnames(stsc.mat) = paste0("C", 1:nrow(stsc.meta))
+
+pdf("~/research/st/results/testing_stsc_mini.pdf", width = 16, height = 2)
+print(myB2SFP(all_merge, "egr1", stsc.list = list(stsc.mat, stsc.meta), pal = colorRampPalette(viridis(100))))
+dev.off()
+Cairo::CairoPNG("~/research/st/results/testing_stsc_mini.png", width = 4000, height = 500, res = 240)
+print(myB2SFP(all_merge, "egr1", stsc.list = list(stsc.mat, stsc.meta), pal = colorRampPalette(viridis(100))))
+dev.off()
+
+#*******************************************************************************
+# GWAS =========================================================================
+#*******************************************************************************
+# 5x10-8, the traditional level of genome-wide significance
+gwas = read.csv("C:/Users/miles/Downloads/efotraits_MONDO_0004975-associations-2022-11-28.csv")
+deg15 = read.csv("C:/Users/miles/Downloads/bdeg_gdeg_qdeg_15cluster_summary.csv")
+deg53 = read.csv("C:/Users/miles/Downloads/bdeg_gdeg_qdeg_53cluster_summary.csv")
+gwas = as.data.frame(tidyr::separate_rows(gwas, Mapped.gene, sep=",\\s+"))
+gwas$p = gwas_number_to_number(gwas$P.value)
+gwas$P.value.e = as.numeric(reshape2::colsplit(gwas$P.value, "-", c('1', '2'))[,2])
+gwas = gwas[which(gwas$P.value.e > 8),]
+gwas.genes = sort(unlist(as.list(strsplit(gwas$Mapped.gene, ', '))))
+gwas.genes = gwas.genes[28:length(gwas.genes)]
+gwas.deg15 = deg15[which(deg15$human %in% gwas.genes),]
+gwas.deg53 = deg53[which(deg53$human %in% gwas.genes),]
+deg15 = deg15[order(deg15$category, deg15$hmp),]
+deg15$rank = 1:nrow(deg15)
+tmp = reshape2::melt(deg15[which(deg15$category == "building"), c("rank", "p_min", "p_max", "hmp")], id.var = "rank")
+ggplot(tmp, aes(x = rank, y = value, color = variable)) + geom_point()
+
+this.split = strsplit(gwas$P.value, ' ')
+split.df = as.data.frame(do.call(rbind, this.split))
+split.df$e = reshape2::colsplit(split.df[,3], '-', c('1', '2'))[,2]
+split.df$num = as.numeric(split.df[,1]) * 10^-as.numeric(split.df$e)
+
 #*******************************************************************************
 # Trash Can ====================================================================
 #*******************************************************************************
