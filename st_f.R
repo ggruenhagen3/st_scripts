@@ -96,7 +96,8 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
   if (!discrete & is.null(col.min) && is.null(col.max)) { col.min = min(coords$value); col.max = max(coords$value); }
   
   # Remove spots with zero expression
-  if (rm.zero) { coords = coords[which(coords$value != 0),] }
+  # if (rm.zero) { coords = coords[which(coords$value > 0),]; print(head(coords)); }
+  if (rm.zero) { coords$value[which(coords$value <= 0)] = NA; print(head(coords)); }
   
   if(scale.alpha) { scale.alpha = "value"; alpha.min = 0.1; } else { scale.alpha = "1"; alpha.min = 1; }
   
@@ -113,16 +114,16 @@ mySingleSFP = function(obj = NULL, feature = NULL, assay = NULL, slot = NULL, co
       # Discrete Color Scales
       coords$imagerow = -coords$imagerow
       # p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
-      p = ggplot(coords, aes_string(x="imagecol", y="imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_manual(values=pal, drop = F)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
+      p = ggplot(coords, aes_string(x="imagecol", y="imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0, na.rm = T)            + scale_color_manual(values=pal, drop = F, na.value = NA)                             + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
       # p = LabelClusters(p, "value", box = T, size = 0.5)
       if (! is.null(stsc.value) ) {
-        p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value")) + annotation_custom(img.grob.test.grob) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + ggforce::geom_mark_hull(aes(fill = value, group = rownames(coords)), expand = unit(0.65, "mm"), radius = unit(0.65, "mm"), size = 0.25)  + geom_point(size = my.pt.size, stroke = 0)
+        p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value")) + annotation_custom(img.grob.test.grob) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + ggforce::geom_mark_hull(aes(fill = value, group = rownames(coords)), expand = unit(0.65, "mm"), radius = unit(0.65, "mm"), size = 0.25)  + geom_point(size = my.pt.size, stroke = 0, na.rm = T)
       }
       # p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value")) + annotation_custom(img.grob.test.grob) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + ggforce::geom_voronoi_segment(aes(fill = value, group = value), expand = unit(1, "mm"), radius = unit(0.25, "mm"), size = 0.25)  + geom_point(size = my.pt.size, stroke = 0)
       # p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value")) + annotation_custom(img.grob.test.grob) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + ggforce::geom_voronoi_tile(aes(group = value), max.radius = 1)  + geom_point(size = my.pt.size, stroke = 0)
     } else {
       # Continuous Color Scales
-      p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0)            + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max)) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
+      p = ggplot(coords, aes_string(x="imagecol", y="-imagerow", color = "value", alpha = scale.alpha)) + annotation_custom(img.grob.test.grob) + geom_point(size = my.pt.size, stroke = 0, na.rm = T)            + scale_color_gradientn(colors=pal(100), limits = c(col.min, col.max), na.value = NA) + scale_x_continuous(expand=c(0,0), limits = c(my.y.min, my.y.max)) + scale_y_continuous(expand=c(0,0), limits = c(-my.x.max, -my.x.min)) + theme_void() + NoLegend() + theme(aspect.ratio = myratio) + scale_alpha_continuous(range = c(alpha.min, 1))
       # coords$value = factor(coords$value, levels = sort(as.numeric(unique(coords$value))))
       # coords = coords[which(coords$value != 29),]
       # coords$spot = rownames(coords)
