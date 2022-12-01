@@ -52,7 +52,7 @@ mod.train(max_epochs=250, use_gpu=False)
 adata_ref = mod.export_posterior(adata_ref, sample_kwargs={'num_samples': 1000, 'batch_size': 2500, 'use_gpu': False})
 mod.save(f"{ref_run_name}", overwrite=True)  # Save model
 
-adata_file = f"{ref_run_name}/bb_with_trained_model.h5ad"
+adata_file = f"{ref_run_name}/bb_with_trained_model15.h5ad"
 adata_ref.write(adata_file)
 
 # adata_ref = sc.read_h5ad(adata_file)
@@ -72,7 +72,7 @@ inf_aver = adata_ref.varm['means_per_cluster_mu_fg'][[f'means_per_cluster_mu_fg_
                                                       for i in adata_ref.uns['mod']['factor_names']]].copy()
 inf_aver.columns = adata_ref.uns['mod']['factor_names']
 inf_aver.iloc[0:5, 0:5]
-inf_aver.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_reference_signatures.csv")
+inf_aver.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_reference_signatures15.csv")
 # inf_aver = pd.read_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_reference_signatures.csv", index_col=0)
 
 """
