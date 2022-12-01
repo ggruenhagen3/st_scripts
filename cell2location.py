@@ -44,7 +44,7 @@ cell2location.models.Cell2location.setup_anndata(adata_ref)
 """
 Train the model
 """
-cell2location.models.RegressionModel.setup_anndata(adata=adata_ref, batch_key='sample', labels_key='seuratclusters53')
+cell2location.models.RegressionModel.setup_anndata(adata=adata_ref, batch_key='sample', labels_key='seuratclusters15')
 from cell2location.models import RegressionModel
 mod = RegressionModel(adata_ref)
 mod.train(max_epochs=250, use_gpu=False)
@@ -85,19 +85,19 @@ adata_vis.var_names = inf_aver.index
 cell2location.models.Cell2location.setup_anndata(adata=adata_vis, batch_key="sample")
 del adata_vis.var
 
-mod_8_20  = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=20)
+# mod_8_20  = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=20)
 mod_8_200 = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=200) # I think this the one we want
 mod_8_200.view_anndata_setup()
 mod_8_200.train(max_epochs=30000, batch_size=None, train_size=1, use_gpu=False)
 adata_vis = mod_8_200.export_posterior(adata_vis, sample_kwargs={'num_samples': 1000, 'batch_size': mod_8_200.adata.n_obs, 'use_gpu': False})
 
-adata_vis.obsm['q05_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_q05.csv")
-adata_vis.obsm['q95_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_q95.csv")
-adata_vis.obsm['means_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_means.csv")
-adata_vis.obsm['stds_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_stds.csv")
+adata_vis.obsm['q05_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_q05.csv")
+adata_vis.obsm['q95_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_q95.csv")
+adata_vis.obsm['means_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_means.csv")
+adata_vis.obsm['stds_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_stds.csv")
 
 mod_8_200.save(f"{run_name}", overwrite=True)
-adata_file = f"{run_name}/sp_trained.h5ad"
+adata_file = f"{run_name}/sp_trained15.h5ad"
 adata_vis.write(adata_file)
 
 # model = torch.load("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_map/model.pt", map_location="cpu")
