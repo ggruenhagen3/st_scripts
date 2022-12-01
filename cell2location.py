@@ -38,7 +38,7 @@ While cell2location (and other tools) expects the raw counts matrix to be in ada
 """
 adata_ref = adata_ref.raw.to_adata()
 adata_ref.X = adata_ref.X.toarray()
-cell2location.models.Cell2location.setup_anndata(adata_ref)
+# cell2location.models.Cell2location.setup_anndata(adata_ref)
 
 
 """
@@ -103,3 +103,16 @@ adata_vis.write(adata_file)
 # model = torch.load("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_map/model.pt", map_location="cpu")
 # attr_dict = model["attr_dict"]
 # attr_dict["history_"]  # elbo_train
+
+# Estimate cell-type specific expression of every gene in the spatial data
+adata_file = f"{ref_run_name}/bb_with_trained_model.h5ad"
+adata_ref = sc.read_h5ad(adata_file)
+mod = cell2location.models.Cell2location.load(f"{run_name}", adata_vis)
+mod.export_posterior(mod.adata)
+# adata_vis = sc.read_h5ad(f"{run_name}/sp_trained.h5ad")
+# expected_dict = mod.module.model.compute_expected_per_cell_type(mod.samples["post_sample_q05"], mod.adata_manager)
+# expected_dict = mod.module.model.compute_expected_per_cell_type(adata_vis.obsm['means_cell_abundance_w_sf'], mod.adata_manager)
+# for i, n in enumerate(mod.factor_names_):
+#     adata_vis.layers[n] = expected_dict['mu'][i]
+# adata_file = f"{run_name}/sp_trained15_w_celltype_expression.h5ad"
+# adata_vis.write(adata_file)
