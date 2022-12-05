@@ -40,11 +40,10 @@ adata_ref = adata_ref.raw.to_adata()
 adata_ref.X = adata_ref.X.toarray()
 cell2location.models.Cell2location.setup_anndata(adata_ref)
 
-
 """
 Train the model
 """
-cell2location.models.RegressionModel.setup_anndata(adata=adata_ref, batch_key='sample', labels_key='seuratclusters53')
+cell2location.models.RegressionModel.setup_anndata(adata=adata_ref, batch_key='sample', labels_key='seuratclusters15')
 from cell2location.models import RegressionModel
 mod = RegressionModel(adata_ref)
 mod.train(max_epochs=250, use_gpu=False)
@@ -52,7 +51,7 @@ mod.train(max_epochs=250, use_gpu=False)
 adata_ref = mod.export_posterior(adata_ref, sample_kwargs={'num_samples': 1000, 'batch_size': 2500, 'use_gpu': False})
 mod.save(f"{ref_run_name}", overwrite=True)  # Save model
 
-adata_file = f"{ref_run_name}/bb_with_trained_model.h5ad"
+adata_file = f"{ref_run_name}/bb_with_trained_model15.h5ad"
 adata_ref.write(adata_file)
 
 # adata_ref = sc.read_h5ad(adata_file)
@@ -72,7 +71,7 @@ inf_aver = adata_ref.varm['means_per_cluster_mu_fg'][[f'means_per_cluster_mu_fg_
                                                       for i in adata_ref.uns['mod']['factor_names']]].copy()
 inf_aver.columns = adata_ref.uns['mod']['factor_names']
 inf_aver.iloc[0:5, 0:5]
-inf_aver.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_reference_signatures.csv")
+inf_aver.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_reference_signatures15.csv")
 # inf_aver = pd.read_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/bb_reference_signatures.csv", index_col=0)
 
 """
@@ -85,21 +84,37 @@ adata_vis.var_names = inf_aver.index
 cell2location.models.Cell2location.setup_anndata(adata=adata_vis, batch_key="sample")
 del adata_vis.var
 
-mod_8_20  = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=20)
+# mod_8_20  = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=20)
 mod_8_200 = cell2location.models.Cell2location(adata_vis, cell_state_df=inf_aver, N_cells_per_location=8, detection_alpha=200) # I think this the one we want
 mod_8_200.view_anndata_setup()
 mod_8_200.train(max_epochs=30000, batch_size=None, train_size=1, use_gpu=False)
 adata_vis = mod_8_200.export_posterior(adata_vis, sample_kwargs={'num_samples': 1000, 'batch_size': mod_8_200.adata.n_obs, 'use_gpu': False})
 
-adata_vis.obsm['q05_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_q05.csv")
-adata_vis.obsm['q95_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_q95.csv")
-adata_vis.obsm['means_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_means.csv")
-adata_vis.obsm['stds_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial_output_stds.csv")
+adata_vis.obsm['q05_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_q05.csv")
+adata_vis.obsm['q95_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_q95.csv")
+adata_vis.obsm['means_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_means.csv")
+adata_vis.obsm['stds_cell_abundance_w_sf'].to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_spatial15_output_stds.csv")
 
 mod_8_200.save(f"{run_name}", overwrite=True)
-adata_file = f"{run_name}/sp_trained.h5ad"
+adata_file = f"{run_name}/sp_trained15.h5ad"
 adata_vis.write(adata_file)
 
 # model = torch.load("/storage/home/hcoda1/6/ggruenhagen3/scratch/st/data/cell2location_map/model.pt", map_location="cpu")
 # attr_dict = model["attr_dict"]
 # attr_dict["history_"]  # elbo_train
+
+# Estimate cell-type specific expression of every gene in the spatial data
+# adata_file = f"{ref_run_name}/bb_with_trained_model.h5ad"
+# adata_ref = sc.read_h5ad(adata_file)
+# adata_vis = sc.read_h5ad(f"{run_name}/sp_trained.h5ad")
+# mod = cell2location.models.Cell2location.load(f"{run_name}", adata_vis)
+# mod.export_posterior(mod.adata)
+# expected_dict = mod.module.model.compute_expected_per_cell_type(mod.samples["post_sample_q05"], mod.adata_manager)
+# for i, n in enumerate(mod.factor_names_):
+#     adata_vis.layers[n] = expected_dict['mu'][i]
+# adata_file = f"{run_name}/sp_trained15_w_celltype_expression.h5ad"
+# adata_vis.write(adata_file)
+# import scipy.io as sio
+# for i in range(0, 53):
+#     print(i)
+#     sio.mmwrite(f"{ref_run_name}/spatial_celltype"+str(i)+"_expression.mtx", expected_dict['mu'][0])
