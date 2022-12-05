@@ -365,7 +365,7 @@ my_st_dist <- function(st_meta) {
 # st.counts =  spo[[s]]@assays$Spatial@counts
 # st.meta = data.frame(spot = colnames(st.counts), x = spo[[s]]@images$slice1@coordinates$imagecol, y = -spo[[s]]@images$slice1@coordinates$imagerow)
 # Half
-sample.s = subset(s, 1, 3)
+sample.s = substr(s, 1, 3)
 st.counts = spo[[sample.s]]@assays$Spatial@counts
 st.meta = data.frame(spot = colnames(st.counts), x = spo[[sample.s]]@images$slice1@coordinates$imagecol, y = -spo[[sample.s]]@images$slice1@coordinates$imagerow)
 st.counts = st.counts[, which(colnames(st.counts) %in% colnames(all_merge)[which(all_merge$sh == s)])]
