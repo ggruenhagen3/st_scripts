@@ -2,8 +2,8 @@
 # this.run = 1; do.down = T; is.real = F; num.perms = 100;
 # this.run = 1; do.down = F; is.real = T; num.perms = 1; ind = 0;
 args = commandArgs(trailingOnly=TRUE)
-dataset  = as.numeric(args[1])
-meta.col = as.numeric(args[2])
+my.dataset  = as.character(args[1])
+meta.col = as.character(args[2])
 set.seed(1)
 message(paste0("Initializng run with: ", obj.path))
 
@@ -35,7 +35,7 @@ message("Done.")
 mz.df = read.csv("~/scratch/brain/cellchat/bb_cc_gene_name_converter.csv")
 mz.df$X = NULL
 # data.input = as.matrix(combined@assays$RNA@data[mz.df$mz,])
-if (dataset == "st.sc") {
+if (my.dataset == "st.sc") {
   
 } else {
   combined = NormalizeData(combined)
@@ -94,7 +94,7 @@ message("Done.")
 message("Writing Output...")
 todays.date = stringr::str_split(Sys.Date(), pattern = "-")[[1]]
 todays.date = paste0(todays.date[2], todays.date[3], substr(todays.date[1], 3, 4))
-out.str = paste0("~/scratch/st/results/cellchat/cellchat_", dataset, "_weights.csv")
+out.str = paste0("~/scratch/st/results/cellchat/cellchat_", my.dataset, "_weights.csv")
 write.csv(out, out.str)
 message("Done.")
 message("All Done.")
