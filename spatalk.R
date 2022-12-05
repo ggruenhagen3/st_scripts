@@ -2,7 +2,7 @@
 args = commandArgs(trailingOnly=TRUE)
 s = args[1]
 my_n_cores = 24
-if (length(args) > 1) { my_n_cores = args[2] }
+if (length(args) > 1) { my_n_cores = as.numeric(args[2]) }
 message(paste0("Using paramters: s = ", s, ", my_n_cores = ", my_n_cores))
 
 # Load Libraries and Data ======================================================
@@ -361,8 +361,15 @@ my_st_dist <- function(st_meta) {
 }
 
 # Main Body ====================================================================
-st.counts =  spo[[s]]@assays$Spatial@counts
-st.meta = data.frame(spot = colnames(st.counts), x = spo[[s]]@images$slice1@coordinates$imagecol, y = -spo[[s]]@images$slice1@coordinates$imagerow)
+# # Full
+# st.counts =  spo[[s]]@assays$Spatial@counts
+# st.meta = data.frame(spot = colnames(st.counts), x = spo[[s]]@images$slice1@coordinates$imagecol, y = -spo[[s]]@images$slice1@coordinates$imagerow)
+# Half
+sample.s = subset(s, 1, 3)
+st.counts = spo[[sample.s]]@assays$Spatial@counts
+st.meta = data.frame(spot = colnames(st.counts), x = spo[[sample.s]]@images$slice1@coordinates$imagecol, y = -spo[[sample.s]]@images$slice1@coordinates$imagerow)
+st.counts = st.counts[, which(colnames(st.counts) %in% colnames(all_merge)[which(all_merge$sh == s)])]
+st.meta = st.meta[which(st.meta$spot %in% colnames(st.counts)),]
 
 # Cell2location integration results
 st.celltype = read.csv(paste0(out_dir, "cell2location_spatial_output_means.csv"))
