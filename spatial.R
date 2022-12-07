@@ -19,51 +19,76 @@ setwd(out_dir)
 # Load Objects =================================================================
 #*******************************************************************************
 gene_info = read.table(paste0(main_path, "/all_research/gene_info_2.txt"), header = T, stringsAsFactors = F)
-all_merge = readRDS("~/research/st/data/st_b2_111622.rds")
+all_merge = readRDS(paste0(data_dir, "st_b2_111622.rds"))
 # all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
 all_merge_hi = qs::qread(paste0(data_dir, "all_merge_hi.qs"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 
 #*******************************************************************************
-# Integration with BB ==========================================================
+# Cell2location ================================================================
 #*******************************************************************************
-bb = readRDS(paste0(brain_dir, "data/bb_sct_070522.rds"))
-bb_convert15 = data.frame(old = 0:14, new = c("8_Glut", "9_Glut", "4_GABA", "15_GABA/Glut", "1_RGC/MG", "10_Glut", "5_GABA", "11_Glut", "6_GABA", "2_OPC/Oligo", "12_Glut", "13_Glut", "14_Glut", "3_Peri", "7_GABA"))
-bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GABA/Glut", "9.1_Glut", "8.1_Glut", "1.1_RGC", "6_GABA", "5.1_GABA", "9.2_Glut", "8.2_Glut", "15.2_GABA", "11.1_Glut", "8.3_Glut", "8.4_Glut", "9.3_Glut", "4.2_GABA", "8.5_Glut", "5.2_GABA", "8.6_Glut", "8.7_Glut", "1.2_RGC", "4.3_GABA", "4.4_GABA", "9.4_Glut", "9.5_Glut", "8.8_Glut", "9.6_Glut", "4.5_GABA", "12_Glut", "8.9_Glut", "10.2_Glut", "2.1_OPC", "15.3_GABA", "11.2_Glut", "15.4_GABA", "4.6_GABA", "9.7_Glut", "13_Glut", "14_Glut", "4.7_GABA", "11.3_Glut", "9.8_Glut", "8-9_Glut", "15.5_GABA/Glut", "4.8_GABA", "1.3_MG", "2.2_Oligo", "15.6_Glut", "8.10_Glut", "8.11_Glut", "3_Peri", "15.7_Glut", "7_GABA"))
-bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
-bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 
-#------------------------------------#
-# Cell2location Secondary - Separate #
-#------------------------------------#
-all_merge_hi$class2_81_84 = "#FDE72500"
-my.thresh = 0.4
-this.samples = names(spo)
-for (s in this.samples) {
-  s_mean = read.csv(paste0(out_dir, "cell2location/bb_secondary/", s, "/means.csv"))
-  rownames(s_mean) = s_mean$X
-  s_mean = s_mean[,2:ncol(s_mean)]
-  colnames(s_mean) = str_replace(colnames(s_mean), "meanscell_abundance_w_sf_", "")
-  col_order = convert53$new[which(convert53$new %in% colnames(s_mean))]
-  s_mean = s_mean[, c( col_order, paste0("RGC", 0:10) )]
-  df84_81_2 = data.frame(class2 = s_mean[, "RGC2"], class84 = s_mean[, "8.4_Glut"], class81 = s_mean[, "8.1_Glut"], row.names = rownames(s_mean))
-  
-  min_max_value = min(c(max(df84_81_2$class81), max(df84_81_2$class84)))
-  
-  df84_81_2$class84[which(df84_81_2$class84 > min_max_value)] = min_max_value
-  df84_81_2$class81[which(df84_81_2$class81 > min_max_value)] = min_max_value
-  
-  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-  df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)] # scaled across all samples
-  df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-  df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-  all_merge_hi$class2_81_84[rownames(df84_81_2)] = df84_81_2$dif84_81_col
-}
+#-----------------------------------#
+# Cell2location Secondary - Rounded #
+#-----------------------------------#
+# Load cell2location results
+c2l_mean = read.csv(paste0(out_dir, "cell2location_spatial_output_means.csv")); rownames(c2l_mean) = c2l_mean$X; c2l_mean$X = NULL; colnames(c2l_mean) = as.character(0:52)
+# convert the cluster numbers into cell type names
+colnames(c2l_mean) = convert53$new[match(colnames(c2l_mean), convert53$old)]; c2l_mean = c2l_mean[, convert53$new]
+# Prevent spots from having 0 cells after rounding
+zero.cell.st = which(rowSums(round(c2l_mean)) == 0); for (i in zero.cell.st) { c2l_mean[i,which.max(c2l_mean[i,])] = 1 }
+c2l_mean = round(c2l_mean)
+c2l_mean_pct = c2l_mean / rowSums(c2l_mean)
 
-pdf(paste0(out_dir, paste0("cell2loc_sep_class2_81_84_", my.thresh, "_2.pdf")), width = 12, height = 12, onefile = F)
-print(myMultiSFP(all_merge_hi, feature = "class2_81_84", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+# Get the celltype with the most cells per spot
+st.celltype.char = unlist(lapply(1:nrow(c2l_mean), function(x) colnames(c2l_mean)[which.max(c2l_mean[x,])]))
+
+c2l.to.cluster = expand.grid(cluster = levels(all_merge$cluster), celltype = colnames(c2l_mean))
+sum.cells.per.cluster = unlist(lapply(levels(all_merge$cluster), function(x) sum(c2l_mean[colnames(all_merge)[which(all_merge$cluster == x)],]) ))
+names(sum.cells.per.cluster) = levels(all_merge$cluster)
+c2l.to.cluster$cluster.sum.num.cells = sum.cells.per.cluster[c2l.to.cluster$cluster]
+c2l.to.cluster$num = unlist(lapply(1:nrow(c2l.to.cluster), function(x) sum(c2l_mean[colnames(all_merge)[which(all_merge$cluster == c2l.to.cluster$cluster[x])], c2l.to.cluster$celltype[x]]) ))
+c2l.to.cluster$pct.of.cluster = c2l.to.cluster$num / c2l.to.cluster$cluster.sum.num.cells
+pdf(paste0( "cluster_to_c2l.pdf"), width = 6, height = 6.5)
+ggplot(c2l.to.cluster, aes(x = cluster, y = celltype, fill = pct.of.cluster)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
 dev.off()
 
+all_merge$celltype = factor(st.celltype.char[match(colnames(all_merge), rownames(c2l_mean))], levels = convert53$new)
+pdf(paste0( "b2_painted_by_best_celltype.pdf"), width = 16, height = 2)
+myB2SFP(all_merge, "celltype", pal = hue_pal()(53), showLegend = T)
+dev.off()
+
+all_merge$num.cells = rowSums(c2l_mean)
+all_merge$num.cells[which(all_merge$num.cells > 30)] = 30
+pdf(paste0( "b2_num_cells.pdf"), width = 3, height = 3)
+print(FeaturePlot(all_merge, "num.cells", order = T) + scale_color_viridis() + theme_void() + NoLegend() + ggtitle("") + coord_fixed())
+dev.off()
+pdf(paste0( "b2_painted_by_best_celltype.pdf"), width = 3, height = 3)
+Idents(all_merge) = all_merge$celltype
+print(DimPlot(all_merge) + theme_void() + NoLegend() + ggtitle("") + coord_fixed())
+dev.off()
+pdf(paste0(out_dir, "b2_mini_cells.pdf"), width = 25, height = 3, onefile = F)
+print(myB2SFP( all_merge, "ct", stsc.list = list(stsc.mat, stsc.meta), pal = scales::hue_pal()(length(levels(all_merge$ct))), showLegend = T, pt.size.multiplier = 1.1 ))
+dev.off()
+
+all_merge$num.cells.max = unlist(lapply(1:nrow(c2l_mean), function(x) max(c2l_mean[x,])))[match(colnames(all_merge), rownames(c2l_mean))]
+pct.of.spot.bin = floor((all_merge$num.cells.max/all_merge$num.cells) / 0.2)
+pct.of.spot.bin[which(pct.of.spot.bin %% 0.2 == 0)] = pct.of.spot.bin[which(pct.of.spot.bin %% 0.2 == 0)]-1
+# pct.of.spot.bin[which(pct.of.spot.bin == 5)] = 4
+df = as.data.frame(table(pct.of.spot.bin))
+df$pct = df$Freq / sum(df$Freq) * 100
+pdf(paste0(out_dir, "spot_comp.pdf"), width = 6, height = 2)
+print(ggplot(df, aes(x = 1, y = pct, fill = pct.of.spot.bin)) + geom_bar(stat = "identity") + coord_flip() + scale_x_continuous(expand = c(0.8,0.8), name = "") + scale_y_continuous(expand = c(0,0), name = "") + theme_classic())
+dev.off()
+
+all_merge$num.celltypes = unlist(lapply(1:nrow(c2l_mean), function(x) length(which(c2l_mean[x,] != 0)) ))[match(colnames(all_merge), rownames(c2l_mean))]
+num.celltypes.bin = floor(all_merge$num.celltypes / 3)
+num.celltypes.bin[which(all_merge$num.celltypes  %% 3 == 0)] = num.celltypes.bin[which(all_merge$num.celltypes  %% 3 == 0)]-1
+df = as.data.frame(table(num.celltypes.bin))
+df$pct = df$Freq / sum(df$Freq) * 100
+pdf(paste0(out_dir, "spot_comp2.pdf"), width = 6, height = 2)
+print(ggplot(df, aes(x = 1, y = pct, fill = pct.of.spot.bin)) + geom_bar(stat = "identity") + coord_flip() + scale_x_continuous(expand = c(0.8,0.8), name = "") + scale_y_continuous(expand = c(0,0), name = "") + theme_classic())
+dev.off()
 
 #-------------------------#
 # Cell2location Secondary #
@@ -241,6 +266,80 @@ Cairo::CairoPNG("c2c_with_mini_cells_w_circle.png", width = 3000, height = 1950,
 # print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + geom_point(size = 0.75, position = position_jitter(width = 8, height = 8), aes(color = ct)) + scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0)) + theme_void() + coord_fixed() + guides(fill="none"))
 print(ggplot(coords_multi, aes(x=imagecol, y=-imagerow)) + ggforce::geom_mark_hull(aes(fill = best_ct, group = spot), expand = unit(3.3, "mm"), radius = unit(3.3, "mm"), size = 0, color = NA, alpha = 0.5) + geom_point(size = 0.75, position = position_jitter(width = 7, height = 7), aes(color = ct)) + scale_x_continuous(expand=c(0.1,0.1)) + scale_y_continuous(expand=c(0.1,0.1)) + theme_void() + coord_fixed() + guides(fill="none"))
 dev.off()
+
+#------------------------------------#
+# Cell2location Secondary - Separate #
+#------------------------------------#
+all_merge_hi$class2_81_84 = "#FDE72500"
+my.thresh = 0.4
+this.samples = names(spo)
+for (s in this.samples) {
+  s_mean = read.csv(paste0(out_dir, "cell2location/bb_secondary/", s, "/means.csv"))
+  rownames(s_mean) = s_mean$X
+  s_mean = s_mean[,2:ncol(s_mean)]
+  colnames(s_mean) = str_replace(colnames(s_mean), "meanscell_abundance_w_sf_", "")
+  col_order = convert53$new[which(convert53$new %in% colnames(s_mean))]
+  s_mean = s_mean[, c( col_order, paste0("RGC", 0:10) )]
+  df84_81_2 = data.frame(class2 = s_mean[, "RGC2"], class84 = s_mean[, "8.4_Glut"], class81 = s_mean[, "8.1_Glut"], row.names = rownames(s_mean))
+  
+  min_max_value = min(c(max(df84_81_2$class81), max(df84_81_2$class84)))
+  
+  df84_81_2$class84[which(df84_81_2$class84 > min_max_value)] = min_max_value
+  df84_81_2$class81[which(df84_81_2$class81 > min_max_value)] = min_max_value
+  
+  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
+  df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)] # scaled across all samples
+  df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
+  df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
+  all_merge_hi$class2_81_84[rownames(df84_81_2)] = df84_81_2$dif84_81_col
+}
+
+pdf(paste0(out_dir, paste0("cell2loc_sep_class2_81_84_", my.thresh, "_2.pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, feature = "class2_81_84", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+dev.off()
+
+#*******************************************************************************
+# BB Figure of Spatial =========================================================
+#*******************************************************************************
+# Prep BB Data
+bb = readRDS(paste0(brain_dir, "data/bb_sct_070522.rds"))
+rgc_sub = readRDS("~/research/brain/data/rgc_subclusters_reclustered_q_c_nb_scores.rds")
+bb_convert15 = data.frame(old = 0:14, new = c("8_Glut", "9_Glut", "4_GABA", "15_GABA/Glut", "1_RGC/MG", "10_Glut", "5_GABA", "11_Glut", "6_GABA", "2_OPC/Oligo", "12_Glut", "13_Glut", "14_Glut", "3_Peri", "7_GABA"))
+bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GABA/Glut", "9.1_Glut", "8.1_Glut", "1.1_RGC", "6_GABA", "5.1_GABA", "9.2_Glut", "8.2_Glut", "15.2_GABA", "11.1_Glut", "8.3_Glut", "8.4_Glut", "9.3_Glut", "4.2_GABA", "8.5_Glut", "5.2_GABA", "8.6_Glut", "8.7_Glut", "1.2_RGC", "4.3_GABA", "4.4_GABA", "9.4_Glut", "9.5_Glut", "8.8_Glut", "9.6_Glut", "4.5_GABA", "12_Glut", "8.9_Glut", "10.2_Glut", "2.1_OPC", "15.3_GABA", "11.2_Glut", "15.4_GABA", "4.6_GABA", "9.7_Glut", "13_Glut", "14_Glut", "4.7_GABA", "11.3_Glut", "9.8_Glut", "8-9_Glut", "15.5_GABA/Glut", "4.8_GABA", "1.3_MG", "2.2_Oligo", "15.6_Glut", "8.10_Glut", "8.11_Glut", "3_Peri", "15.7_Glut", "7_GABA"))
+bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
+bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
+bb$rgc_sub = bb$names53
+bb$rgc_sub[colnames(rgc_sub)] = paste0("RGC", rgc_sub$seurat_clusters)
+
+# Function
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+
+this.pal = c("#04D9FF", "#3F4788", "#FDE725")
+my.thresh = 50
+my.thesh2 = 60
+df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class4 = as.vector(range01(all_merge@assays$predictions15["4-GABA",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100, class9 = as.vector(range01(all_merge@assays$predictions15["9-Glut",]))*100)
+df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
+df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
+df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
+df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
+df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
+df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thesh2)] = "#d600ff"
+df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
+df84_81_2$dif84_81_col[which(df84_81_2$class4 >= my.thresh)] = "#04D9FF"
+all_merge_hi$class2_81_84 = df84_81_2$dif84_81_col
+
+pdf(paste0(out_dir, paste0("class2_81_84_4_9_4_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
+print(myMultiSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
+dev.off()
+
+#*******************************************************************************
+# Seurat Integration with BB ===================================================
+#*******************************************************************************
+bb = readRDS(paste0(brain_dir, "data/bb_sct_070522.rds"))
+bb_convert15 = data.frame(old = 0:14, new = c("8_Glut", "9_Glut", "4_GABA", "15_GABA/Glut", "1_RGC/MG", "10_Glut", "5_GABA", "11_Glut", "6_GABA", "2_OPC/Oligo", "12_Glut", "13_Glut", "14_Glut", "3_Peri", "7_GABA"))
+bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GABA/Glut", "9.1_Glut", "8.1_Glut", "1.1_RGC", "6_GABA", "5.1_GABA", "9.2_Glut", "8.2_Glut", "15.2_GABA", "11.1_Glut", "8.3_Glut", "8.4_Glut", "9.3_Glut", "4.2_GABA", "8.5_Glut", "5.2_GABA", "8.6_Glut", "8.7_Glut", "1.2_RGC", "4.3_GABA", "4.4_GABA", "9.4_Glut", "9.5_Glut", "8.8_Glut", "9.6_Glut", "4.5_GABA", "12_Glut", "8.9_Glut", "10.2_Glut", "2.1_OPC", "15.3_GABA", "11.2_Glut", "15.4_GABA", "4.6_GABA", "9.7_Glut", "13_Glut", "14_Glut", "4.7_GABA", "11.3_Glut", "9.8_Glut", "8-9_Glut", "15.5_GABA/Glut", "4.8_GABA", "1.3_MG", "2.2_Oligo", "15.6_Glut", "8.10_Glut", "8.11_Glut", "3_Peri", "15.7_Glut", "7_GABA"))
+bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
+bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 
 # ---------------- #
 # Primary Clusters #
@@ -430,41 +529,6 @@ ggplot(bh_outrgc_1, aes(org.cluster.2, org.cluster.1, fill=num)) + geom_tile() +
 dev.off()
 Cairo::Cairo(file = paste0(out_dir, "all_bbrgc_marker_overlap_heatmap_pct.png"), width = 2000, height = 1000, res = 200)
 ggplot(bh_outrgc_1, aes(org.cluster.2, org.cluster.1, fill=pct.both)) + geom_tile() + scale_fill_viridis_c(name = "") + guides(color = 'none') + theme_classic() + coord_fixed() + theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + ggtitle("Percent of Overlapping Markers")
-dev.off()
-
-# 8.1_Glut, 8.4_Glut, RGC2 Figure
-range01 <- function(x){(x-min(x))/(max(x)-min(x))}
-
-this.pal = c("#04D9FF", "#3F4788", "#FDE725")
-my.thresh = 50
-my.thesh2 = 60
-df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class4 = as.vector(range01(all_merge@assays$predictions15["4-GABA",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100, class9 = as.vector(range01(all_merge@assays$predictions15["9-Glut",]))*100)
-# df84_81_2$class = colnames(df84_81_2)[max.col(df84_81_2, ties.method="first")]
-# df_col = data.frame(class = c("class2", "class81", "class84"), col = this.pal)
-# df84_81_2$class_col = df_col$col[match(df84_81_2$class, df_col$class)]
-# df84_81_2$alpha = as.character(round(apply(df84_81_2[, c("class2", "class81", "class84")], 1, max)))
-# df84_81_2$alpha[which(nchar(df84_81_2$alpha) == 1)] = paste0("0", df84_81_2$alpha[which(nchar(df84_81_2$alpha) == 1)])
-# df84_81_2$alpha[which(df84_81_2$alpha == "100")] = "ff"
-# df84_81_2$col = paste0(df84_81_2$class_col, df84_81_2$alpha)
-df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
-# df84_81_2$dif2_1_col = colorRampPalette(brewer.pal(11, "Spectral"))(100)[cut(df84_81_2$dif2_1,100)]
-df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
-df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
-df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thesh2)] = "#d600ff"
-df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-df84_81_2$dif84_81_col[which(df84_81_2$class4 >= my.thresh)] = "#04D9FF"
-# df84_81_2$scale_col = df84_81_2$dif84_81_col
-# df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
-all_merge_hi$class2_81_84 = df84_81_2$dif84_81_col
-
-pdf(paste0(out_dir, paste0("class2_81_84_4_9_4_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
-print(myMultiSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
-dev.off()
-
-pdf(paste0(out_dir, paste0("class2_81_84_4_9_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
-print(myMultiSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
 dev.off()
 
 my.col = "#27e5fa"
@@ -1028,44 +1092,6 @@ print(DotPlot(my.b2, features = top.deg$gene) + theme(axis.text.x = element_text
 dev.off()
 
 #*******************************************************************************
-# Label Brain Structures =======================================================
-#*******************************************************************************
-library(plotly)
-library(crosstalk)
-library(DT)
-library(Seurat)
-this.sample = "b2a"
-this.df = GetTissueCoordinates(subset(all_merge, cells = colnames(all_merge)[which(all_merge$sample == this.sample)]))
-this.df$spot = rownames(this.df)
-this.df = this.df[, c("spot", "imagerow", "imagecol")]
-d = highlight_key(this.df)
-a = ggplotly(ggplot(d, aes(x = imagecol, y = -imagerow)) + geom_point()) %>% highlight("plotly_selected", dynamic = TRUE)
-
-options(persistent = TRUE)
-
-p <- datatable(d)
-
-plot_html = bscols(widths = c(6, 4), a, p)
-htmltools::save_html(plot_html, "C:/Users/miles/Downloads/interactive_plot.html")
-
-# Option 2
-label_spatial = function() {
-  plot(this.df2)
-  selectedPoints <- gatepoints::fhs(this.df2)
-  return(as.numeric(as.vector(selectedPoints)))
-}
-# b2a_labels = data.frame(spot = colnames())
-this.sample = "b2a"
-this.df = GetTissueCoordinates(subset(all_merge, cells = colnames(all_merge)[which(all_merge$sample == this.sample)]))
-this.df$label = ""
-this.df2 = data.frame(x = this.df$imagecol, y = -this.df$imagerow)
-this.idx = label_spatial()
-this.df$label[which(this.df$label == "" & 
-                    1:nrow(this.df) %in% this.idx)] = "Dd"
-# this.df$label[this.idx] = "Dl-v"
-ggplot(this.df, aes(x = imagecol, y = -imagerow, color = label)) + geom_point(size = 3) + theme_bw()
-
-#*******************************************************************************
 # Initial clustering ===========================================================
 #*******************************************************************************
 
@@ -1304,6 +1330,7 @@ dev.off()
 #*******************************************************************************
 # Gene Info 2 ==================================================================
 #*******************************************************************************
+# TODO: remove "wu:", "sb:", "im:", "zmp:"
 pat = read.table("~/research/all_research/MZ_treefam_annot_umd2a_ENS_2.bash", sep = "\t", header = FALSE, fill = TRUE)
 gtf = read.table("~/research/all_research/gtf_processed.gtf", sep = "\t", header = FALSE, fill = TRUE)
 ncbi_data = data.table::fread("~/research/bcs/data/gene_orthology/cichlid_ncbi_datasets.tsv", data.table = F)
@@ -1367,159 +1394,6 @@ fish_stats_melt$variable = plyr::revalue(fish_stats_melt$variable, c("BM..g." = 
 ggplot(fish_stats_melt, aes(x = Fish.ID, y = value, color = variable, group = variable)) + geom_point(size = 4) + geom_smooth() + theme_classic() + xlab("Fish") + ylab("Value") + facet_wrap(~my.facet, scales = "free")
 ggplot(fish_stats_melt, aes(x = Fish.ID, y = value, color = variable, group = variable)) + geom_point(size = 4) + geom_smooth() + theme_classic() + xlab("Fish") + ylab("Value") + facet_wrap(~variable, ncol = 1, scales = "free")
 
-#*******************************************************************************
-# BB Figure ====================================================================
-#*******************************************************************************
-
-# Prep BB Data
-bb = readRDS(paste0(brain_dir, "data/bb_sct_070522.rds"))
-rgc_sub = readRDS("~/research/brain/data/rgc_subclusters_reclustered_q_c_nb_scores.rds")
-bb_convert15 = data.frame(old = 0:14, new = c("8_Glut", "9_Glut", "4_GABA", "15_GABA/Glut", "1_RGC/MG", "10_Glut", "5_GABA", "11_Glut", "6_GABA", "2_OPC/Oligo", "12_Glut", "13_Glut", "14_Glut", "3_Peri", "7_GABA"))
-bb_convert53 = data.frame(old = 0:52, new = c("4.1_GABA", "10.1_Glut", "15.1_GABA/Glut", "9.1_Glut", "8.1_Glut", "1.1_RGC", "6_GABA", "5.1_GABA", "9.2_Glut", "8.2_Glut", "15.2_GABA", "11.1_Glut", "8.3_Glut", "8.4_Glut", "9.3_Glut", "4.2_GABA", "8.5_Glut", "5.2_GABA", "8.6_Glut", "8.7_Glut", "1.2_RGC", "4.3_GABA", "4.4_GABA", "9.4_Glut", "9.5_Glut", "8.8_Glut", "9.6_Glut", "4.5_GABA", "12_Glut", "8.9_Glut", "10.2_Glut", "2.1_OPC", "15.3_GABA", "11.2_Glut", "15.4_GABA", "4.6_GABA", "9.7_Glut", "13_Glut", "14_Glut", "4.7_GABA", "11.3_Glut", "9.8_Glut", "8-9_Glut", "15.5_GABA/Glut", "4.8_GABA", "1.3_MG", "2.2_Oligo", "15.6_Glut", "8.10_Glut", "8.11_Glut", "3_Peri", "15.7_Glut", "7_GABA"))
-bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
-bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
-bb$rgc_sub = bb$names53
-bb$rgc_sub[colnames(rgc_sub)] = paste0("RGC", rgc_sub$seurat_clusters)
-
-# Function
-range01 <- function(x){(x-min(x))/(max(x)-min(x))}
-
-# Integrate Separately
-spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
-this.pal = c("#ed2828", "#3F4788", "#FDE725")
-my.thresh = 40
-spo_hi = list()
-for (s in names(spo)) {
-  message(s)
-  message("Integrating with BB Secondary with RGC")
-  names(spo[[s]]@images) = s
-  anchors = FindTransferAnchors(reference = bb, query = spo[[s]], normalization.method = "SCT", npcs = 50, verbose = F)
-  predictionsRGC = TransferData(anchorset = anchors, refdata = bb$rgc_sub, prediction.assay = TRUE, weight.reduction = spo[[s]][["pca"]], dims = 1:50, verbose = F)
-  spo[[s]][["predictionsRGC"]] = predictionsRGC
-  
-  message("Integrating with BB Primary")
-  anchors = FindTransferAnchors(reference = bb, query = spo[[s]], normalization.method = "SCT", npcs = 50, verbose = F)
-  predictions15 = TransferData(anchorset = anchors, refdata = bb$names15, prediction.assay = TRUE, weight.reduction = spo[[s]][["pca"]], dims = 1:50, verbose = F)
-  spo[[s]][["predictions15"]] = predictions15
-
-  message("Making High Res Image")
-  spo_hi[[s]] = spo[[s]]
-  real.slice = spo_hi[[s]]@images[[s]]
-  id = paste0(spo_hi[[s]]$fnum[which(spo_hi[[s]]$sample == s)][1], "_", toupper(spo_hi[[s]]$area[which(spo_hi[[s]]$sample == s)][1]), "1")
-  print(paste0(s, ": ", id))
-  hires = Read10X_Image(paste0("~/Downloads/sp_data/spatial_modified/", id, "/"), image.name = "tissue_hires_image.png")
-  rownames(hires@coordinates) = paste0(s, "_", rownames(hires@coordinates))
-  hires@coordinates = hires@coordinates[rownames(real.slice@coordinates),]
-  hires@scale.factors$lowres = hires@scale.factors$hires
-  hires@assay = real.slice@assay
-  hires@key = real.slice@key
-  spo_hi[[s]]@images[[s]]= hires
-  
-  df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class9 = as.vector(range01(spo[[s]]@assays$predictions15["9-Glut",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
-  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-  if (!all(is.na(df84_81_2$dif84_81))) {
-    df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
-    df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-    df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-    df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thresh)] = "#5b35bd"
-    spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
-    # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
-  } else {
-    message("Setting all to 0.")
-    spo_hi[[s]]$class2_81_84 = 0
-  }
-}
-
-# for (s in names(spo_hi)) {
-#   df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
-#   df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
-#   df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
-#   df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-#   if (!all(is.na(df84_81_2$dif84_81))) {
-#     df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
-#     df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-#     df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-#     df84_81_2$scale_col = df84_81_2$dif84_81_col
-#     df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
-#     spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
-#     # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
-#   } else {
-#     message("Setting all to 0.")
-#     spo_hi[[s]]$class2_81_84 = 0
-#   }
-# }
-
-# dif84_81_abs_max = max(abs(df84_81_2$dif84_81))
-# my_thresh_raw = 0.25
-# for (s in names(spo_hi)) {
-#   df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(spo[[s]]@assays$predictionsRGC["RGC2",]), class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
-#   df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
-#   df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
-#   df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-#   if (!all(is.na(df84_81_2$dif84_81))) {
-#     # df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
-#     df84_81_2$dif84_81_col = "#FDE72500"
-#     df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my_thresh_raw)] = "#FF9E24"
-#     df84_81_2$dif84_81_col[which(df84_81_2$class84 >= 20 & df84_81_2$class81 <= 20)] = "#FDE725FF"
-#     df84_81_2$dif84_81_col[which(df84_81_2$class81 >= 20 & df84_81_2$class84 <= 20)] = "#440154FF"
-#     spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
-#   } else {
-#     message("Setting all to 0.")
-#     spo_hi[[s]]$class2_81_84 = 0
-#   }
-# }
-my.thresh2 = 30
-for (s in names(spo)) {
-  df84_81_2 = data.frame(class1 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(spo[[s]]@assays$predictionsRGC["RGC2",]))*100, class9 = as.vector(range01(spo[[s]]@assays$predictions15["9-Glut",]))*100, class81 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(spo[[s]]@assays$predictionsRGC["8.4-Glut",]))*100)
-  df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-  if (!all(is.na(df84_81_2$dif84_81))) {
-    df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
-    df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-    df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thresh)] = "#5b35bd"
-    df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh2)] = "#FF9E24"
-    spo_hi[[s]]$class2_81_84 = df84_81_2$dif84_81_col
-    # mySingleSFP(spo_hi[[s]], feature = "class2_81_84", assay = "Spatial", slot = "data", col.ident = T, my.pt.size = 3.5)
-  } else {
-    message("Setting all to 0.")
-    spo_hi[[s]]$class2_81_84 = 0
-  }
-}
-
-
-tmp = merge(spo_hi[[names(spo_hi)[1]]], spo_hi[[names(spo_hi)[2]]])
-for (s in names(spo)[3:length(spo_hi)]) {
-  print(s)
-  tmp = merge(tmp, spo_hi[[s]])
-}
-
-pdf(paste0(out_dir, paste0("class2_81_84_11_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
-print(myMultiSFP(tmp, feature = "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
-dev.off()
-
-pdf(paste0(out_dir, paste0("9_Glut.pdf")), width = 12, height = 12, onefile = F)
-print(myMultiSFP(all_merge_hi, assay = "predictions15", feature = "9-Glut", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, high.res = T ))
-dev.off()
-
-# 8.1_Glut, 8.4_Glut, RGC2 Figure
-this.pal = c("#ed2828", "#3F4788", "#FDE725")
-my.thresh = 40
-df84_81_2 = data.frame(class1 = as.vector(range01(all_merge_for_bb@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge_for_bb@assays$predictionsRGC["RGC2",]))*100, class81 = as.vector(range01(all_merge_for_bb@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge_for_bb@assays$predictionsRGC["8.4-Glut",]))*100)
-df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
-df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
-df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
-# df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)] # scaled across all samples
-col_values_by_sample = unlist(lapply(c("c2c", "b2b", "b1c"), function(x) viridis(100)[cut(df84_81_2$dif84_81[which(all_merge_for_bb$sample == x)],100)])) # scaled by sample
-names(col_values_by_sample) = unlist(lapply(c("c2c", "b2b", "b1c"), function(x) colnames(all_merge_for_bb)[which(all_merge_for_bb$sample == x)])) # scaled by sample
-df84_81_2$dif84_81_col = col_values_by_sample[colnames(all_merge_for_bb)]
-df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
-df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-df84_81_2$scale_col = df84_81_2$dif84_81_col
-df84_81_2$scale_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)] = df84_81_2$dif2_1_col[which(df84_81_2$class2 >= my.thresh | df84_81_2$class1 >= my.thresh)]
-all_merge_for_bb_hi$class2_81_84 = df84_81_2$dif84_81_col
-
-pdf(paste0(out_dir, paste0("class2_81_84_6_", my.thresh, "_only3.pdf")), width = 12, height = 12)
-print(myMultiSFP(all_merge_for_bb_hi, samples = c("c2c", "b2b", "b1c"), "class2_81_84", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
-dev.off()
 
 #*******************************************************************************
 # CDG ==========================================================================
@@ -1531,6 +1405,7 @@ myMultiSFP(all_merge, "cdg_score", pt.size.multiplier = 1.3, pal = colorRampPale
 #*******************************************************************************
 # Brain Structures =============================================================
 #*******************************************************************************
+# Take our annotations of Brain Strcutures and put them in the Seurat object
 all_merge$structure = "unclassified"
 for (s in levels(all_merge$sample)) {
   this.struct = read.csv(paste0(out_dir, "structure_296_", toupper(substr(s, 3, 3)), "1.csv"))
@@ -1539,18 +1414,15 @@ for (s in levels(all_merge$sample)) {
 }
 all_merge$struct = all_merge$structure
 
-pdf(paste0(out_dir, "b2_geo_second_pass.pdf"), width = 16, height = 2, onefile = F)
+pdf(paste0(out_dir, "b2_brain_structures_annotated.pdf"), width = 16, height = 2, onefile = F)
 print(myB2SFP( all_merge, "structure", pal = scales::hue_pal()(length(unique(all_merge$structure))), showLegend = T ))
 dev.off()
-pdf(paste0(out_dir, "b2_test.pdf"), width = 16, height = 2, onefile = F)
-print(myB2SFP( all_merge, "structure", pal = scales::hue_pal()(length(unique(all_merge$structure))), showLegend = T, pt.size.multiplier = 0.75 ))
-dev.off()
 
+# Map the brain structures to seurat clusters
 struct_clust_table = table(all_merge$struct, all_merge$seurat_clusters)
 struct_clust = data.frame(matrix(struct_clust_table, ncol = ncol(struct_clust_table), dimnames = dimnames(struct_clust_table)))
 struct_clust = struct_clust / rowSums(struct_clust)
 colnames(struct_clust) = 0:(ncol(struct_clust)-1)
-# stuct_clust.mat = as.matrix(struct_clust_table)
 
 struct_clust_melt = reshape2::melt(as.matrix(struct_clust))
 struct_clust_melt$Var2 = factor(struct_clust_melt$Var2)
@@ -1558,6 +1430,8 @@ pdf(paste0( "brain_stuct_to_cluster.pdf"), width = 5, height = 4.5)
 ggplot(struct_clust_melt, aes(x = Var2, y = Var1, fill = value)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
 dev.off()
 
+# Dotplot of the top 2 DEGs of brain structures
+# Making brain structure DEGs not shown
 top.deg = st.clust.deg %>% group_by(cluster) %>% slice(1:2)
 Idents(all_merge) = all_merge$struct
 pdf(paste0(out_dir, "b2_stuct_markers.pdf"), width = 12, height = 6, onefile = F)
@@ -1567,19 +1441,44 @@ dev.off()
 #*******************************************************************************
 # CCI ==========================================================================
 #*******************************************************************************
+
+#------------------------------------#
+# Cell Type to Cell Type Connections #
+#------------------------------------#
 cci.p.list = list()
-for (s in c("b2a", "b2b", "b2c", "b2d")) {
+full.mat = expand.grid(convert53$new, convert53$new)
+colnames(full.mat) = c("Sender", "Receiver")
+full.mat$id = paste0(full.mat$Sender, ".", full.mat$Receiver)
+mode = "sum_logp"
+# for (s in c("b2a", "b2b", "b2c", "b2d")) {
+my.sh = c("b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl")
+for (s in my.sh) {
   this.spa = readRDS(paste0("~/research/st/data/cci/", s, "_human.rds"))
   this.cci = this.spa@lrpair
-  this.cci.table = table(this.cci$celltype_sender, this.cci$celltype_receiver)
-  this.cci.mat = matrix(this.cci.table, ncol = length(unique(this.cci$celltype_sender)), dimnames = dimnames(this.cci.table))
-  this.cci.mat.melt = reshape2::melt(as.matrix(this.cci.mat))
-  colnames(this.cci.mat.melt) = c("Sender", "Receiver", "value")
-  this.cci.mat.melt$Sender = factor(convert53$new[match(this.cci.mat.melt$Sender, convert53$old)], levels = convert53$new)
-  this.cci.mat.melt$Receiver = factor(convert53$new[match(this.cci.mat.melt$Receiver, convert53$old)], levels = convert53$new)
-  this.cci.mat.melt$value[which(this.cci.mat.melt$value > 60)] = 60
-  p=ggplot(this.cci.mat.melt, aes(x = Receiver, y = Sender, fill = value)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) + coord_fixed() + ggtitle(paste0(s, ": 60+")) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
-  cci.p.list[[s]] = p
+  if (mode == "sum_logp") {
+    this.cci$logp = -log10(this.cci$lr_co_ratio_pvalue)
+    this.cci$logp[which(is.infinite(this.cci$logp))] = 4
+    this.cci$id = paste0(this.cci$celltype_sender, ".", this.cci$celltype_receiver)
+    this.cci.mat.melt = data.frame(id = unique(this.cci$id), value = unlist(lapply(unique(this.cci$id), function(x) sum(this.cci$logp[which(this.cci$id == x)]))))
+    this.cci.mat.melt[, c("Sender", "Receiver")] = reshape2::colsplit(this.cci.mat.melt$id, "\\.", c('1', '2'))
+    this.cci.mat.melt = this.cci.mat.melt[, c("Sender", "Receiver", "value", "id")]
+  } else if (mode == "count") {
+    this.cci.table = table(this.cci$celltype_sender, this.cci$celltype_receiver)
+    this.cci.mat = matrix(this.cci.table, ncol = length(unique(this.cci$celltype_sender)), dimnames = dimnames(this.cci.table))
+    this.cci.mat.melt = reshape2::melt(as.matrix(this.cci.mat))
+  }
+  this.cci.mat.melt[,1]   = convert53$new[match(this.cci.mat.melt[,1], convert53$old)]
+  this.cci.mat.melt[,2] = convert53$new[match(this.cci.mat.melt[,2], convert53$old)]
+  this.cci.mat.melt$id = paste0(this.cci.mat.melt[,1], ".", this.cci.mat.melt[,2])
+  this.full.mat = full.mat[,1:3]
+  this.full.mat$Sender   = factor(this.full.mat$Sender, levels = convert53$new)
+  this.full.mat$Receiver = factor(this.full.mat$Receiver, levels = convert53$new)
+  this.full.mat$value = this.cci.mat.melt[match(this.full.mat$id, this.cci.mat.melt$id),3]
+  this.full.mat$value[which(is.na(this.full.mat$value))] = 0
+  full.mat[,s] = this.full.mat$value
+  # this.full.mat$value[which(this.full.mat$value > 60)] = 60
+  p=ggplot(this.full.mat, aes(x = Receiver, y = Sender, fill = value)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + ggtitle(paste0(s, ": 60+")) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+  cci.p.list[[s]] = p + xlab("") + ylab("")
   print(p)
 }
 
@@ -1587,7 +1486,94 @@ pdf(paste0(out_dir, "b2_bb53_cci.pdf"), width = 16, height = 16, onefile = F)
 print(cowplot::plot_grid(plotlist = cci.p.list))
 dev.off()
 
-# graph
+# correlation of samples with each other
+cor.mat = cor(as.matrix(full.mat[,4:ncol(full.mat)]))
+cor.hcl = hclust(as.dist(1 - abs(cor.mat)))
+test = cutree(cor.hcl, k = 2)
+full.mat.cor = reshape2::melt(cor.mat)
+# full.mat.cor$value[which(full.mat.cor$value == 1)] = NA
+pdf(paste0(out_dir, "b2_halves_bb53_cor.pdf"), width = 2.5, height = 2.5, onefile = F)
+print(ggplot(full.mat.cor, aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis(limits = c(0, 1)) + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + xlab("") + ylab("") + NoLegend())
+dev.off()
+
+# correlation of sample halves by distance
+half.mat.cor = cor.mat
+half.mat.cor[lower.tri(cor.mat, diag = T)] = NA
+half.mat.cor = reshape2::melt(half.mat.cor)
+half.mat.cor = half.mat.cor[which(!is.na(half.mat.cor$value)),]
+half.mat.cor$Var1.idx = match(half.mat.cor$Var1, my.sh)
+half.mat.cor$Var2.idx = match(half.mat.cor$Var2, my.sh)
+half.mat.cor$hop = factor(abs(half.mat.cor$Var1.idx - half.mat.cor$Var2.idx))
+pdf(paste0(out_dir, "b2_halves_cci_hop.pdf"), width = 3, height = 2.5)
+# ggplot(half.mat.cor, aes(x = hop, y = value, group = hop)) + geom_boxplot() + theme_bw() + ylab("Correlation") + xlab("Hop")
+print(ggplot(half.mat.cor, aes(x = hop, y = value, group = 1)) + geom_point(alpha=0.2, position = position_jitter(width = 0.1)) + theme_bw() + ylab("Correlation") + xlab("Hop") + stat_summary(fun = "mean", geom = "point") + stat_summary(fun = "mean", geom = "line") + stat_summary(fun.data = "mean_se", geom = "errorbar", width=0.4))
+dev.off()
+hop.lm = summary(lm(value ~ as.numeric(hop), data = half.mat.cor))
+hop.lm$coefficients[2,4]
+
+ap.changes     = full.mat %>% group_by(Sender)   %>% summarise(spop = sum(abs(lm.slope)))
+ap.changes[,3] = full.mat %>% group_by(Receiver) %>% summarise(rpop = sum(abs(lm.slope))) %>% select("rpop")
+ap.changes = reshape2::melt(ap.changes)
+# full.mat2 = data.frame(values = abs(full.mat$lm.slope[which(full.mat$Sender == "8-9_Glut")]), pop = "8-9_Glut")
+full.mat2 = data.frame()
+for (i in rownames(ap.changes)[order(ap.changes[,3], decreasing = T)][1:5]) { this.col = ifelse(ap.changes[i,2] == "spop", "Sender", "Receiver"); this.df = data.frame(values = abs(full.mat$lm.slope[which(full.mat[,this.col] == ap.changes[i,1])]), pop = paste0(this.col, ".", ap.changes[i,1])); full.mat2 = rbind(full.mat2, this.df) }
+full.mat2$pop = factor(full.mat2$pop, levels = unique(full.mat2$pop))
+pdf(paste0(out_dir, "b2_halves_cci_top_changes.pdf"), width = 3, height = 4)
+# print(ggplot(full.mat2, aes(x = pop, y = values)) + geom_point(position = position_jitter()) + stat_summary(fun = "mean", geom = "point", color = "red") + stat_summary(fun.data = "mean_se", geom = "errorbar", width=0.4, color = "red"))
+print(ggplot(full.mat2, aes(x = pop, y = values, color = pop, fill = pop)) + geom_bar(stat = "identity", alpha = 0.3) + scale_x_discrete(name="") + scale_y_continuous(expand=c(0,0), name="Change From Anterior-Posterior (Slope)") + theme_classic() + theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) + NoLegend())
+dev.off()
+
+# What are the specific connections that change the most in 1.2_RG
+n.changes = 3
+# rg.changes = reshape2::melt(full.mat[which(full.mat$Receiver == "1.2_RG"), c(3:11)], id.var = "id")
+# rg.changes$slope = full.mat$lm.slope[match(rg.changes$id, full.mat$id)]
+rg.changes = reshape2::melt(full.mat[which(full.mat$Receiver == "1.2_RG" & full.mat$b2cl != 0 & full.mat$b2dl != 0), c(3:11)], id.var = "id")
+rg.changes$slope = full.mat$lm.slope[match(rg.changes$id, full.mat$id)]
+# tmp.rg.changes = rg.changes[which(rg.changes$variable %in% c("b2ar", "b2al") & rg.changes$value != 0),]
+rg.changes.p = rg.changes[order(rg.changes$slope, decreasing = T)[1:(8*n.changes)],]
+rg.changes = reshape2::melt(full.mat[which(full.mat$Receiver == "1.2_RG" & full.mat$b2ar != 0 & full.mat$b2al != 0), c(3:11)], id.var = "id")
+rg.changes$slope = full.mat$lm.slope[match(rg.changes$id, full.mat$id)]
+rg.changes.p = rbind(rg.changes.p, rg.changes[order(rg.changes$slope, decreasing = F)[1:(8*n.changes)],])
+rg.changes.p$dir = sign(rg.changes.p$slope)
+pdf(paste0(out_dir, "b2_halves_cci_top_changes_in_rg.pdf"), width = 4, height = 4)
+# print(ggplot(rg.changes.p, aes(x = variable, y = value, color = id, group = id)) + geom_point() + geom_line() + facet_wrap(~ dir, ncol = 1) + theme_bw())
+print(ggplot(rg.changes.p, aes(x = variable, y = value, color = id, group = id)) + geom_point() + geom_line() + facet_wrap(~ dir, ncol = 1) + theme_bw() + NoLegend())
+dev.off()
+
+# Mean connection weights
+full.mat$mean = rowMeans(full.mat[,4:ncol(full.mat)])
+full.mat$mean[which(full.mat$mean > 150)] = 150
+p=ggplot(full.mat, aes(x = Receiver, y = Sender, fill = mean)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + ggtitle(": 60+") + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1))
+pdf(paste0(out_dir, "b2_halves_bb53_cci_mean.pdf"), width = 8.5, height = 8.5, onefile = F)
+print(p)
+dev.off()
+
+# How consistent are the weights across samples?
+full.mat$sd = matrixStats::rowSds(as.matrix(full.mat[,4:11]))
+full.mat$sd_plot = 1/full.mat$sd
+full.mat$sd_plot[which(is.infinite(full.mat$sd_plot))] = max(full.mat$sd_plot[which(is.finite(full.mat$sd_plot))])
+full.mat$sd_plot[which(full.mat$mean  <= 5)] = 0
+pdf(paste0(out_dir, "b2_bb53_cci_mean.pdf"), width = 8, height = 8, onefile = F)
+print(ggplot(full.mat, aes(x = Receiver, y = Sender, fill = mean)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + ggtitle(": 60+") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)))
+dev.off()
+pdf(paste0(out_dir, "b2_bb53_cci_inverse_std.pdf"), width = 8, height = 8, onefile = F)
+print(ggplot(full.mat, aes(x = Receiver, y = Sender, fill = sd_plot)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + ggtitle(": 60+") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)))
+dev.off()
+
+full.mat$b2a_dif = full.mat$b2a - full.mat$mean
+p=ggplot(full.mat, aes(x = Receiver, y = Sender, fill = b2a_dif)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + ggtitle(": 60+") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+# Are there significant differences across halves?
+full.mat$num.zero = unlist(lapply(1:nrow(full.mat), function(x) length(which(full.mat[x,4:11] == 0))))
+full.mat$lm.slope = unlist(lapply(1:nrow(full.mat), function(x) lm(value ~ order, data.frame(value = unlist(full.mat[x,4:11]), order = 1:8))[1]$coefficients[2] ))
+
+# Plot some of the strongest and most consistent connections
+full.mat$tmp = full.mat$sd_plot * full.mat$mean
+full.mat.melt = reshape2::melt(full.mat[,c("id", "b2a", "b2b", "b2c", "b2d")], id.var = "id")
+full.mat.melt$id = factor(full.mat.melt$id, levels = full.mat$id[order(full.mat$tmp, decreasing = T)])
+ggplot(full.mat.melt[which(full.mat.melt$id %in% levels(full.mat.melt$id)[1:5]),], aes(x = id, y = value)) + geom_boxplot() + geom_point(position = position_jitter()) + ylab("Mean") + theme_bw()
+
+# Graph the cell type -> cell type network
 cc.res.mat.df = this.cci.mat.melt
 cc.res.mat.df = cc.res.mat.df[which(cc.res.mat.df$value >= 30),]
 cc.res.mat.df$col = convert53$col[match(cc.res.mat.df$Sender, convert53$new)]
@@ -1603,7 +1589,6 @@ E(g1)$color = E(g1)$col
 lfr = layout_with_fr(g1)
 plot.igraph(g1, edge.arrow.size=.2)
 
-
 tkid <- tkplot(g1, vertex.label=my.nodes$label, vertex.label.dist=1)
 l <- tkplot.getcoords(tkid)
 tk_close(tkid, window.close = T)
@@ -1612,7 +1597,41 @@ pdf("C:/Users/miles/Downloads/b2a_cci_thresh30.pdf", width = 7, height = 7)
 plot.igraph(g1, layout = l, edge.arrow.size = 0.5)
 dev.off()
 
-# Single cell spatial
+#---------------------------------------#
+# Specific Ligand-Receptor Interactions #
+#---------------------------------------#
+l.df  = data.frame()
+r.df  = data.frame()
+lr.df = data.frame()
+mode = "count"
+for (s in c("b2a", "b2b", "b2c", "b2d")) {
+  this.spa = readRDS(paste0("~/research/st/data/cci/", s, "_human.rds"))
+  this.cci = this.spa@lrpair
+  if (mode == "sum_logp") {
+    print("Not Yet Implemented")
+  } else if (mode == "count") {
+    l.df  = rbind(l.df, cbind(as.data.frame(table(this.cci$ligand)), s)  )
+    r.df  = rbind(r.df,  cbind(as.data.frame(table(this.cci$receptor)), s) )
+    lr.df = rbind(lr.df, cbind(as.data.frame(table(paste0( this.cci$ligand, ".", this.cci$receptor ))), s) )
+  }
+}
+
+l.df.mat = reshape2::dcast(l.df, Var1 ~ s, value.var = "Freq")
+l.df.mat[is.na(l.df.mat)] = 0
+l.df.mat$mean = rowMeans(l.df.mat[,2:5])
+
+r.df.mat = reshape2::dcast(r.df, Var1 ~ s, value.var = "Freq")
+r.df.mat[is.na(r.df.mat)] = 0
+r.df.mat$mean = rowMeans(r.df.mat[,2:5])
+
+lr.df.mat = reshape2::dcast(lr.df, Var1 ~ s, value.var = "Freq")
+lr.df.mat[is.na(lr.df.mat)] = 0
+lr.df.mat$mean = rowMeans(lr.df.mat[,2:5])
+
+
+#---------------------#
+# Single cell spatial #
+#---------------------#
 stsc.meta = data.frame()
 for (s in c("b2a", "b2b", "b2c", "b2d")) {
   this.obj = readRDS(paste0("~/research/st/data/infer_cell/", s, ".rds"))
@@ -1633,15 +1652,24 @@ dev.off()
 # GWAS =========================================================================
 #*******************************************************************************
 # 5x10-8, the traditional level of genome-wide significance
-gwas = read.csv("C:/Users/miles/Downloads/efotraits_MONDO_0004975-associations-2022-11-28.csv")
-deg15 = read.csv("C:/Users/miles/Downloads/bdeg_gdeg_qdeg_15cluster_summary.csv")
-deg53 = read.csv("C:/Users/miles/Downloads/bdeg_gdeg_qdeg_53cluster_summary.csv")
+gwas = read.csv("~/Downloads/efotraits_MONDO_0005180-associations-2022-11-29.csv")
+gwas = read.csv("C:/Users/miles/Downloads/efotraits_MONDO_0004975-associations-2022-11-28.csv") # gwas = read.csv("~/Downloads/efotraits_MONDO_0004975-associations-2022-11-28.csv")
+deg15 = read.csv("C:/Users/miles/Downloads/bdeg_gdeg_qdeg_15cluster_summary.csv") # deg15 = read.csv("~/Downloads/bdeg_gdeg_qdeg_15cluster_summary.csv")
+deg53 = read.csv("C:/Users/miles/Downloads/bdeg_gdeg_qdeg_53cluster_summary.csv") # deg53 = read.csv("~/Downloads/bdeg_gdeg_qdeg_53cluster_summary.csv")
 gwas = as.data.frame(tidyr::separate_rows(gwas, Mapped.gene, sep=",\\s+"))
-gwas$p = gwas_number_to_number(gwas$P.value)
 gwas$P.value.e = as.numeric(reshape2::colsplit(gwas$P.value, "-", c('1', '2'))[,2])
-gwas = gwas[which(gwas$P.value.e > 8),]
-gwas.genes = sort(unlist(as.list(strsplit(gwas$Mapped.gene, ', '))))
-gwas.genes = gwas.genes[28:length(gwas.genes)]
+this.split = strsplit(gwas$P.value, ' ')
+split.df = as.data.frame(do.call(rbind, this.split))
+split.df$e = reshape2::colsplit(split.df[,3], '-', c('1', '2'))[,2]
+split.df$num = as.numeric(split.df[,1]) * 10^-as.numeric(split.df$e)
+gwas$p = split.df$num
+gwas = gwas[which(gwas$p < 5e-8),]
+gwas.genes = sort(unique(unlist(as.list(strsplit(gwas$Mapped.gene, ', ')))))
+gwas.genes = gwas.genes[2:length(gwas.genes)]
+gwas.genes.df = data.frame(human = gwas.genes, mzebra = gene_info$seurat_name[match(gwas.genes, gene_info$human)])
+gwas.genes.df = gwas.genes.df[which(!is.na(gwas.genes.df$mzebra)),]
+gwas.genes.df$mzebra.num.spots = rowSums(all_merge@assays$Spatial@counts[gwas.genes.df$mzebra,] > 0)
+gwas.genes.df = gwas.genes.df[which(gwas.genes.df$mzebra.num.spots >= 3),]
 gwas.deg15 = deg15[which(deg15$human %in% gwas.genes),]
 gwas.deg53 = deg53[which(deg53$human %in% gwas.genes),]
 deg15 = deg15[order(deg15$category, deg15$hmp),]
@@ -1649,15 +1677,50 @@ deg15$rank = 1:nrow(deg15)
 tmp = reshape2::melt(deg15[which(deg15$category == "building"), c("rank", "p_min", "p_max", "hmp")], id.var = "rank")
 ggplot(tmp, aes(x = rank, y = value, color = variable)) + geom_point()
 
-this.split = strsplit(gwas$P.value, ' ')
-split.df = as.data.frame(do.call(rbind, this.split))
-split.df$e = reshape2::colsplit(split.df[,3], '-', c('1', '2'))[,2]
-split.df$num = as.numeric(split.df[,1]) * 10^-as.numeric(split.df$e)
+my.cor = cor(t(as.matrix(all_merge@assays$Spatial[gwas.genes.df$mzebra,])))
+diag(my.cor) = NA
+my_callback = function(hcl, mat) { print(hcl); hcl <<- hcl; return(hcl) }
+pheatmap::pheatmap(my.cor, clustering_callback = my_callback, show_rownames = F, show_colnames = F)
+hcl.genes = colnames(my.cor)[hcl$order]
+test = stats::cutree(hcl, k = 2)
+test[hcl$labels[hcl$order]]
 
 #*******************************************************************************
 # Trash Can ====================================================================
 #*******************************************************************************
+bri_tmp = read.csv("~/Downloads/295_A1_E2.csv")
+all_merge_hi$bri_annot = "other"
+all_merge_hi$bri_annot[paste0("c2a_", bri_tmp$Barcode)] = bri_tmp$Structure
+Idents(all_merge_hi) = all_merge_hi$bri_annot
+bri_deg = FindAllMarkers(all_merge_hi)
+bri_deg_sig = bri_deg[which(bri_deg$p_val_adj < 0.05 & bri_deg$cluster != "other"),]
+bri_deg_sig$pct.dif = bri_deg_sig$pct.1 - bri_deg_sig$pct.2
 
+this.ident = "E"
+pdf(paste0(out_dir, "bri_", this.ident, ".pdf"), width = 12, height = 12, onefile = F)
+this.deg = bri_deg_sig[which(bri_deg_sig$pct.dif > 0.5 & bri_deg_sig$avg_log2FC > 0.25 & bri_deg_sig$cluster == this.ident), ]
+print(nrow(this.deg))
+all_merge_hi@meta.data[,paste0(this.ident, ".score.", nrow(this.deg))] = colSums(all_merge_hi@assays$Spatial@counts[this.deg$gene,])
+myMultiSFP(all_merge_hi, feature = paste0(this.ident, ".score.", nrow(this.deg)), pt.size.multiplier = 1.6, same.col.scale = F, pal = colorRampPalette(viridis(100)), high.res = T, rm.zero = F, scale.alpha = F)
+dev.off()
+
+# Old Attempt to Label Brain Structures
+label_spatial = function() {
+  plot(this.df2)
+  selectedPoints <- gatepoints::fhs(this.df2)
+  return(as.numeric(as.vector(selectedPoints)))
+}
+# b2a_labels = data.frame(spot = colnames())
+this.sample = "b2a"
+this.df = GetTissueCoordinates(subset(all_merge, cells = colnames(all_merge)[which(all_merge$sample == this.sample)]))
+this.df$label = ""
+this.df2 = data.frame(x = this.df$imagecol, y = -this.df$imagerow)
+this.idx = label_spatial()
+this.df$label[which(this.df$label == "" & 1:nrow(this.df) %in% this.idx)] = "Dd"
+# this.df$label[this.idx] = "Dl-v"
+ggplot(this.df, aes(x = imagecol, y = -imagerow, color = label)) + geom_point(size = 3) + theme_bw()
+
+# Plot Cell2location results
 all_merge_hi = qs::qread(paste0(data_dir, "all_merge_hi.qs"))
 means = read.csv(paste0(out_dir, "cell2location/bb_secondary/cell2location_spatial_output_means.csv"))
 rownames(means) = means$X
@@ -1671,17 +1734,22 @@ for (i in as.character(0:52)) {
   this.name = bb_convert53$new[match(i, bb_convert53$old)]
   this.name = str_replace(this.name, "/", "_")
   all_merge_hi$tmp = means_round[,i]
+  all_merge$tmp = all_merge_hi$tmp[colnames(all_merge)]
   # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name, ".svg"), width = 7, height = 7, onefile = F)
   # myMultiSFP(all_merge_hi, feature = "tmp", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T)
   # dev.off()
   
-  pct_sample = unlist(lapply(levels(all_merge_hi$sample), function(x) range01(all_merge_hi$tmp[which(all_merge_hi$sample ==x)])*100))
-  names(pct_sample) = unlist(lapply(levels(all_merge_hi$sample), function(x) colnames(all_merge_hi)[which(all_merge_hi$sample ==x)]))
-  all_merge_hi$tmp2 = 0
-  all_merge_hi$tmp2[names(pct_sample)] = pct_sample
-  grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell_max/", this.name, ".svg"), width = 7, height = 7, onefile = F)
-  print(myMultiSFP(all_merge_hi, feature = "tmp2", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T))
+  grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name, ".svg"), width = 16, height = 2, onefile = F)
+  myB2SFP(all_merge, feature = "tmp", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)))
   dev.off()
+  
+  # pct_sample = unlist(lapply(levels(all_merge_hi$sample), function(x) range01(all_merge_hi$tmp[which(all_merge_hi$sample ==x)])*100))
+  # names(pct_sample) = unlist(lapply(levels(all_merge_hi$sample), function(x) colnames(all_merge_hi)[which(all_merge_hi$sample ==x)]))
+  # all_merge_hi$tmp2 = 0
+  # all_merge_hi$tmp2[names(pct_sample)] = pct_sample
+  # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell_max/", this.name, ".svg"), width = 7, height = 7, onefile = F)
+  # print(myMultiSFP(all_merge_hi, feature = "tmp2", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T))
+  # dev.off()
   # 
   # all_merge_hi$tmp = (means_round[,i] / all_merge_hi$sum) * 100
   # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_pct/", this.name, ".svg"), width = 7, height = 7, onefile = F)
