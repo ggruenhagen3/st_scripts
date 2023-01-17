@@ -22,7 +22,7 @@ source(paste0(brain_dir, "/brain_scripts/all_f.R"))
 setwd(out_dir)
 
 gene_info = read.table(paste0(main_path, "/m_zebra_ref/gene_info_2.txt"), header = T, stringsAsFactors = F)
-all_merge = readRDS(paste0(data_dir, "st_b2_111622.rds"))
+all_merge = readRDS(paste0(data_dir, "st_c2b2_high_011723.rds"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 bb = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
 # bb = readRDS("~/research/brain/data/bb_demux_102021.rds")
@@ -372,7 +372,7 @@ st.counts = st.counts[, which(colnames(st.counts) %in% colnames(all_merge)[which
 st.meta = st.meta[which(st.meta$spot %in% colnames(st.counts)),]
 
 # Cell2location integration results
-st.celltype = read.csv(paste0(out_dir, "cell2location_spatial_output_means.csv"))
+st.celltype = read.csv(paste0(out_dir, "cell2location_c2b2_spatial53_output_means.csv"))
 st.celltype = st.celltype[match(colnames(st.counts), st.celltype$X),]
 rownames(st.celltype) = st.celltype$X
 st.celltype = st.celltype[,2:ncol(st.celltype)]
