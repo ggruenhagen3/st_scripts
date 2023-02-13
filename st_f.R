@@ -613,6 +613,7 @@ myC2B2SFPAll = function(obj, feature, sample.halves = NULL, assay = "SCT", slot 
         stsc.value.list[[s]] = stsc.meta[which(stsc.meta$sh == s), feature]
         names(stsc.value.list[[s]]) = stsc.meta$spot[which(stsc.meta$sh == s)]
         if ( !any(is.numeric( value_list[[s]] )) ) {
+          print(head(levels(value_list[[s]])))
           stsc.value.list[[s]] = factor(stsc.value.list[[s]], levels = levels(value_list[[s]]))
           isDiscrete = T
           min.val = "dummy"

@@ -19,7 +19,10 @@ setwd(out_dir)
 # Load Objects =================================================================
 #*******************************************************************************
 gene_info = read.table(paste0(main_path, "/all_research/gene_info_2.txt"), header = T, stringsAsFactors = F)
-all_merge = readRDS(paste0(data_dir, "st_b2_111622.rds"))
+gene_info = read.csv(paste0(main_path, "/all_research/gene_info_3.csv"))
+all_merge = readRDS(paste0(data_dir, "st_c2b2_hi_012723.rds"))
+convert15 = read.csv("~/research/brain/results/convert15.csv")
+convert53 = read.csv("~/research/brain/results/convert53.csv")
 # all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
 all_merge_hi = qs::qread(paste0(data_dir, "all_merge_hi.qs"))
 spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
@@ -32,7 +35,7 @@ spo = qs::qread(paste0(data_dir, "st_obj_list_070822.qs"))
 # Cell2location Secondary - Rounded #
 #-----------------------------------#
 # Load cell2location results
-c2l_mean = read.csv(paste0(out_dir, "cell2location_spatial_output_means.csv")); rownames(c2l_mean) = c2l_mean$X; c2l_mean$X = NULL; colnames(c2l_mean) = as.character(0:52)
+c2l_mean = read.csv(paste0(out_dir, "cell2location_c2b2_spatial53_output_means.csv")); rownames(c2l_mean) = c2l_mean$X; c2l_mean$X = NULL; colnames(c2l_mean) = as.character(0:52)
 # convert the cluster numbers into cell type names
 colnames(c2l_mean) = convert53$new[match(colnames(c2l_mean), convert53$old)]; c2l_mean = c2l_mean[, convert53$new]
 # Prevent spots from having 0 cells after rounding
@@ -49,8 +52,8 @@ names(sum.cells.per.cluster) = levels(all_merge$cluster)
 c2l.to.cluster$cluster.sum.num.cells = sum.cells.per.cluster[c2l.to.cluster$cluster]
 c2l.to.cluster$num = unlist(lapply(1:nrow(c2l.to.cluster), function(x) sum(c2l_mean[colnames(all_merge)[which(all_merge$cluster == c2l.to.cluster$cluster[x])], c2l.to.cluster$celltype[x]]) ))
 c2l.to.cluster$pct.of.cluster = c2l.to.cluster$num / c2l.to.cluster$cluster.sum.num.cells
-pdf(paste0( "cluster_to_c2l.pdf"), width = 6, height = 6.5)
-ggplot(c2l.to.cluster, aes(x = cluster, y = celltype, fill = pct.of.cluster)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
+pdf(paste0( "cluster_to_c2l.pdf"), width = 8, height = 5)
+ggplot(c2l.to.cluster, aes(x = celltype, y = cluster, fill = pct.of.cluster)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
 dev.off()
 
 all_merge$celltype = factor(st.celltype.char[match(colnames(all_merge), rownames(c2l_mean))], levels = convert53$new)
@@ -60,8 +63,8 @@ dev.off()
 
 all_merge$num.cells = rowSums(c2l_mean)
 all_merge$num.cells[which(all_merge$num.cells > 30)] = 30
-pdf(paste0( "b2_num_cells.pdf"), width = 3, height = 3)
-print(FeaturePlot(all_merge, "num.cells", order = T) + scale_color_viridis() + theme_void() + NoLegend() + ggtitle("") + coord_fixed())
+pdf(paste0( "c2b2_num_cells.pdf"), width = 3, height = 3)
+print(FeaturePlot(all_merge, "num.cells2", order = T) + scale_color_viridis() + theme_void() + NoLegend() + ggtitle("") + coord_fixed())
 dev.off()
 pdf(paste0( "b2_painted_by_best_celltype.pdf"), width = 3, height = 3)
 Idents(all_merge) = all_merge$celltype
@@ -69,6 +72,12 @@ print(DimPlot(all_merge) + theme_void() + NoLegend() + ggtitle("") + coord_fixed
 dev.off()
 pdf(paste0(out_dir, "b2_mini_cells.pdf"), width = 25, height = 3, onefile = F)
 print(myB2SFP( all_merge, "ct", stsc.list = list(stsc.mat, stsc.meta), pal = scales::hue_pal()(length(levels(all_merge$ct))), showLegend = T, pt.size.multiplier = 1.1 ))
+dev.off()
+pdf(paste0( "c2b2_mean_num_cell_per_cluster.pdf"), width = 2.5, height = 5)
+ggplot(st.num.cells.per.cluster, aes(x = seurat_clusters, y = num.cells, fill = seurat_clusters)) + geom_bar(stat = 'identity') + theme_classic() + scale_y_continuous(expand = c(0,0), name = "Mean # of Cells") + xlab("") + NoLegend() + coord_flip()
+dev.off()
+pdf(paste0( "c2b2_mean_num_cell_per_ct.pdf"), width = 3, height = 6)
+ggplot(st.num.cells.per.ct, aes(x = colSums.c2l_mean., y = ct, fill = ct)) + geom_bar(stat = "identity") + theme_classic() + theme(panel.grid.major.x = element_line(color = "gray75", linetype = "dashed")) + scale_x_continuous(expand = c(0,0), name = "# of Cells") + NoLegend() + ylab("")
 dev.off()
 
 all_merge$num.cells.max = unlist(lapply(1:nrow(c2l_mean), function(x) max(c2l_mean[x,])))[match(colnames(all_merge), rownames(c2l_mean))]
@@ -89,6 +98,62 @@ df$pct = df$Freq / sum(df$Freq) * 100
 pdf(paste0(out_dir, "spot_comp2.pdf"), width = 6, height = 2)
 print(ggplot(df, aes(x = 1, y = pct, fill = pct.of.spot.bin)) + geom_bar(stat = "identity") + coord_flip() + scale_x_continuous(expand = c(0.8,0.8), name = "") + scale_y_continuous(expand = c(0,0), name = "") + theme_classic())
 dev.off()
+
+# Jaccard Index of celltypes that overlap in spots
+jcr.df = data.frame()
+cor.df = data.frame()
+for (i in 1:(ncol(c2l_mean)-1)) {
+  for (j in (i+1):ncol(c2l_mean)) {
+    this.int = length(which(c2l_mean[,i] > 0 & c2l_mean[,j] > 0))
+    if ( this.int > 0 ) { this.int = sum(c2l_mean[which(c2l_mean[,i] > 0 & c2l_mean[,j] > 0), c(i,j)]) }
+    this.union = sum(c2l_mean[,i]) + sum(c2l_mean[,j])
+    jcr.df = rbind(jcr.df, data.frame(clust1 = colnames(c2l_mean)[i], clust2 = colnames(c2l_mean)[j], int = this.int, union = this.union, jcr = this.int/this.union))
+    cor.df = rbind(cor.df, data.frame(clust1 = colnames(c2l_mean)[i], clust2 = colnames(c2l_mean)[j], cor = cor(c2l_mean[,i], c2l_mean[,j])))
+  }
+}
+
+# Do celltypes show a bias on the anterior-posterior axis?
+# TODO add a z-score
+c2l_mean_tmp = c2l_mean[colnames(all_merge),]
+c2l_mean_tmp = c2l_mean_pct[colnames(all_merge),]
+c2l_mean_tmp$spot = rownames(c2l_mean_tmp)
+c2l_mean_tmp$num.cells = all_merge$num.cells
+c2l_mean_tmp$sh = all_merge$sh
+c2l_mean_tmp_melt = reshape2::melt(c2l_mean_tmp, id.vars = c("spot", "num.cells", "sh"))
+ct.sh.df = c2l_mean_tmp_melt %>%  group_by(variable, sh) %>% summarise(num = sum(value))
+sh.df = c2l_mean_tmp_melt %>%  group_by(sh) %>% summarise(num = sum(value))
+ct.sh.df$sh.num = sh.df$num[match(ct.sh.df$sh, sh.df$sh)]
+ct.sh.df$pct = ct.sh.df$num / ct.sh.df$sh.num
+ct.sh.df$sh.ordered = match(ct.sh.df$sh, c("c2dr", "c2dl", "c2cr", "c2cl", "c2br", "c2bl", "b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl"))
+ct.sh.df$variable = as.character(as.vector(ct.sh.df$variable))
+# ct.sh.df = as.data.frame(ct.sh.df)
+ct.sh.df = ct.sh.df %>% group_by(variable) %>% mutate(z.score=scale(pct))
+# ct.sh.df$z.score.pos = ct.sh.df$z.score > 0
+ct.sh.df$bias = F
+for (i in unique(ct.sh.df$variable)) { 
+  pos.slide.nums = ct.sh.df$sh.ordered[which(ct.sh.df$variable == i & ct.sh.df$z.score > 0)]
+  diff.pos.slide.nums = diff(sort(pos.slide.nums))
+  if (all(diff.pos.slide.nums == 1)) { ct.sh.df$bias[which(ct.sh.df$variable == i)] = T }
+}
+
+lm.res = as.data.frame(ct.sh.df %>% group_by(variable) %>% do(p = summary(lm(pct ~ sh.ordered, data = .))$coefficients[2,4], co = summary(lm(pct ~ sh.ordered, data = .))$coefficients[2,1]))
+ggplot(ct.sh.df[which(ct.sh.df$variable %in% c("8.5_Glut")),], aes(x = sh.ordered, y = num)) + geom_point() + stat_smooth(method = "lm", col = "red") + theme_bw()
+lm.res = data.frame(celltype = lm.res[,1], p = unlist(lm.res[,2]), co = unlist(lm.res[,3]))
+lm.res$bh  = p.adjust(lm.res$p, method = "BH")
+lm.res$bon = p.adjust(lm.res$p, method = "bonferroni")
+
+lm.res$celltype[which(lm.res$p < 0.05)]
+ct.sh.df.tmp = ct.sh.df[which(ct.sh.df$variable %in% lm.res$celltype[which(lm.res$p < 0.05)]),]
+ct.sh.df.tmp$sign = sign(lm.res$co[match(ct.sh.df.tmp$variable, lm.res$celltype)])
+ggplot(ct.sh.df.tmp, aes(x = sh.ordered, y = num, color = variable)) + geom_point() + stat_smooth(method = "lm", se = F) + theme_bw() + facet_wrap(~ sign)
+
+ct.sh.df.mat = reshape2::acast(ct.sh.df, variable ~ sh.ordered, value.var = "pct")
+ct.sh.df.mat.scale = scale(ct.sh.df.mat)
+ct.sh.df.mat.scale.melt = reshape2::melt(ct.sh.df.mat.scale)
+ct.sh.df.mat.scale.melt.hclust  = hclust(dist(ct.sh.df.mat.scale), method = "complete")
+ct.sh.df.mat.scale.melt.order = ct.sh.df.mat.scale.melt.hclust$labels[ct.sh.df.mat.scale.melt.hclust$order]
+ct.sh.df.mat.scale.melt$Var1 = factor(ct.sh.df.mat.scale.melt$Var1, levels = ct.sh.df.mat.scale.melt.order)
+ggplot(ct.sh.df.mat.scale.melt, aes(x = Var2, y = Var1, fill = value)) + geom_raster() + scale_fill_viridis() + coord_fixed() + scale_x_continuous(expand=c(0,0)) + scale_y_discrete(expand=c(0,0))
 
 #-------------------------#
 # Cell2location Secondary #
@@ -310,6 +375,14 @@ bb$names15 = bb_convert15$new[match(bb$seuratclusters15, bb_convert15$old)]
 bb$names53 = bb_convert53$new[match(bb$seuratclusters53, bb_convert53$old)]
 bb$rgc_sub = bb$names53
 bb$rgc_sub[colnames(rgc_sub)] = paste0("RGC", rgc_sub$seurat_clusters)
+bb$names15_4gaba = bb$names15
+bb$names15_4gaba[which(bb$names15 == "4_GABA" & bb@assays$RNA@counts["htr1d",] > 0)] = "4_GABA htr1d"
+bb$names15_4gaba[which(bb$names15 == "4_GABA" & bb@assays$RNA@counts["vipr2",] > 0)] = "4_GABA vipr2"
+anchors = FindTransferAnchors(reference = bb, query = all_merge, normalization.method = "SCT", npcs = 50)
+predictionsRGC = TransferData(anchorset = anchors, refdata = bb$rgc_sub, prediction.assay = TRUE, weight.reduction = all_merge[["pca"]], dims = 1:50)
+all_merge[["predictionsRGC"]] = predictionsRGC
+predictions15 = TransferData(anchorset = anchors, refdata = bb$names15_4gaba, prediction.assay = TRUE, weight.reduction = all_merge[["pca"]], dims = 1:50)
+all_merge[["predictions15"]] = predictions15
 
 # Function
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
@@ -317,18 +390,23 @@ range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 this.pal = c("#04D9FF", "#3F4788", "#FDE725")
 my.thresh = 50
 my.thesh2 = 60
-df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class4 = as.vector(range01(all_merge@assays$predictions15["4-GABA",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100, class9 = as.vector(range01(all_merge@assays$predictions15["9-Glut",]))*100)
+# df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class4 = as.vector(range01(all_merge@assays$predictions15["4-GABA",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100, class9 = as.vector(range01(all_merge@assays$predictions15["9-Glut",]))*100)
+df84_81_2 = data.frame(class1 = as.vector(range01(all_merge@assays$predictionsRGC["RGC1",]))*100, class2 = as.vector(range01(all_merge@assays$predictionsRGC["RGC2",]))*100, class3 = as.vector(range01(all_merge@assays$predictionsRGC["RGC3",]))*100, class4_htr1d = as.vector(range01(all_merge@assays$predictions15["4-GABA htr1d",]))*100, class4_vipr2 = as.vector(range01(all_merge@assays$predictions15["4-GABA vipr2",]))*100, class81 = as.vector(range01(all_merge@assays$predictionsRGC["8.1-Glut",]))*100, class84 = as.vector(range01(all_merge@assays$predictionsRGC["8.4-Glut",]))*100, class9 = as.vector(range01(all_merge@assays$predictions15["9-Glut",]))*100)
 df84_81_2$dif2_1 = df84_81_2$class2 - df84_81_2$class1
 df84_81_2$dif2_1_col = magma(100)[cut(df84_81_2$dif2_1,100)]
 df84_81_2$dif84_81 = df84_81_2$class84 - df84_81_2$class81
 df84_81_2$dif84_81_col = viridis(100)[cut(df84_81_2$dif84_81,100)]
 df84_81_2$dif84_81_col[which(df84_81_2$dif84_81 == 0)] = "#FDE72500"
 df84_81_2$dif84_81_col[which(df84_81_2$class9 >= my.thesh2)] = "#d600ff"
+df84_81_2$dif84_81_col[which(df84_81_2$class3 >= 15)] = "#0df705"
+# df84_81_2$dif84_81_col[which(df84_81_2$class4 >= my.thresh)] = "#04D9FF"
+df84_81_2$dif84_81_col[which(df84_81_2$class4_htr1d >= my.thresh)] = "#04D9FF"
+df84_81_2$dif84_81_col[which(df84_81_2$class4_vipr2 >= my.thresh)] = "#04D9FF50"
 df84_81_2$dif84_81_col[which(df84_81_2$class2 >= my.thresh)] = "#FF9E24"
-df84_81_2$dif84_81_col[which(df84_81_2$class4 >= my.thresh)] = "#04D9FF"
 all_merge_hi$class2_81_84 = df84_81_2$dif84_81_col
 
-pdf(paste0(out_dir, paste0("class2_81_84_4_9_4_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
+# pdf(paste0(out_dir, paste0("class2_81_84_4_9_4_", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
+pdf(paste0(out_dir, paste0("test", my.thresh, ".pdf")), width = 12, height = 12, onefile = F)
 print(myMultiSFP(all_merge_hi, "class2_81_84", pt.size.multiplier = 1.5, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
 dev.off()
 
@@ -1015,6 +1093,7 @@ st.clust.deg = read.csv("all_merge_cluster_markers_loose_070822.csv")
 st.clust.deg = st.clust.deg[which(st.clust.deg$p_val_adj < 0.05 & abs(st.clust.deg$avg_log2FC) > 0.25 & st.clust.deg$pct.1 > 0.1),]
 st.clust.deg$hgnc = gene_info$human[match(st.clust.deg$gene, gene_info$mzebra)]
 st.clust.deg$label = gene_info$label[match(st.clust.deg$gene, gene_info$mzebra)]
+st.clust.deg$nd = gene_info$nd_symbol[match(st.clust.deg$gene, gene_info$mzebra)]
 st.clust.deg$ens = gene_info$ens[match(st.clust.deg$gene, gene_info$mzebra)]
 st.clust.deg$avg_logFC = st.clust.deg$avg_log2FC
 st.clust.deg$abs.avg_logFC = abs(st.clust.deg$avg_logFC)
@@ -1032,6 +1111,13 @@ for (gene in unique(st.clust.deg$gene)) {
 st.clust.deg$DEG_in = appears$V2[match(st.clust.deg$gene, appears$V1)]
 st.clust.deg$mz_description = gene_info$mzebra_description[match(st.clust.deg$gene, gene_info$mzebra)]
 write.csv(st.clust.deg, "all_merge_cluster_markers_standard_070822.csv")
+
+# Exclusive markers
+st.clust.deg = st.clust.deg[which(st.clust.deg$avg_log2FC > 0 & st.clust.deg$pct.dif > 0 & -log10(st.clust.deg$p_val_adj) > 4),]
+st.clust.deg$exclusive_score = st.clust.deg$avg_log2FC * st.clust.deg$pct.dif * (1-st.clust.deg$pct.2)
+st.clust.deg.exc = st.clust.deg[order(st.clust.deg$exclusive_score, decreasing = T),]
+st.clust.deg.exc = st.clust.deg.exc %>% group_by(cluster) %>% slice(1:50)
+write.csv(st.clust.deg.exc, "all_merge_cluster_exclusive_markers_standard_111522.csv")
 
 st.clust.deg.sub = st.clust.deg[which(st.clust.deg$n_gene_appears <= 3),]
 write.csv(st.clust.deg.sub, "all_merge_cluster_markers_3n_070822.csv")
@@ -1073,6 +1159,13 @@ all_merge$struct2 = factor(all_merge$struct, levels = c("Dm", "Dc-3", "Dd", "Dd-
 this.pal = c("#1B9CA6", "#077278", "#12b0b3ff", "#00929aff", "#a7ebd4ff", "#089e90ff", "#0f9783ff", "#6ccab8ff", "#1BA668ff", "#6aa943ff", "#7fce4bff", "#f24839ff", "#fb717fff", "#fb8082ff", "#fea7f8ff", "#f367f1ff", "#fd91ffff", "#ff8da2ff", "#ED256E", "#FBCBC7", "#6BBD34", "#96e89bff", "#2fb824ff", "#C95EE6", "#D582EC", "#8135DE")
 pdf(paste0(out_dir, "b2_brain_structure.pdf"), width = 16, height = 2, onefile = F)
 print(myB2SFP(all_merge, "struct2", pal = this.pal, showLegend = T ))
+dev.off()
+
+# all_merge$struct2 = factor(all_merge$struct, levels = c("Dm-3", "Dc-1/2", "Dc-3", "Dc-4", "Dc-5", "Dd", "Dl-d", "Dl-g", "Dl-v", "Dm-1", "Dm-2c", "Dm-2r", "Dp", "NT", "OB gc", "OB gml", "SP-u", "Vc", "Vd-c", "Vd-r", "Vi", "Vl", "Vs", "Vv", "vVZ", "VZ"))
+this.pal = c("#7dbdd4", "#077278", "#12b0b3ff", "#00929aff", "#6ccab8ff", "#00929aff", "#0f9783ff", "#00929aff", "#1BA668ff", "#2fb824ff", "#7fce4bff", "#4b9539ff", "#4db3a0", "#a7ebd4ff", "#fea7f8ff", "#f367f1ff", "#FBCBC7", "white", "#C95EE6", "#fd91ffff", "#f24839ff", "#fb8082ff", "#D582EC", "#ED256E", "#fb717fff", "#8135DE", "#434aab")
+print(data.frame(struct2 = levels(all_merge$struct), colors = this.pal))
+pdf(paste0(out_dir, "c2b2_brain_structure2.pdf"), width = 16, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "struct", pt.size.multiplier = 1.05, pal = this.pal, showLegend = T))
 dev.off()
 
 # all_merge$struct2 = factor(all_merge$struct, levels = c("Dm", "Dc-3", "Dd", "Dd-d", "Dl-g", "Dd-v", "Dl-v", "NT", "Dp", "Dc-5", "Dc-4", "Vs", "Vs-m", "Vs-l", "Vp", "Vd-c", "Vc", "Vv", "nPPa", "Vm", "Vl", "Vi", "E", "OB gml", "OB gc", "tract"))
@@ -1218,6 +1311,7 @@ for (s in names(spo)[3:length(spo)]) {
   print(s)
   all_merge = merge(all_merge, spo[[s]])
 }
+names(all_merge@images) = names(spo)
 
 # Merged object clustering
 all_merge = subset(all_merge, subset = nCount_Spatial > 0)
@@ -1225,10 +1319,45 @@ all_merge = SCTransform(all_merge, assay = "Spatial", verbose = FALSE)
 all_merge = RunPCA(all_merge, assay = "SCT", verbose = FALSE)
 all_merge = RunUMAP(all_merge, reduction = "pca", dims = 1:30)
 all_merge = FindNeighbors(all_merge, reduction = "umap", dims = 1:2)
-all_merge = FindClusters(all_merge, verbose = FALSE, resolution = 0.55)
-all_merge$cluster = all_merge$seurat_clusters
-all_merge$all_cluster = all_merge$seurat_clusters
-p1 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle("UMAP Clustering - Brianna Res")
+this.res = 0.55
+for (this.res in c(0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.7, 0.75, 0.8)) {
+  all_merge = FindClusters(all_merge, verbose = FALSE, resolution = this.res)
+  all_merge$cluster = all_merge$seurat_clusters
+  all_merge$all_cluster = all_merge$seurat_clusters
+  p1 = DimPlot(all_merge, reduction = "umap", label = TRUE) + ggtitle(this.res)
+  p2 = DimPlot(all_merge, reduction = "umap", label = TRUE, pt.size = 1.25) + ggtitle(this.res)
+  print(p1)
+  
+  my.b2$cluster = all_merge$cluster
+  my.b2$cluster.num = as.numeric(as.vector(my.b2$cluster))
+  # pdf(paste0(out_dir, "c2b2_cluster_half_", this.res, ".pdf"), width = 16, height = 4, onefile = F)
+  Cairo::CairoPNG(paste0(out_dir, "c2b2_cluster_half_", this.res, ".png"), width = 3500, height = 1000, res = 240)
+  print(myC2B2SFP(my.b2, "cluster.num", pal = scales::hue_pal()))
+  dev.off()
+  
+  pdf(paste0(out_dir, "c2b2_cluster_half_rot_", this.res, ".pdf"), width = 14, height = 4, onefile = F)
+  print(myC2B2SFP(my.b2, "cluster.num", pal = scales::hue_pal(), points.as.text = T, rot.text = T))
+  dev.off()
+}
+
+my.b2 = all_merge
+for (s in c("c2dr", "c2dl", "c2cr", "c2cl", "c2br", "c2bl", "b2al", "b2ar", "b2bl", "b2br", "b2cl", "b2cr", "b2dl", "b2dr")) {
+  img.path = ifelse(substr(s,1,1) == "c", 'c2_modified/295_', 'b2_modified/296_')
+  real.slice = all_merge@images[[substr(s, 1, 3)]]
+  hires = Read10X_Image(paste0("~/Downloads/sp_data/", img.path, toupper(substr(s, 3, 3)), "1_", toupper(substr(s, 4, 4)), "/"), image.name = "tissue_hires_image.png")
+  rownames(hires@coordinates) = paste0(substr(s, 1, 3), "_", rownames(hires@coordinates))
+  hires@coordinates = hires@coordinates[rownames(real.slice@coordinates),]
+  hires@scale.factors$lowres = hires@scale.factors$hires
+  hires@assay = real.slice@assay
+  hires@key = real.slice@key
+  my.b2@images[[s]]= hires
+  # SpatialFeaturePlot(b2d, feature = "egr1", images = "slice1", crop = T)
+}
+half_by_spot = read.csv(paste0(out_dir, "half.csv"))
+half_by_spot$half[which(half_by_spot$half == "neither")] = "left"
+my.b2$half = half_by_spot$half[match(colnames(my.b2), half_by_spot$cell)]
+my.b2$sample.half = my.b2$sh = paste0(my.b2$sample, substr(my.b2$half, 1, 1))
+my.b2$sh = my.b2$sample.half
 
 # Default Method of Clustering
 # all_merge = FindNeighbors(all_merge, reduction = "pca", dims = 1:30)
@@ -1377,6 +1506,41 @@ gene_info2 = gene_info2[, c("mzebra", "label", "nd_symbol", "ens", "ens_mart", "
 write.table(gene_info2, "~/research/all_research/gene_info_2.txt", sep = "\t")
 
 # test = gene_info2[which(gene_info2$something_agrees & startsWith(gene_info2$label, "LOC")),]
+# 01/23/23
+gene_info$human_agree = gene_info$human_mart == gene_info$human_pat
+gene_info$human_agree[which(is.na(gene_info$human_agree))] = FALSE
+gene_info$human_pat[which(gene_info$human_pat == "CantFind")] = NA
+gene_info$human_pat[which(gene_info$human_pat == "")] = NA
+gene_info$human_mart[which(gene_info$human_mart == "")] = NA
+gene_info$seurat_name_has_human_pat = unlist(lapply(1:nrow(gene_info), function(x) grepl( tolower(gene_info$human_pat[x]), tolower(gene_info$seurat_name[x]), fixed = TRUE)  )) 
+gene_info$ens_has_human_pat = unlist(lapply(1:nrow(gene_info), function(x) grepl( tolower(gene_info$human_pat[x]), tolower(gene_info$ens[x]), fixed = TRUE)  )) 
+gene_info$nd_has_human_pat = unlist(lapply(1:nrow(gene_info), function(x) grepl( tolower(gene_info$human_pat[x]), tolower(gene_info$nd_symbol[x]), fixed = TRUE)  )) 
+gene_info$seurat_name_has_human_mart = unlist(lapply(1:nrow(gene_info), function(x) grepl( tolower(gene_info$human_mart[x]), tolower(gene_info$seurat_name[x]), fixed = TRUE)  )) 
+gene_info$ens_has_human_mart = unlist(lapply(1:nrow(gene_info), function(x) grepl( tolower(gene_info$human_mart[x]), tolower(gene_info$ens[x]), fixed = TRUE)  )) 
+gene_info$nd_has_human_mart = unlist(lapply(1:nrow(gene_info), function(x) grepl( tolower(gene_info$human_mart[x]), tolower(gene_info$nd_symbol[x]), fixed = TRUE)  )) 
+length(which(gene_info$seurat_name_has_human_pat | gene_info$ens_has_human_pat | gene_info$nd_has_human_pat | gene_info$seurat_name_has_human_mart | gene_info$ens_has_human_mart | gene_info$nd_has_human_mart))
+
+gene_info$n_pat = rowSums(gene_info[,c("seurat_name_has_human_pat", "ens_has_human_pat", "nd_has_human_pat")])
+gene_info$n_pat[which(gene_info$n_pat > 0)] = gene_info$n_pat[which(gene_info$n_pat > 0)] + 1
+gene_info$n_pat[which(is.na(gene_info$n_pat))] = 0
+gene_info$n_mart = rowSums(gene_info[,c("seurat_name_has_human_mart", "ens_has_human_mart", "nd_has_human_mart")])
+gene_info$n_mart[which(gene_info$n_mart > 0)] = gene_info$n_mart[which(gene_info$n_mart > 0)] + 1
+gene_info$n_mart[which(is.na(gene_info$n_mart))] = 0
+gene_info$n_max_pat_mart = unlist(lapply(1:nrow(gene_info), function(x) max(gene_info$n_pat[x], gene_info$n_mart[x])))
+gene_info$n_agree_any_human = gene_info$n_max_pat_mart + gene_info$human_agree
+gene_info$n_pat_n_mart_dif = gene_info$n_pat - gene_info$n_mart
+gene_info$greatest_human_n = unlist(lapply(1:nrow(gene_info), function(x) ifelse(gene_info$n_pat_n_mart_dif[x] > 0, gene_info$human_pat[x], gene_info$human_mart[x]) ))
+
+gene_df = data.frame(gene = rownames(bb), bb_counts = rowSums(bb@assays$RNA@counts), st_counts = rowSums(all_merge@assays$Spatial@counts))
+gene_df$bb_rank = rank(gene_df$bb_counts)
+gene_df$st_rank = rank(gene_df$st_counts)
+gene_df$mean_rank = rowMeans(gene_df[,c("bb_rank", "st_rank")])
+
+gene_info$bb_st_counts_rank = gene_df$mean_rank[match(gene_info$seurat_name, gene_df$gene)]
+gene_info_one_to_one = gene_info[which(gene_info$n_agree_any_human > 0),] %>% group_by(greatest_human_n) %>% arrange(desc(n_agree_any_human), bb_st_counts_rank) %>% slice(1)
+gene_info$one_to_one_human = gene_info_one_to_one$greatest_human_n[match(gene_info$seurat_name, gene_info_one_to_one$seurat_name)]
+
+st.clust.deg[, c("ens", "nd", "human_mart", "human_pat", "one_to_one_human", "n_sources", "bb_st_counts_rank")] = gene_info[match(st.clust.deg$gene, gene_info$seurat_name), c("ens", "nd_symbol", "human_mart", "human_pat", "one_to_one_human", "n_agree_any_human", "bb_st_counts_rank")]
 
 #*******************************************************************************
 # Sample Stats =================================================================
@@ -1408,17 +1572,30 @@ myMultiSFP(all_merge, "cdg_score", pt.size.multiplier = 1.3, pal = colorRampPale
 # Take our annotations of Brain Strcutures and put them in the Seurat object
 all_merge$structure = "unclassified"
 for (s in levels(all_merge$sample)) {
-  this.struct = read.csv(paste0(out_dir, "structure_296_", toupper(substr(s, 3, 3)), "1.csv"))
+  this.fish = substr(s, 1, 2)
+  if (this.fish == "c2") { 
+    this.struct = read.csv(paste0(out_dir, "structure_295_", toupper(substr(s, 3, 3)), "1_f1.csv"))
+  } else {
+    this.struct = read.csv(paste0(out_dir, "structure_296_", toupper(substr(s, 3, 3)), "1_vdc.csv"))
+  }
+  
   this.struct[,1] = paste0(s, "_", this.struct[,1])
   all_merge$structure[this.struct[,1]] = this.struct[,2]
 }
+all_merge$structure[which(all_merge$structure == "Olf. tract")] = "tract"
+all_merge$structure[which(all_merge$structure == "Dc-1")] = "Dc-1/2"
+all_merge$structure[which(all_merge$structure == "Dc-2")] = "Dc-1/2"
+all_merge$structure[which(all_merge$structure == "Vs-m")] = "Vs-m"
+all_merge$structure[which(all_merge$structure == "Vs-l")] = "Vs-l"
+all_merge$structure[which(all_merge$structure == "Dm")] = "Dm-3"
 all_merge$struct = all_merge$structure
+# all_merge$struct_b2_vdc = all_merge$struct
 
 pdf(paste0(out_dir, "b2_brain_structures_annotated.pdf"), width = 16, height = 2, onefile = F)
 print(myB2SFP( all_merge, "structure", pal = scales::hue_pal()(length(unique(all_merge$structure))), showLegend = T ))
 dev.off()
 
-# Map the brain structures to seurat clusters
+# Map the brain structures to spatial clusters
 struct_clust_table = table(all_merge$struct, all_merge$seurat_clusters)
 struct_clust = data.frame(matrix(struct_clust_table, ncol = ncol(struct_clust_table), dimnames = dimnames(struct_clust_table)))
 struct_clust = struct_clust / rowSums(struct_clust)
@@ -1426,9 +1603,15 @@ colnames(struct_clust) = 0:(ncol(struct_clust)-1)
 
 struct_clust_melt = reshape2::melt(as.matrix(struct_clust))
 struct_clust_melt$Var2 = factor(struct_clust_melt$Var2)
-pdf(paste0( "brain_stuct_to_cluster.pdf"), width = 5, height = 4.5)
+pdf(paste0( "c2b2_brain_stuct_to_cluster.pdf"), width = 5, height = 4.5)
 ggplot(struct_clust_melt, aes(x = Var2, y = Var1, fill = value)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
 dev.off()
+
+# Map the brain structures to bb clusters
+cells.struct.clust = t(rowsum(c2l_mean, group = all_merge$struct, na.rm = T))
+cells.struct.clust = cells.struct.clust / colSums(cells.struct.clust)[col(cells.struct.clust)]
+cells.struct.clust.melt = reshape2::melt(cells.struct.clust)
+ggplot(cells.struct.clust.melt, aes(x = Var2, y = Var1, fill = value)) + geom_raster() + scale_fill_viridis() + xlab("") + ylab("") + coord_fixed() + theme(axis.text.x = element_text(angle = 270, vjust = 0.5, hjust = 0))
 
 # Dotplot of the top 2 DEGs of brain structures
 # Making brain structure DEGs not shown
@@ -1437,6 +1620,54 @@ Idents(all_merge) = all_merge$struct
 pdf(paste0(out_dir, "b2_stuct_markers.pdf"), width = 12, height = 6, onefile = F)
 DotPlot(all_merge, features = top.deg$gene) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + scale_color_viridis() + scale_x_discrete(labels = top.deg$label)
 dev.off()
+
+# Dotplot of the top 2 DEGs of brain structures (Brianna)
+# top.deg = read.csv('~/Downloads/ST_fig2_B2struct_topgenes_121422.csv')
+top.deg = read.csv('~/Downloads/b2c2_fig2_struct_markers_013023.csv')
+colnames(top.deg)[1] = "Structure"
+top.deg$Structure = trimws(top.deg$Structure)
+# top.deg[which(top.deg$seurat_name == "LOC101477225"), c("seurat_name", "label")] = c("st18", "st18")
+# top.deg = top.deg[which(top.deg$Structure != "Dc-5"),]
+# top.deg$Structure[which(top.deg$Structure == "Dc-4")] = "Dc-4/5"
+# top.deg$label[which(top.deg$label == "LOC101464037")] = "sccl21"
+# top.deg$label[which(top.deg$label == "LOC101473394")] = "nostrin"
+# top.deg$label[which(top.deg$label == "LOC105941321")] = "sdc1"
+top.deg$label[which(top.deg$label == "LOC101467413")] = "bcl11ab"
+top.deg$label[which(top.deg$label == "LOC101486618")] = "her.2"
+top.deg$label[which(top.deg$label == "LOC101464413")] = "kif5c"
+top.deg$label[which(top.deg$label == "LOC101471517")] = "CACNA2D4"
+# this.levels[which(this.levels == "Dc-4")] = "Dc-4/5"
+top.deg$Structure = factor(top.deg$Structure, levels = levels(all_merge$struct))
+top.deg = top.deg[order(top.deg$Structure),]
+# this.ident = as.character(as.vector(all_merge$struct))
+# this.ident[which(this.ident == "Dc-4" | this.ident == "Dc-5")] = "Dc-4/5"
+# Idents(all_merge) = factor(this.ident, levels = this.levels)
+pdf(paste0(out_dir, "c2b2_stuct_markers_bri.pdf"), width = 13, height = 5.25, onefile = F)
+DotPlot(all_merge, features = top.deg$gene) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + scale_color_viridis() + scale_x_discrete(labels = top.deg$label) + xlab("") + ylab("")
+dev.off()
+
+pdf(paste0( "c2b2_painted_structure_F.pdf"), width = 3, height = 3)
+Idents(all_merge) = all_merge$struct
+print(DimPlot(all_merge, cols = this.pal, order = F) + theme_void() + NoLegend() + ggtitle("") + coord_fixed())
+dev.off()
+
+# Plot brain structure specific genes on UMAP
+bs.genes = read.csv("~/Downloads/struct_umap_list_firstpass.csv")
+bs.genes$col = scales::hue_pal()(nrow(bs.genes))
+all_merge$struct_gene = "gray90"
+all_merge$struct_gene2 = "none"
+this.threshold = 0.4
+for (i in 1:nrow(bs.genes)) {
+  this.score = range01(all_merge@assays$Spatial@counts[bs.genes$seurat_name[i],])
+  all_merge$struct_gene[which(this.score > this.threshold)] = bs.genes$col[i]
+  all_merge$struct_gene2[which(this.score > this.threshold)] = bs.genes$structure
+}
+df = data.frame(all_merge@reductions$umap@cell.embeddings)
+df$struct_gene = all_merge$struct_gene
+df$struct_gene = factor(df$struct_gene, levels = c(unique(df$struct_gene)[which(unique(df$struct_gene) != "gray90")], "gray90"))
+df = df[order(df$struct_gene, decreasing = T),]
+ggplot(df, aes(x = UMAP_1, y = UMAP_2, color = struct_gene)) + geom_point() + scale_color_identity(guide = "legend", labels = bs.genes$structure[match(levels(df$struct_gene), bs.genes$col)]) + theme_void() + ggtitle(paste0("Threshold = ", this.threshold))
+
 
 #*******************************************************************************
 # CCI ==========================================================================
@@ -1450,8 +1681,7 @@ full.mat = expand.grid(convert53$new, convert53$new)
 colnames(full.mat) = c("Sender", "Receiver")
 full.mat$id = paste0(full.mat$Sender, ".", full.mat$Receiver)
 mode = "sum_logp"
-# for (s in c("b2a", "b2b", "b2c", "b2d")) {
-my.sh = c("b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl")
+my.sh = c("c2dr", "c2dl", "c2cr", "c2cl", "c2br", "c2bl", "b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl")
 for (s in my.sh) {
   this.spa = readRDS(paste0("~/research/st/data/cci/", s, "_human.rds"))
   this.cci = this.spa@lrpair
@@ -1482,7 +1712,37 @@ for (s in my.sh) {
   print(p)
 }
 
-pdf(paste0(out_dir, "b2_bb53_cci.pdf"), width = 16, height = 16, onefile = F)
+# Correlations using specific LR interactions
+# all.lr.pairs = c()
+# for (s in my.sh) {
+#   this.spa = readRDS(paste0("~/research/st/data/cci/", s, "_human.rds"))
+#   this.cci = this.spa@lrpair
+#   this.cci$lr.pair = paste0(this.cci$ligand, "_", this.cci$receptor)
+#   all.lr.pairs = c(all.lr.pairs, this.cci$lr.pair)
+# }
+# all.lr.pairs = sort(unique(all.lr.pairs))
+# full.mat.lr = expand.grid(convert53$new, convert53$new, all.lr.pairs)
+# colnames(full.mat.lr) = c("Sender", "Receiver", "lr.id")
+# full.mat.lr[, c("Ligand", "Receptor")] = reshape2::colsplit(full.mat.lr$lr.id, "_", c('1', '2'))
+# full.mat.lr$pop.id = paste0(full.mat.lr$Sender, ".", full.mat.lr$Receiver)
+# full.mat.lr$full.id = paste0(full.mat.lr$pop.id, "_", full.mat.lr$lr.id)
+# rownames(full.mat.lr) = full.mat.lr$full.id
+# my.sh = c("c2dr", "c2dl", "c2cr", "c2cl", "c2br", "c2bl", "b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl")
+# full.mat.lr[, my.sh] = 0
+# for (s in my.sh) {
+#   this.spa = readRDS(paste0("~/research/st/data/cci/", s, "_human.rds"))
+#   this.cci = this.spa@lrpair
+#   this.cci$logp = -log10(this.cci$lr_co_ratio_pvalue)
+#   this.cci$logp[which(is.infinite(this.cci$logp))] = 4
+#   this.cci$celltype_sender_name   = convert53$new[match(this.cci$celltype_sender,    convert53$old)]
+#   this.cci$celltype_receiver_name = convert53$new[match(this.cci$celltype_receiver , convert53$old)]
+#   this.cci$pop.id = paste0(this.cci$celltype_sender_name, ".", this.cci$celltype_receiver_name)
+#   this.cci$lr.id   = paste0(this.cci$ligand, "_", this.cci$receptor)
+#   this.cci$full.id = paste0(this.cci$pop.id, "_", this.cci$lr.id)
+#   full.mat.lr[this.cci$full.id, s] = this.cci$logp
+# }
+
+pdf(paste0(out_dir, "c2b2_bb53_cci.pdf"), width = 16, height = 16, onefile = F)
 print(cowplot::plot_grid(plotlist = cci.p.list))
 dev.off()
 
@@ -1491,10 +1751,20 @@ cor.mat = cor(as.matrix(full.mat[,4:ncol(full.mat)]))
 cor.hcl = hclust(as.dist(1 - abs(cor.mat)))
 test = cutree(cor.hcl, k = 2)
 full.mat.cor = reshape2::melt(cor.mat)
+full.mat.cor$value[which(full.mat.cor$value < 0)] = 0
 # full.mat.cor$value[which(full.mat.cor$value == 1)] = NA
-pdf(paste0(out_dir, "b2_halves_bb53_cor.pdf"), width = 2.5, height = 2.5, onefile = F)
+pdf(paste0(out_dir, "c2b2_halves_bb53_cor.pdf"), width = 2.5, height = 2.5, onefile = F)
 print(ggplot(full.mat.cor, aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis(limits = c(0, 1)) + theme_classic() + scale_x_discrete(expand = c(0,0), drop = F) + scale_y_discrete(expand = c(0,0), drop = F) + coord_fixed() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + xlab("") + ylab("") + NoLegend())
 dev.off()
+
+# Are the anterior-posterior correlations greater than permutations?
+library(combinat)
+perm.sh = data.frame(do.call('rbind', permn(my.sh)))
+colnames(perm.sh) = my.sh
+perm.sh$ant.mean.r = unlist(lapply(1:nrow(perm.sh), function(x) mean(cor.mat[unlist(perm.sh[x,1:5]),unlist(perm.sh[x,1:5])]) )) 
+perm.sh$pos.mean.r = unlist(lapply(1:nrow(perm.sh), function(x) mean(cor.mat[unlist(perm.sh[x,6:8]),unlist(perm.sh[x,6:8])]) )) 
+perm.sh$sum.mean.r = perm.sh$ant.mean.r + perm.sh$pos.mean.r
+perm.sh$outside.mean.r = unlist(lapply(1:nrow(perm.sh), function(x) mean(cor.mat[unlist(perm.sh[x,6:8]),unlist(perm.sh[x,1:5])]) )) 
 
 # correlation of sample halves by distance
 half.mat.cor = cor.mat
@@ -1633,9 +1903,9 @@ lr.df.mat$mean = rowMeans(lr.df.mat[,2:5])
 # Single cell spatial #
 #---------------------#
 stsc.meta = data.frame()
-for (s in c("b2a", "b2b", "b2c", "b2d")) {
+for (s in c("c2dr", "c2dl", "c2cr", "c2cl", "c2br", "c2bl", "b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl")) {
   this.obj = readRDS(paste0("~/research/st/data/infer_cell/", s, ".rds"))
-  if (s == "b2a") { stsc.mat = this.obj@data$newdata } else { stsc.mat = cbind(stsc.mat, this.obj@data$newdata) }
+  if (s == "c2dr") { stsc.mat = this.obj@data$newdata } else { stsc.mat = cbind(stsc.mat, this.obj@data$newdata) }
   stsc.meta = rbind(stsc.meta, this.obj@meta$newmeta)
 }
 stsc.meta$cell = paste0("C", 1:nrow(stsc.meta))
@@ -1686,8 +1956,451 @@ test = stats::cutree(hcl, k = 2)
 test[hcl$labels[hcl$order]]
 
 #*******************************************************************************
+# Allen Brain Atlas (ABA) ======================================================
+#*******************************************************************************
+library("cocoframer")
+library(purrr)
+library(viridisLite) # optional - nice color palettes
+library(dplyr)
+library(reshape2)
+
+# Get structure ontology annotations
+ga <- get_ccf_grid_annotation()
+ontology <- get_mba_ontology()
+ontology_df <- flatten_mba_ontology(ontology)
+# filtered_ontology_df = filter_mba_ontology_children(ontology_df, "CTX")
+
+# build a 3d array of ontology structure acronyms - easier to deal with than IDs
+oa <- array(ontology_df$acronym[match(ga, ontology_df$id)], dim = dim(ga))
+# oa <- array(filtered_ontology_df$acronym[match(ga, filtered_ontology_df$id)], dim = dim(ga))
+
+deg = read.csv("~/research/st/results/b2_cluster_markers_standard_111622.csv")
+all.gene.ish = readRDS("~/research/st/data/aba_all_gene_list2.rds")
+all.annot = sort(unique(as.vector(oa)))
+all.annot = all.annot[which(!is.na(all.annot))]
+
+# Method 2: Correlation of Gene Expression in Spatial w/ ABA
+# myCalcPerSlice = function(this.slice) {
+#   message(this.slice)
+#   this.mat <- data.frame(matrix(0L, nrow = length(all.gene.ish), ncol = length(all.annot), dimnames = list(names(all.gene.ish), all.annot)))
+#   this.annot = as.vector(slice_ccf_arr(oa, this.slice, "coronal"))
+#   this.annot = factor(this.annot, levels = all.annot)
+#   for (this.gene in names(all.gene.ish)) {
+#     this.gene.exp = all.gene.ish[[this.gene]][this.slice,,]
+#     this.gene.exp = as.vector(all.gene.ish[[this.gene]][this.slice,,])
+#     this.gene.exp[which(this.gene.exp < 0)] = 0
+#     this.sum = tapply(this.gene.exp, this.annot, sum)
+#     this.sum[which(is.na(this.sum))] = 0
+#     # print(length(which(this.sum)))
+#     this.mat[this.gene,] = this.mat[this.gene,] + this.sum
+#   }
+#   print(length(which(is.na(this.mat))))
+#   return(this.mat)
+# }
+# myCalcAnnotPerSlice = function(this.slice) {
+#   this.annot = as.vector(slice_ccf_arr(oa, this.slice, "coronal"))
+#   this.annot = factor(this.annot, levels = all.annot)
+#   return(as.vector(table(this.annot))*length(all.gene.ish))
+# }
+# slice.mats = mclapply(1:58, function(x) myCalcPerSlice(x), mc.cores = 5)
+# aba.gene.annot = as.data.frame(purrr::map(transpose(slice.mats), reduce, `+`))
+# rownames(aba.gene.annot) = names(all.gene.ish)
+# colnames(aba.gene.annot) = all.annot
+# # aba.gene.annot[which(is.na(aba.gene.annot))] = 0
+# annot.to.add = mclapply(1:58, function(x) myCalcAnnotPerSlice(x), mc.cores = 5)
+# annot.sum.vect = do.call('rbind', annot.to.add)
+# annot.sum.vect = colSums(annot.sum.vect)
+# names(annot.sum.vect) = all.annot
+# 
+# aba.gene.annot.pct = aba.gene.annot/annot.sum.vect
+# aba.gene.annot.pct = as.matrix(aba.gene.annot / annot.sum.vect[col(aba.gene.annot)])
+# aba.gene.annot.pct[which(is.na(aba.gene.annot.pct))] = 0
+# aba.gene.annot.pct = as.data.frame(aba.gene.annot.pct)
+# saveRDS(aba.gene.annot, "~/research/st/data/aba_gene_by_annot.rds")
+# saveRDS(aba.gene.annot.pct, "~/research/st/data/aba_gene_by_annot_pct.rds")
+
+# Method 2: Start Here to Save Time
+ga <- get_ccf_grid_annotation()
+ontology <- get_mba_ontology()
+ontology_df <- flatten_mba_ontology(ontology)
+ontology_df$acronym[which(grepl("-", ontology_df$acronym))] = str_replace(ontology_df$acronym[which(grepl("-", ontology_df$acronym))], "-", ".")
+ontology_df$acronym[which(grepl("/", ontology_df$acronym))] = str_replace(ontology_df$acronym[which(grepl("/", ontology_df$acronym))], "/", ".")
+oa <- array(ontology_df$acronym[match(ga, ontology_df$id)], dim = dim(ga))
+aba.gene.annot = readRDS("~/research/st/data/aba_gene_by_annot.rds")
+all.gene.ish = readRDS("~/research/st/data/aba_all_gene_list2.rds")
+all.annot = sort(unique(as.vector(oa)))
+all.annot = all.annot[which(!is.na(all.annot))]
+annot.to.add = mclapply(1:58, function(x) myCalcAnnotPerSlice(x), mc.cores = 5)
+annot.sum.vect = do.call('rbind', annot.to.add)
+annot.sum.vect = colSums(annot.sum.vect)
+names(annot.sum.vect) = all.annot
+
+diveOntology = function(id) {
+  child.id = ontology_df$id[which(ontology_df$parent_structure_id == id)]
+  deep.child.id = c(id)
+  for (id.i in child.id) {
+    deep.child.id = c(deep.child.id, diveOntology(id.i))
+  }
+  return (deep.child.id)
+}
+botUpOntology = function(id) {
+  this.level   = ontology_df$st_level[which(ontology_df$id == id)]
+  parent.id    = ontology_df$parent_structure_id[which(ontology_df$id == id)]
+  parent.level = ontology_df$st_level[which(ontology_df$id == parent.id)]
+  if (parent.level < 6) { 
+    return(id) 
+  } else if (parent.level == 6) {
+    return(parent.id)
+  } else {
+    return(botUpOntology(parent.id))
+  }
+}
+# diveOntology6 = function(id) {
+#   child.id = ontology_df$id[which(ontology_df$parent_structure_id == id)]
+#   deep.child.id = c(id)
+#   for (id.i in child.id) {
+#     deep.child.id = c(deep.child.id, diveOntology(id.i))
+#   }
+#   return (deep.child.id)
+# }
+child.ids = c(567, diveOntology(567))
+my_ontology_df = ontology_df[which(ontology_df$id %in% child.ids),]
+my_ontology_df6 = my_ontology_df[which(my_ontology_df$st_level >= 6),]
+# for (id6 in my_ontology_df$id[which(my_ontology_df$st_level == 6)]) {
+#   child6 = diveOntology(id6)
+#   my_ontology_df6$parent_structure_id[which(my_ontology_df6$id %in% child6)] == id6
+# }
+# my_ontology_df6$parent_structure_id[which(my_ontology_df6$st_level == 6)] = my_ontology_df6$id[which(my_ontology_df6$st_level == 6)]
+my_ontology_df6$parent_structure_id = unlist(mclapply(my_ontology_df6$id, function(x) botUpOntology(x), mc.cores = 5))
+my_ontology_df6$parent_st_level = ontology_df$st_level[match(my_ontology_df6$parent_structure_id, ontology_df$id)]
+# my_ontology_df6$this_sum = annot.sum.vect[my_ontology_df6$acronym]
+my_ontology_df6$this_sum = cnu.aba$avg[match(my_ontology_df6$atlas_id, cnu.aba$atlas_id)]
+my_ontology_df6 = data.frame(my_ontology_df6 %>% group_by(parent_structure_id) %>% mutate(parent_sum = sum(this_sum, na.rm = T)))
+
+# annot.sum.vect.small = as.vector(tapply(annot.sum.vect, my_ontology_df6$parent_structure_id[match(names(annot.sum.vect), my_ontology_df6$acronym)], sum))
+aba.gene.annot.small = t(rowsum(t(aba.gene.annot), group = my_ontology_df6$parent_structure_id[match(colnames(aba.gene.annot), my_ontology_df6$acronym)], na.rm = T))
+aba.gene.annot.small = aba.gene.annot.small[,which(!is.na(colnames(aba.gene.annot.small)))]
+
+annot.sum.vect.small = my_ontology_df6$parent_sum[match(colnames(aba.gene.annot.small), as.character(my_ontology_df6$parent_structure_id))]
+aba.gene.annot.small.pct = aba.gene.annot.small/annot.sum.vect.small[col(aba.gene.annot.small)]
+aba.gene.annot.small.pct[which(is.na(aba.gene.annot.small.pct))] = 0
+aba.gene.annot.small.pct = as.data.frame(aba.gene.annot.small.pct)
+colnames(aba.gene.annot.small.pct) = ontology_df$acronym[match(colnames(aba.gene.annot.small.pct), ontology_df$id)]
+
+# # No Log Transformation, Using Raw Counts Values
+mz.homology.df = data.frame(mouse = rownames(aba.gene.annot), human = toupper(rownames(aba.gene.annot)), mz = gene_info$seurat_name[match(toupper(rownames(aba.gene.annot)), gene_info$one_to_one_human)])
+Idents(all_merge) = all_merge$struct
+# mz.exp = AverageExpression(all_merge, assay = "Spatial", features = mz.ch.names)[[1]]
+# mz.aba.cor = cor(mz.exp, aba.gene.annot.pct)
+# mz.aba.cor[which(is.na(mz.aba.cor))] = 0
+# mz.aba.cor = mz.aba.cor[,which(colSums(mz.aba.cor) > 0)]
+# pheatmap::pheatmap(mz.aba.cor, border_color = NA, scale = "row", cellheight = 5, cellwidth = 5, filename = "~/Downloads/spatial_aba_first_pass.pdf")
+
+# aba.gene.annot.small.pct = aba.gene.annot / annot.sum.vect[col(aba.gene.annot)]
+# aba.gene.annot.small.pct = aba.gene.annot.small.pct[,which(colnames(aba.gene.annot.small.pct) %in% my_ontology_df$acronym)]
+
+# aba.gene.annot.small.pct.means = rowMeans(aba.gene.annot.small.pct)
+mz.homology.df$isMzHVG = mz.homology.df$mz %in% all_merge@assays$SCT@var.features
+mz.homology.df = mz.homology.df[which(mz.homology.df$isMzHVG),]
+mz.exp = AverageExpression(all_merge, assay = "SCT", features = mz.homology.df$mz)[[1]]
+mz.input = log(mz.exp+1)+0.1
+mz.input = mz.input /  rowMeans(mz.input)
+# mz.input = t(scale(t(mz.exp)))
+mz.input[which(is.infinite(mz.input))] = 0
+# aba.input = as.matrix(log(aba.gene.annot.small.pct[which(mz.ch.names.hvg),] / aba.gene.annot.small.pct.means[which(mz.ch.names.hvg)]))
+aba.input = as.matrix(aba.gene.annot.small.pct[mz.homology.df$mouse,])
+# aba.gene.annot.small.tmp = aba.gene.annot.small
+# colnames(aba.gene.annot.small.tmp) = ontology_df$acronym[match(colnames(aba.gene.annot.small.tmp), ontology_df$id)]
+# aba.input = as.matrix(aba.gene.annot.small.tmp[mz.homology.df$mouse,])
+# aba.input = log(aba.input+1)+0.1
+aba.input = aba.input /  rowMeans(aba.input)
+# aba.input = t(scale(t(aba.input)))
+aba.input[which(is.infinite(aba.input))] = 0
+mz.aba.cor = cor(mz.input, aba.input, method = "spearman")
+# mz.aba.cor[which(mz.aba.cor < 0)] = 0 # Colquitt Fig 3F: Negative correlations set to zero
+mz.aba.cor[which(is.na(mz.aba.cor))] = 0
+pheatmap::pheatmap(mz.aba.cor, color = viridis(100), border_color = NA, scale = "none", cellheight = 10, cellwidth = 10)
+which(mz.aba.cor==max(mz.aba.cor[which(rownames(mz.aba.cor) != "Dc-4")]), arr.ind = T)
+
+annot.sum.vect.big = annot.sum.vect[colnames(aba.gene.annot)]
+aba.gene.annot.big.pct = aba.gene.annot / annot.sum.vect.big[col(aba.gene.annot)]
+filtered_ontology_df = filter_mba_ontology_children(ontology_df, "CH")
+filtered_ontology_df$acronym[which(grepl("-", filtered_ontology_df$acronym))] = str_replace(filtered_ontology_df$acronym[which(grepl("-", filtered_ontology_df$acronym))], "-", ".")
+filtered_ontology_df$acronym[which(grepl("/", filtered_ontology_df$acronym))] = str_replace(filtered_ontology_df$acronym[which(grepl("/", filtered_ontology_df$acronym))], "/", ".")
+aba.gene.annot.big.pct = aba.gene.annot.big.pct[,which(colnames(aba.gene.annot.big.pct) %in% filtered_ontology_df$acronym)]
+aba.input.big = as.matrix(aba.gene.annot.big.pct[mz.homology.df$mouse,])
+# aba.input.big = log(aba.input.big+1)+0.1
+aba.input.big = aba.input.big /  rowMeans(aba.input.big)
+aba.input.big[which(is.infinite(aba.input.big))] = 0
+mz.aba.cor.big = cor(mz.input, aba.input.big, method = "spearman")
+
+this.cluster = "Dc-3"
+# high.res.annot = get_ccf_annotation()
+annot.mat = reshape2::melt(high.res.annot[270,,]) # coronal (could try 285)
+annot.mat$st_level = my_ontology_df$st_level[match(annot.mat$value, my_ontology_df$id)]
+annot.mat$my.annot.id = NA
+# annot.mat$my.annot.id[which(annot.mat$value %in% my_ontology_df6$id)] = my_ontology_df6$parent_structure_id[match(annot.mat$value[which(annot.mat$value %in% my_ontology_df6$id)], my_ontology_df6$id)]
+annot.mat$my.annot.id[which(annot.mat$value %in% ontology_df$id[match(colnames(mz.aba.cor.big), ontology_df$acronym)] )] = annot.mat$value[which(annot.mat$value %in% ontology_df$id[match(colnames(mz.aba.cor.big), ontology_df$acronym)] )]
+annot.mat$my.annot = ontology_df$acronym[match(annot.mat$my.annot.id, ontology_df$id)]
+annot.mat$cor = NA
+annot.mat$cor[which(annot.mat$st_level>0)] = 0
+# annot.mat$cor[which(annot.mat$value > 10)] = 0
+annot.mat$cor[which(!is.na(annot.mat$my.annot.id ))] = mz.aba.cor.big[this.cluster, annot.mat$my.annot[which(!is.na(annot.mat$my.annot.id ))]]
+annot.mat$cor[which(annot.mat$cor < 0)] = 0
+pdf("mz_aba_dc3_013023.pdf", width = 3, height = 2.5)
+# ggplot(annot.mat, aes(x = Var2, y = -Var1, fill = cor)) + geom_raster() + coord_fixed() + scale_fill_gradientn(colors = c("lightgrey", "#0f326cff"), na.value = "white") + theme_void() # coronal
+ggplot(annot.mat, aes(x = Var2, y = -Var1, fill = cor)) + geom_raster() + coord_fixed() + scale_fill_viridis(na.value = "white") + theme_void() # coronal
+dev.off()
+
+# Perms
+# shuffleMZExp = function(x) {
+#   Idents(all_merge) = sample(all_merge$struct)
+#   this.mz.exp = AverageExpression(all_merge, assay = "SCT", features = mz.ch.names[which(mz.ch.names.hvg)])[[1]]
+#   this.mz.exp.means = rowMeans(this.mz.exp)
+#   this.mz.input = log(this.mz.exp / this.mz.exp.means)
+#   this.mz.input[which(is.infinite(this.mz.input))] = 0
+#   return(this.mz.input)
+# }
+permAbaCorTosches = function(old.mat) {
+  new.mat.list = lapply(1:nrow(old.mat), function(x) sample(old.mat[x,]))
+  new.mat = do.call('rbind', new.mat.list)
+  perm.cor = cor(new.mat, aba.input, method = "spearman")
+  perm.cor.melt = reshape2::melt(perm.cor)
+  return(perm.cor.melt[,3])
+}
+spearmanCorAba = function(x) { return(cor.test(mz.input[,real.cor.melt$MZ[x]], aba.input[,real.cor.melt$ABA[x]], method = "spearman", alternative = "greater")$p.value) }
+
+n.perms = 1000
+perm.raw =  do.call('cbind', mclapply(1:n.perms, function(x) permAbaCorTosches(mz.input), mc.cores = 5))
+real.cor = mz.aba.cor
+mz.aba.cor.0 = mz.aba.cor
+mz.aba.cor.0[which(mz.aba.cor.0 < 0)] = 0
+real.cor.melt = reshape2::melt(real.cor)
+colnames(real.cor.melt) = c("MZ", "ABA", "cor")
+real.cor.melt$MZ = as.character(as.vector(real.cor.melt$MZ))
+real.cor.melt$ABA = as.character(as.vector(real.cor.melt$ABA))
+real.cor.melt$num.perm.greater = rowSums(perm.raw > real.cor.melt$cor)
+real.cor.melt$p.perm = real.cor.melt$num.perm.greater / n.perms
+real.cor.melt$bon.perm = p.adjust(real.cor.melt$p.perm, method = "bonferroni")
+real.cor.melt$p.cor = unlist(mclapply(1:nrow(real.cor.melt), function(x) spearmanCorAba(x), mc.cores = 5))
+real.cor.melt$bon.cor = p.adjust(real.cor.melt$p.cor, method = "bonferroni")
+real.cor.melt$isSig = real.cor.melt$bon.perm < 0.05 & real.cor.melt$bon.cor < 0.05
+# real.cor.melt$maxed = real.cor.melt$cor
+# real.cor.melt$maxed[which(real.cor.melt$maxed >  0.2)] =  0.2
+# real.cor.melt$maxed[which(real.cor.melt$maxed < -0.2)] = -0.2
+real.cor.melt$maxed = reshape2::melt(mz.aba.cor.0)[,3]
+real.cor.melt$maxed[which(real.cor.melt$maxed > 0.2)] = 0.2
+
+mz.order.hclust  = hclust(dist(real.cor), method = "complete")
+mz.order = mz.order.hclust$labels[mz.order.hclust$order]
+aba.order.hclust  = hclust(dist(t(real.cor)), method = "complete")
+aba.order = aba.order.hclust$labels[aba.order.hclust$order]
+real.cor.melt$MZ = factor(real.cor.melt$MZ, levels=rev(mz.order))
+real.cor.melt$ABA = factor(real.cor.melt$ABA, levels=aba.order)
+pdf("mz_aba_w_sig_013023.pdf", width = 6.5, height = 4)
+print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_viridis() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
+# print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), limits = c(-0.2, 0.2)) + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
+dev.off()
+
+# ggplot(reshape2::melt(as.matrix(aba.gene.annot[1:100])),        aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis()
+# ggplot(reshape2::melt(as.matrix(scale(aba.gene.annot[1:100]))), aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis()
+
+# ctx.aba = get_aba_ish_structure_data(mba_structure_id("CTX"))
+ctx.aba = get_aba_ish_data(mba_structure_id("CTX"))
+cnu.aba = get_aba_ish_structure_data(mba_structure_id("CNU"))
+
+# ABA v2 =======================================================================
+mz.homology.df = read.csv("~/research/st/results/aba_ish_mz_homology.csv")
+# mz.homology.df = read.csv("~/research/st/results/aba_ish_bb_homology.csv")
+# fetch_start_time <- proc.time()[[3]]
+# fetchGeneFunc = function(this.gene) {
+#   cat(".")
+#   this.gene.ids <- get_gene_aba_ish_ids(this.gene, plane = "coronal")
+#   return(get_aba_ish_structure_data(this.gene.ids[1]))
+# }
+# all.gene.ish = mclapply(mz.homology.df$mouse, function(x) fetchGeneFunc(x), mc.cores = 10)
+# names(all.gene.ish) = mz.homology.df$mouse
+# fetch_stop_time <- proc.time()[[3]]
+# message(paste0("Fetching Genes Took: ", format(round(fetch_stop_time-fetch_start_time, 2), nsmall=2), " seconds"))
+# saveRDS(all.gene.ish, "~/research/st/data/aba_ish_data3.rds")
+
+all.gene.ish = readRDS("~/research/st/data/aba_ish_data3.rds")
+# all.gene.ish = readRDS("~/research/st/data/aba_ish_data_bb.rds")
+names(all.gene.ish) = mz.homology.df$mouse
+ga <- get_ccf_grid_annotation()
+ontology <- get_mba_ontology()
+ontology_df <- flatten_mba_ontology(ontology)
+filtered_ontology_df = filter_mba_ontology_children(ontology_df, "CH")
+filtered_ontology_df$n_taxon = stringr::str_count(filtered_ontology_df$taxons, ";")
+filtered_ontology_df$my_parent_id = filtered_ontology_df$id
+filtered_ontology_df$my_parent_id[which(filtered_ontology_df$n_taxon > 5)] = unlist(lapply(which(filtered_ontology_df$n_taxon > 5), function(x) str_split(filtered_ontology_df$taxons[x], pattern = ';')[[1]][5] ))
+filtered_ontology_df$my_parent_atlas_id = ontology_df$atlas_id[match(filtered_ontology_df$my_parent_id, as.character(ontology_df$id))]
+# filtered_ontology_df$my_parent_atlas_id[which(filtered_ontology_df$n_children != 0)] = NA
+
+oa.mat = matrix(0L, nrow = length(all.gene.ish), ncol = length(sort(unique(ontology_df$atlas_id))), dimnames = list(names(all.gene.ish), sort(unique(ontology_df$atlas_id))))
+# for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$sum_pixel_intensity / all.gene.ish[[i]]$sum_pixels }
+for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$voxel_energy_mean }
+# for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$sum_pixel_intensity }
+oa.mat.acr = oa.mat
+colnames(oa.mat.acr) = ontology_df$acronym[match(colnames(oa.mat) , ontology_df$atlas_id)]
+oa.mat.acr = oa.mat.acr[,which(colSums(oa.mat.acr) != 0)]
+
+oa.mat.small = t(rowsum(t(oa.mat), group = filtered_ontology_df$my_parent_atlas_id[match(colnames(oa.mat), as.character(filtered_ontology_df$atlas_id))], na.rm = T))
+oa.mat.small = oa.mat.small[,which(colSums(oa.mat.small) != 0 & !is.na(colnames(oa.mat.small)) )]
+oa.mat.small.acr = oa.mat.small
+colnames(oa.mat.small.acr) = ontology_df$acronym[match(colnames(oa.mat.small.acr), as.character(ontology_df$atlas_id))]
+
+mz.exp = AverageExpression(all_merge, assay = "SCT", features = mz.homology.df$mz)[[1]]
+# mz.exp = AverageExpression(bb, assay = "RNA", features = mz.homology.df$mz)[[1]]
+mz.input = log(mz.exp+1)+0.1
+mz.input = mz.input /  rowMeans(mz.input)
+mz.input[which(is.infinite(mz.input) | is.na(mz.input))] = 0
+# aba.input = oa.mat.acr
+aba.input = oa.mat.small.acr
+aba.input = log(aba.input+1)+0.1
+aba.input = aba.input /  rowMeans(aba.input)
+aba.input[which(is.infinite(aba.input) | is.na(aba.input))] = 0
+mz.aba.cor = cor(mz.input, aba.input, method = "spearman")
+# mz.aba.cor[which(mz.aba.cor < 0)] = 0 # Colquitt Fig 3F: Negative correlations set to zero
+mz.aba.cor[which(is.na(mz.aba.cor))] = 0
+pheatmap::pheatmap(mz.aba.cor, color = viridis(100), border_color = NA, scale = "none", cellheight = 10, cellwidth = 10)
+mz.aba.cor.vis = reshape2::melt(mz.aba.cor)
+mz.aba.cor.vis$scale.mz = reshape2::melt(t(scale(t(mz.aba.cor))))[,3]
+ggplot(mz.aba.cor.vis, aes(x = value, y = scale.mz, color = value)) + geom_point(alpha = 0.5) + scale_color_viridis()
+
+permAbaCorTosches = function(old.mat) {
+  new.mat.list = lapply(1:nrow(old.mat), function(x) sample(old.mat[x,]))
+  new.mat = do.call('rbind', new.mat.list)
+  perm.cor = cor(new.mat, aba.input, method = "spearman")
+  perm.cor.melt = reshape2::melt(perm.cor)
+  return(perm.cor.melt[,3])
+}
+spearmanCorAba = function(x) { return(cor.test(mz.input[,real.cor.melt$MZ[x]], aba.input[,real.cor.melt$ABA[x]], method = "spearman", alternative = "greater")$p.value) }
+
+n.perms = 1000
+perm.raw =  do.call('cbind', mclapply(1:n.perms, function(x) permAbaCorTosches(mz.input), mc.cores = 5))
+real.cor = mz.aba.cor
+mz.aba.cor.0 = mz.aba.cor
+mz.aba.cor.0[which(mz.aba.cor.0 < 0)] = 0
+real.cor.melt = reshape2::melt(real.cor)
+colnames(real.cor.melt) = c("MZ", "ABA", "cor")
+real.cor.melt$MZ = as.character(as.vector(real.cor.melt$MZ))
+real.cor.melt$ABA = as.character(as.vector(real.cor.melt$ABA))
+real.cor.melt$num.perm.greater = rowSums(perm.raw > real.cor.melt$cor)
+real.cor.melt$p.perm = real.cor.melt$num.perm.greater / n.perms
+real.cor.melt$bon.perm = p.adjust(real.cor.melt$p.perm, method = "bonferroni")
+real.cor.melt$p.cor = unlist(mclapply(1:nrow(real.cor.melt), function(x) spearmanCorAba(x), mc.cores = 5))
+real.cor.melt$bon.cor = p.adjust(real.cor.melt$p.cor, method = "bonferroni")
+real.cor.melt$isSig = real.cor.melt$bon.perm < 0.05 & real.cor.melt$bon.cor < 0.05
+# real.cor.melt$maxed = real.cor.melt$cor
+# real.cor.melt$maxed[which(real.cor.melt$maxed >  0.2)] =  0.2
+# real.cor.melt$maxed[which(real.cor.melt$maxed < -0.2)] = -0.2
+real.cor.melt$maxed = reshape2::melt(mz.aba.cor.0)[,3]
+real.cor.melt$maxed[which(real.cor.melt$maxed > 0.2)] = 0.2
+
+mz.order.hclust  = hclust(dist(real.cor), method = "complete")
+mz.order = mz.order.hclust$labels[mz.order.hclust$order]
+aba.order.hclust  = hclust(dist(t(real.cor)), method = "complete")
+aba.order = aba.order.hclust$labels[aba.order.hclust$order]
+real.cor.melt$MZ = factor(real.cor.melt$MZ, levels=rev(mz.order))
+real.cor.melt$ABA = factor(real.cor.melt$ABA, levels=aba.order)
+pdf("mz_aba_w_sig_020623.pdf", width = 6.5, height = 4)
+print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_viridis() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
+# print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), limits = c(-0.2, 0.2)) + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
+dev.off()
+
+
+#*******************************************************************************
 # Trash Can ====================================================================
 #*******************************************************************************
+
+# Figure 2 B
+pdf(paste0( "~/research/st/results/c2b2_eomesa.pdf"), width = 2.5, height = 2.5)
+print(FeaturePlot(all_merge, "LOC101480282", order = T, cols=c("lightgrey", "#0f9783ff")) + theme_void() + NoLegend() + coord_fixed() + ggtitle(""))
+dev.off()
+pdf(paste0( "~/research/st/results/c2b2_dlx5.pdf"), width = 2.5, height = 2.5)
+print(FeaturePlot(all_merge, "dlx5", order = T, cols=c("lightgrey", "#ED256E")) + theme_void() + NoLegend() + coord_fixed() + ggtitle(""))
+dev.off()
+pdf(paste0( "~/research/st/results/c2b2_slc17a6.pdf"), width = 2.5, height = 2.5)
+print(FeaturePlot(all_merge, "slc17a6", order = T, cols=c("lightgrey", "#FDE725FF")) + theme_void() + NoLegend() + coord_fixed() + ggtitle(""))
+dev.off()
+pdf(paste0( "~/research/st/results/c2b2_gad1.pdf"), width = 2.5, height = 2.5)
+print(FeaturePlot(all_merge, "gad1", order = T, cols=c("lightgrey", "#440154FF")) + theme_void() + NoLegend() + coord_fixed() + ggtitle(""))
+dev.off()
+
+# Figure 2 C
+pdf(paste0(out_dir, "c2b2_npy_dark.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#E80975"
+print(myC2B2SFPFew(all_merge, "npy", pt.size.multiplier = 1.1, pal = colorRampPalette(c(darken(this.col, amount = 0.2), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+pdf(paste0(out_dir, "c2b2_npy_light.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#E80975"
+print(myC2B2SFPFew(all_merge, "npy", pt.size.multiplier = 1.1, pal = colorRampPalette(c(lighten(this.col, amount = 0.4), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+pdf(paste0(out_dir, "c2b2_sst_light.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#DD19E0"
+print(myC2B2SFPFew(all_merge, "LOC101485677", pt.size.multiplier = 1.1, pal = colorRampPalette(c(lighten(this.col, amount = 0.4), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+pdf(paste0(out_dir, "c2b2_th_light.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#BD4AFF"
+print(myC2B2SFPFew(all_merge, "th", pt.size.multiplier = 1.1, pal = colorRampPalette(c(lighten(this.col, amount = 0.05), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+pdf(paste0(out_dir, "c2b2_penk_light.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#653FE0"
+print(myC2B2SFPFew(all_merge, "LOC101474395", pt.size.multiplier = 1.1, pal = colorRampPalette(c(lighten(this.col, amount = 0.4), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+pdf(paste0(out_dir, "c2b2_pvalb_light.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#29A2AB"
+this.col = "#43d0e6"
+print(myC2B2SFPFew(all_merge, "LOC101487165", pt.size.multiplier = 1.1, pal = colorRampPalette(c(lighten(this.col, amount = 0.4), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+pdf(paste0(out_dir, "c2b2_unc_light.pdf"), width = 14, height = 2, onefile = F)
+this.col = "#22E38F"
+print(myC2B2SFPFew(all_merge, "ucn", pt.size.multiplier = 1.1, pal = colorRampPalette(c(lighten(this.col, amount = 0.4), this.col)), rm.zero = T, scale.alpha = T, same.col.scale = F, showLegend = F))
+dev.off()
+
+fake.stsc.meta = data.frame()
+for (i in 1:nrow(c2l_mean_melt)) {
+  this.num = c2l_mean_melt$value[i]
+  if (this.num > 0) {
+    fake.stsc.meta=rbind(fake.stsc.meta, data.frame(cell="cell1", spot = rep(c2l_mean_melt$spot[i],this.num), ct = c2l_mean_melt$variable[i] ))
+  }
+}
+fake.stsc.meta$sh = my.b2$sh[match(fake.stsc.meta$spot, colnames(my.b2))]
+pdf(paste0(out_dir, "c2b2_mini_cells.pdf"), width = 25, height = 3, onefile = F)
+print(myC2B2SFPFew( my.b2, "ct", stsc.list = list(fake.stsc.mat, fake.stsc.meta), pal = scales::hue_pal()(length(levels(all_merge$ct))), showLegend = T, pt.size.multiplier = 1.1 ))
+dev.off()
+
+neg_log_bon_thresh = 200
+avg_logFC_thresh = 3
+bri.deg = read.csv("~/research/st/results/st_c2b2_standard_cluster_markers_new_nums_011223.csv")
+bri.deg.genes = read.csv("~/Downloads/b2c2_fig1_markers_011323.csv")
+bri.deg$label[which(bri.deg$gene == "LOC101479570")] = "sox6"
+bri.deg$label[which(bri.deg$gene == "LOC101486618")] = "her4.2"
+bri.deg$label[which(bri.deg$gene == "LOC101464413")] = "kif5c"
+bri.deg$label[which(bri.deg$gene == "LOC101486743")] = "homer3"
+bri.deg$label[which(bri.deg$gene == "LOC101465831")] = "sema3f"
+bri.deg.genes$seurat_name[which(bri.deg.genes$seurat_name == "crhbo")] = "crhbp"
+bri.deg$cluster_gene = paste0(bri.deg$cluster, "_", bri.deg$gene)
+bri.deg.genes$cluster_gene = paste0(bri.deg.genes$cluster, "_", bri.deg.genes$seurat_name)
+bri.deg$neg_log_bon = -log10(bri.deg$p_val_adj)
+bri.deg$neg_log_bon[which(bri.deg$neg_log_bon > neg_log_bon_thresh)] = neg_log_bon_thresh
+bri.deg$avg_logFC[which(bri.deg$avg_logFC > avg_logFC_thresh)] = avg_logFC_thresh
+bri.deg = bri.deg[which(bri.deg$cluster_gene %in% bri.deg.genes$cluster_gene),]
+pdf("~/research/st/results/st_c2b2_dotplotlike.pdf", width = 15, height = 3)
+# ggplot(top.deg, aes(x = gene, y = neg_log_bon, color = avg_logFC, size = pct.1)) + geom_point() + scale_color_viridis(limits = c(0, 3)) + scale_size_continuous(limits = c(0, 1), range = c(0.5, 4)) + facet_wrap(~ cluster, scales = "free_x",  ncol = 33) + theme_light() + theme(panel.spacing = unit(0, "lines"), panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.y = element_blank(), panel.grid.major.x = element_blank(), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + xlab("") + ylab("")
+ggplot(bri.deg, aes(x = label, y = neg_log_bon, color = avg_logFC, size = pct.1)) + geom_point() + scale_color_viridis(limits = c(0, 3)) + scale_size_continuous(limits = c(0, 1), range = c(0.5, 4)) + facet_wrap(~ cluster, scales = "free_x",  ncol = 33) + theme_light() + theme(strip.text = element_text(size=15), panel.spacing = unit(0, "lines"), panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1)) + xlab("") + ylab("")
+dev.off()
+
+feature.df = my.b2@meta.data[, c("sample", "nFeature_Spatial"),]
+pdf("~/research/st/results/c2b2_nFeature_vln.pdf", width = 5.75, height = 2)
+ggplot(feature.df, aes(x = sample, y = nFeature_Spatial, color = sample, fill = sample)) + geom_violin(alpha = 0.1) + stat_summary(fun = "mean", fun.min = min, fun.max = max, geom="pointrange", stroke = 0.1, size = 0.7) + theme_classic() + scale_y_continuous(expand = c(0,0)) + NoLegend() + ylab("")
+dev.off()
+count.df = my.b2@meta.data[, c("sample", "nCount_Spatial"),]
+pdf("~/research/st/results/c2b2_nCount_vln.pdf", width = 5.75, height = 2)
+ggplot(count.df, aes(x = sample, y = nCount_Spatial, color = sample, fill = sample)) + geom_violin(alpha = 0.1) + stat_summary(fun = "mean", fun.min = min, fun.max = max, geom="pointrange", stroke = 0.1, size = 0.7) + theme_classic() + scale_y_continuous(expand = c(0,0)) + NoLegend() + ylab("")
+dev.off()
+
 bri_tmp = read.csv("~/Downloads/295_A1_E2.csv")
 all_merge_hi$bri_annot = "other"
 all_merge_hi$bri_annot[paste0("c2a_", bri_tmp$Barcode)] = bri_tmp$Structure
@@ -1763,6 +2476,21 @@ for (i in as.character(0:52)) {
   # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_pct_max/", this.name, ".svg"), width = 7, height = 7, onefile = F)
   # myMultiSFP(all_merge_hi, feature = "tmp2", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T)
   # dev.off()
+}
+
+for (i in 0:52) {
+  print(paste0("---- ", i, " ----"))
+  this.name = convert53$new[match(i, convert53$old)]
+  this.name.clean = str_replace(this.name, "/", "_")
+  all_merge$tmp = c2l_mean[colnames(all_merge),this.name]
+  
+  # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name.clean, ".svg"), width = 14, height = 4, onefile = F)
+  # myC2B2SFPAll(all_merge, feature = "tmp", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)))
+  # dev.off()
+  
+  Cairo::Cairo(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name.clean, ".png"), width = 1400, height = 400, onefile = F)
+  myC2B2SFPAll(all_merge, feature = "tmp", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)))
+  dev.off()
 }
 
 # Label Tissue Halves
@@ -2001,3 +2729,153 @@ dev.off()
 # big.img.raster.df[, c("rot.x", "rot.y")] <- as.data.frame(t(rotm %*% (t( big.img.raster.df[,1:2] ))))
 # big.img.raster.df$m.x = 0
 # big.img.raster.df$m.y = 0
+
+# ABA **************************************************************************
+ish_slice_heatmap <- function(mat,
+                              anno = NULL,
+                              slice_num,
+                              plane = "coronal",
+                              normalize = "slice",
+                              colorset = c("darkblue","gray90","red")) {
+  
+  library(rbokeh)
+  library(dplyr)
+  library(reshape2)
+  library(scrattch.vis)
+  
+  slice_mat <- slice_ccf_arr(mat, slice_num, plane)
+  
+  if(normalize == "slice") {
+    max_val <- max(slice_mat)
+  } else if(normalize == "all") {
+    max_val <- max(mat)
+  }
+  
+  slice_flat <- reshape2::melt(slice_mat)
+  names(slice_flat) <- c("y","x","value")
+  
+  slice_flat$value[slice_flat$value < 0] <- 0
+  slice_flat$color <- scrattch.vis::values_to_colors(slice_flat$value,
+                                                     colorset = colorset,
+                                                     min_val = 0,
+                                                     max_val = max_val)
+  
+  if(is.null(anno)) {
+    hover_list <- list("Value" = "value")
+  } else {
+    anno_flat <- reshape2::melt(slice_ccf_arr(anno, slice_num, plane))
+    names(anno_flat) <- c("y","x","annotation")
+    slice_flat <- dplyr::left_join(slice_flat, anno_flat, by = c("x","y"))
+    hover_list <- list("Value" = "value",
+                       "Annotation" = "annotation")
+  }
+  
+  if(plane == "coronal") {
+    f <- rbokeh::figure(width = dim(slice_mat)[2]*10,
+                        height = dim(slice_mat)[1]*10) %>%
+      rbokeh::ly_crect(data = slice_flat,
+                       x = x,
+                       y = -y,
+                       fill_color = color,
+                       line_color = NA,
+                       fill_alpha = 1,
+                       hover = hover_list)
+  } else if(plane == "horizontal") {
+    f <- rbokeh::figure(width = dim(slice_mat)[1]*10,
+                        height = dim(slice_mat)[2]*10) %>%
+      rbokeh::ly_crect(data = slice_flat,
+                       x = y,
+                       y = x,
+                       fill_color = color,
+                       line_color = NA,
+                       fill_alpha = 1,
+                       hover = hover_list)
+  } else if(plane == "saggital") {
+    f <- rbokeh::figure(width = dim(slice_mat)[1]*10,
+                        height = dim(slice_mat)[2]*10) %>%
+      rbokeh::ly_crect(data = slice_flat,
+                       x = y,
+                       y = -x,
+                       fill_color = color,
+                       line_color = NA,
+                       fill_alpha = 1,
+                       hover = hover_list)
+  }
+  
+  return(f)
+}
+Slc17a7_ids <- get_gene_aba_ish_ids("Slc17a7", plane = "coronal")
+Pvalb_ids <- get_gene_aba_ish_ids("Pvalb", plane = "coronal")
+Sst_ids <- get_gene_aba_ish_ids("Sst", plane = "coronal")
+
+# all_ids <- c(Slc17a7_ids[1], Pvalb_ids[1], Sst_ids[1])
+all_ids <- c(Slc17a7_ids[2], Pvalb_ids[2])
+all_data <- map(all_ids, get_aba_ish_data)
+
+ish_slice_heatmap(all_data[[1]],
+                  anno = oa,
+                  plane = "coronal",
+                  colorset = viridis(10),
+                  slice = 42)
+
+this.mat = reshape2::melt(all_data[[2]][,,42]) # saggital
+ggplot(this.mat, aes(x = Var1, y = -Var2, fill = value)) + geom_raster() + scale_fill_viridis() + coord_fixed() # saggital
+this.mat = reshape2::melt(all_data[[2]][42,,]) # coronal
+ggplot(this.mat, aes(x = Var2, y = -Var1, fill = value)) + geom_raster() + scale_fill_viridis() + coord_fixed() # coronal
+
+st.gene.num.spots = rowSums(all_merge@assays$Spatial@counts > 0)
+st.gene.num.spots = names(st.gene.num.spots)[which(st.gene.num.spots > 0.01*ncol(all_merge))]
+ch.names = stringr::str_to_title( unique(gene_info$human[match(st.gene.num.spots, gene_info$seurat_name)]) )
+ch.names = ch.names[which(!is.na(ch.names) & ch.names != "")]
+ch.names = sort(ch.names)
+all.gene.ish = list()
+fetch_start_time <- proc.time()[[3]]
+for (this.gene in ch.names) {
+  if (which(ch.names == this.gene) %% 100 == 0) { print(which(ch.names == this.gene) %% 100) }
+  this.gene.ids <- get_gene_aba_ish_ids(this.gene, plane = "coronal")
+  if (length(this.gene.ids) > 0) { all.gene.ish[[this.gene]] = get_aba_ish_data(this.gene.ids[1], values = "energy")  }
+}
+fetch_stop_time <- proc.time()[[3]]
+message(paste0("Fetching Genes Took: ", format(round(fetch_stop_time-fetch_start_time, 2), nsmall=2), " seconds"))
+
+# Method 1: Find Expression of DEG Cluster Markers in ABA
+cluster.annot = data.frame(matrix(0L, nrow = length(all.annot), ncol = length(unique(deg$cluster))))
+rownames(cluster.annot) = all.annot
+for (this.clust in unique(deg$cluster)) {
+  # this.clust = 2
+  deg.clust.hgnc = deg$hgnc[which(deg$cluster == this.clust & -log10(deg$p_val_adj) > 10)[1:5]]
+  deg.clust.hgnc = sort(unique( stringr::str_to_title(deg.clust.hgnc[which(deg.clust.hgnc != "" & !is.na(deg.clust.hgnc))]) ))
+  deg.clust.hgnc = deg.clust.hgnc[which(deg.clust.hgnc %in% names(all.gene.ish))]
+  mean.s = list()
+  sum.df = annot.df = data.frame(matrix(0L, nrow = length(all.annot), ncol = 58))
+  rownames(sum.df) = rownames(annot.df) = all.annot
+  colnames(sum.df) = colnames(annot.df) = paste0("slice", 1:58)
+  for (this.slice in 1:58) {
+    this.annot = as.vector(slice_ccf_arr(oa, this.slice, "coronal"))
+    this.annot = factor(this.annot, levels = all.annot)
+    annot.df[,this.slice] = as.vector(table(this.annot))*length(deg.clust.hgnc)
+    # mean.s[[this.slice]] = matrix(0, nrow = 41, ncol = 58)
+    # for (this.gene in deg.clust.hgnc) { this.gene.exp = all.gene.ish[[this.gene]][this.slice,,]; this.gene.exp[which(this.gene.exp < 0)] = 0; mean.s[[this.slice]] = mean.s[[this.slice]] + this.gene.exp }
+    # mean.s[[this.slice]] = mean.s[[this.slice]] / length(deg.clust.hgnc)
+    # this.mat = reshape2::melt(mean.s[[this.slice]]) # coronal
+    # print(ggplot(this.mat, aes(x = Var2, y = -Var1, fill = value)) + geom_raster() + scale_fill_viridis() + coord_fixed() + ggtitle(paste0("Slice = ", this.slice, ", Markers From Cluster ", this.clust))) # coronal
+    # Sys.sleep(1)
+    for (this.gene in deg.clust.hgnc) { 
+      this.gene.exp = all.gene.ish[[this.gene]][this.slice,,]
+      this.gene.exp = as.vector(all.gene.ish[[this.gene]][this.slice,,])
+      this.gene.exp[which(this.gene.exp < 0)] = 0
+      this.sum = tapply(this.gene.exp, this.annot, sum)
+      this.sum[which(is.na(this.sum))] = 0
+      sum.df[,this.slice]   = sum.df[,this.slice]   + this.sum
+      # annot.df[,this.slice] = annot.df[,this.slice] + as.vector(table(this.annot))
+    }
+  }
+  annot.mean = data.frame(value = rowSums(sum.df) / rowSums(annot.df), annot = rownames(annot.df))
+  cluster.annot[,(this.clust+1)] = annot.mean$value
+  annot.mean = annot.mean[order(annot.mean$value, decreasing = T),]
+  annot.mean = annot.mean[1:20,]
+  annot.mean$annot = factor(annot.mean$annot, levels = unique(tmp$annot))
+  print(ggplot(annot.mean, aes(x = annot, y = value)) + geom_bar(stat = "identity"))
+}
+ggplot(reshape2::melt(as.matrix(cluster.annot)),        aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis()
+ggplot(reshape2::melt(as.matrix(scale(cluster.annot))), aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis()
