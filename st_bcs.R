@@ -235,7 +235,7 @@ if (max_overide != 0) {
   maxed.num = max_overide
 } else {
   maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.999)), .05)
-  maxed.num = ifelse(max.num > max(mz.mouse.cor.maxed.out.melt$cor), max.num - 0.5, maxed.num)
+  maxed.num = ifelse(maxed.num > max(mz.mouse.cor.maxed.out.melt$cor), max.num - 0.5, maxed.num)
 }
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor >  maxed.num)] =  maxed.num
