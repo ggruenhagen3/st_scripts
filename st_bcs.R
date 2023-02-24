@@ -13,8 +13,8 @@ message(paste0("Running correlation comparison using the following arguments: mo
 
 # Load Libraries
 message("Loading Libraries")
-source("~/scratch/st/st_scripts/st_f.R")
-source("~/scratch/bcs/bcs_scripts/bcs_f.R")
+suppressMessages(source("~/scratch/st/st_scripts/st_f.R"))
+suppressMessages(source("~/scratch/bcs/bcs_scripts/bcs_f.R"))
 
 # Mouse Object
 message("Loading mouse object")
@@ -108,7 +108,7 @@ if (isSub1) {
 }
 
 # Cichlid Object and DEG
-message("Loading Cichlid Data")
+message("Loading cichlid data")
 isBB = T
 gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
 convert15 = read.csv("~/scratch/st/data/convert15.csv")
@@ -161,7 +161,7 @@ mz.deg$one_to_one_human = gene_info$one_to_one_human[match(mz.deg$gene, gene_inf
 
 # Find Correlations ============================================================
 # Find Common Gene Set
-message("Finding Correlations")
+message("Finding correlations")
 common.gene.set = sort(unique(toupper(mouse.deg$gene)))
 common.gene.set = common.gene.set[which(common.gene.set %in% mz.deg$one_to_one_human)]
 mz.common.gene.set = mz.deg$gene[match(common.gene.set, mz.deg$one_to_one_human)]
@@ -211,7 +211,7 @@ mz.mouse.cor.melt$p.perm = (mz.mouse.cor.melt$num_perm_greater) / n.perms
 mz.mouse.cor.melt$bon.perm = p.adjust(mz.mouse.cor.melt$p.perm, method = "bonferroni")
 
 # Spearman Correlation Test ====================================================
-message("Performing Spearman Correlation Test")
+message("Performing spearman correlation test")
 mz.mouse.cor.p = matrix(NA, nrow = nrow(mz.mouse.cor), ncol = ncol(mz.mouse.cor), dimnames = list(rownames(mz.mouse.cor), colnames(mz.mouse.cor)))
 for (mz.clust in colnames(mz.avg.exp.norm)) {
   for (mouse.clust in colnames(mouse.avg.exp.norm)) {
@@ -248,8 +248,8 @@ nn_str      = ifelse(isNN, "nn_", "")
 sub1_str      = ifelse(isSub1, "sub1_", "")
 out_name = paste0("~/scratch/bcs/results/", cichlid_str, mouse.dataset, "_cluster_", glut_str, gaba_str, nn_str, sub1_str, "cor")
 if (out_name_overide != "") { out_name = out_name_overide }
-ggsave(paste0(out_name, ".pdf"), width = nrow(mz.mouse.cor)/8, height = ncol(mz.mouse.cor)/8)
+ggsave(paste0(out_name, ".pdf"), width = nrow(mz.mouse.cor)/5, height = ncol(mz.mouse.cor)/8)
 write.csv(mz.mouse.cor.maxed.out.melt, paste0(out_name, ".csv"))
-# message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
+message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 # message(paste0("rclone copy ", paste0(out_name, ".csv"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 message("Done")
