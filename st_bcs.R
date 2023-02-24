@@ -66,7 +66,7 @@ if (isGlut) {
                             "zeisel"   = colnames(mouse)[which( startsWith(mouse$ClusterName, "TEGLU") & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) > 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) == 0 )],
                             "zei_yu"   = colnames(mouse)[which( (grepl("TEGLU", mouse$my.specific) | grepl("ExN", mouse$my.specific)) & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) > 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) == 0 )])
   mouse.deg.path.glut = list()
-  mouse.deg.path.glut[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_cluster_region_subcluster_glut_020923.csv")
+  mouse.deg.path.glut[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_glut_022423.csv")
   mouse.deg.path.glut[["tasic"]]    = read.csv("~/scratch/bcs/results/tasic_subclass_glut_020823.csv")
   mouse.deg.path.glut[["tran"]]    = read.csv("~/scratch/bcs/results/tran_broad_glut_021623.csv")
   mouse.deg.path.glut[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_glut_020823.csv")
@@ -83,7 +83,7 @@ if (isGABA) {
                             "zeisel"   = colnames(mouse)[which( startsWith(mouse$ClusterName, "TEINH") | startsWith(mouse$ClusterName, "MSN") | startsWith(mouse$ClusterName, "OBINH") & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),])==0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),])>0 )],
                             "zei_yu"   = colnames(mouse)[which( (startsWith(mouse$my.specific, "TEINH") | startsWith(mouse$my.specific, "MSN") | startsWith(mouse$my.specific, "OBINH") | grepl("InN", mouse$my.specific)) & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) > 0 )])
   mouse.deg.path.gaba = list()
-  mouse.deg.path.gaba[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_cluster_region_subcluster_gaba_020923.csv")
+  mouse.deg.path.gaba[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_gaba_022423.csv")
   mouse.deg.path.gaba[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_gaba_021623.csv")
   mouse.deg.path.gaba[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_gaba_020923.csv")
   mouse.deg.path.gaba[["zei_yu"]]   = read.csv("~/scratch/bcs/results/zei_yu_specific_gaba_022023.csv")
@@ -98,7 +98,7 @@ if (isNN) {
                           "tran"     = colnames(mouse)[which( !grepl("Excit", mouse$broad) & !grepl("Inhib", mouse$broad) )],
                           "zeisel"   = colnames(mouse)[which( mouse$ClusterName %in% c("SZNBL", "OEC", "RGDG", "RGSZ", "ACOB", "ACTE1", "ACTE2", "DGNBL1", "DGNBL2", "OBNBL1", "OBNBL2", "OBNBL3", "OBNBL4", "OBNBL5") )])
   mouse.deg.path.nn = list()
-  mouse.deg.path.nn[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_region_subcluster_nn_021623.csv")
+  mouse.deg.path.nn[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_nn_022423.csv")
   mouse.deg.path.nn[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_nn_021623.csv")
   mouse.deg.path.nn[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_nn_021623.csv")
   
