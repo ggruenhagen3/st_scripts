@@ -234,8 +234,7 @@ mz.mouse.cor.maxed.out.melt = mz.mouse.cor.maxed.out.melt[,c("mz.cluster", "mous
 if (max_overide == 0) {
   maxed.num = max_overide
 } else {
-  maxed.num = quantile(mz.mouse.cor.maxed.out.melt$cor, 0.95)
-  maxed.num = plyr::round_any(maxed.num, .05) 
+  maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.95)), .05)
 }
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor >  maxed.num)] =  maxed.num
