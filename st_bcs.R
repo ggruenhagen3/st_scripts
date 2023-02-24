@@ -7,7 +7,7 @@ isGABA = as.logical(args[3])
 isNN   = as.logical(args[4])
 isSub1 = as.logical(args[5])
 isBB   = as.logical(args[6])
-message(paste0("Running correlation comparison using the following arguments: mouse.dataset= ", mouse.dataset, ", isGlut=", isGlut, ", isGABA=", isGABA, ", isNN=", isNN, ", isSub1=", isSub1))
+message(paste0("Running correlation comparison using the following arguments: mouse.dataset= ", mouse.dataset, ", isGlut=", isGlut, ", isGABA=", isGABA, ", isNN=", isNN, ", isSub1=", isSub1, ", isBB=", isBB))
 
 out_name_overide = ""
 max_overide = 0
@@ -40,7 +40,7 @@ message("Setting mouse identity")
 mouse.ident = list()
 mouse.ident = switch(mouse.dataset,
                      "oritz" = mouse$ABA_parent,
-                     "ortzb" = mouse$b_parent,
+                     "oritzb" = mouse$b_parent,
                      "saunders" = paste0(mouse$region, "_", mouse$subcluster),
                      "tasic" = mouse$subclass,
                      "tran" = Idents(mouse),
