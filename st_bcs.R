@@ -234,7 +234,7 @@ mz.mouse.cor.maxed.out.melt = mz.mouse.cor.maxed.out.melt[,c("mz.cluster", "mous
 if (max_overide != 0) {
   maxed.num = max_overide
 } else {
-  maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.999)), .05)
+  maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.99)), .05, f=ceiling)
   maxed.num = ifelse(maxed.num > max(mz.mouse.cor.maxed.out.melt$cor), max.num - 0.5, maxed.num)
 }
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
@@ -249,7 +249,7 @@ mz.order  = hclust(dist(mz.mouse.cor), method = "complete")
 mz.mouse.cor.maxed.out.melt$mz.cluster = factor(mz.mouse.cor.maxed.out.melt$mz.cluster, levels = mz.order$labels[mz.order$order])
 mouse.order = hclust(dist(t(mz.mouse.cor)), method = "complete")
 mz.mouse.cor.maxed.out.melt$mouse.cluster = factor(mz.mouse.cor.maxed.out.melt$mouse.cluster, levels = mouse.order$labels[mouse.order$order])
-ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 1.2, color = "white") + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + xlab("") + ylab("") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 1.2, color = "gray80") + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + xlab("") + ylab("") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 # ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mz.cluster, y = mouse.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 0.8) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + xlab("") + ylab("") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 cichlid_str = ifelse(isBB, "bb_", "mz_")
 glut_str    = ifelse(isGlut, "glut_", "")
