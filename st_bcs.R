@@ -256,5 +256,6 @@ if (out_name_overide != "") { out_name = out_name_overide }
 ggsave(paste0(out_name, ".pdf"), width = nrow(mz.mouse.cor)/5, height = ncol(mz.mouse.cor)/8)
 write.csv(mz.mouse.cor.maxed.out.melt, paste0(out_name, ".csv"))
 message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
+system(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 # message(paste0("rclone copy ", paste0(out_name, ".csv"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 message("Done")
