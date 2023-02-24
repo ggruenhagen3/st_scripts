@@ -231,7 +231,12 @@ mz.mouse.cor.maxed.out.melt = reshape2::melt(mz.mouse.cor)
 colnames(mz.mouse.cor.maxed.out.melt) = c("mz.cluster", "mouse.cluster", "cor")
 mz.mouse.cor.maxed.out.melt[, c("mouse.region", "mouse.celltype")] = reshape2::colsplit(mz.mouse.cor.maxed.out.melt$mouse.cluster, "_", c('1', '2'))
 mz.mouse.cor.maxed.out.melt = mz.mouse.cor.maxed.out.melt[,c("mz.cluster", "mouse.cluster", "mouse.region", "mouse.celltype", "cor")]
-if (max_overide != 0) { maxed.num = quantile(mz.mouse.cor.maxed.out.melt$cor, 0.95) }
+if (max_overide == 0) {
+  maxed.num = max_overide
+} else {
+  maxed.num = quantile(mz.mouse.cor.maxed.out.melt$cor, 0.95)
+  maxed.num = plyr::round_any(maxed.num, .05) 
+}
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor >  maxed.num)] =  maxed.num
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor < -maxed.num)] = -maxed.num
