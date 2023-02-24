@@ -234,7 +234,7 @@ mz.mouse.cor.maxed.out.melt = mz.mouse.cor.maxed.out.melt[,c("mz.cluster", "mous
 if (max_overide != 0) {
   maxed.num = max_overide
 } else {
-  maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.95)), .05)
+  maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.99)), .05)
 }
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor >  maxed.num)] =  maxed.num
@@ -258,7 +258,7 @@ sub1_str      = ifelse(isSub1, "sub1_", "")
 out_name = paste0("~/scratch/bcs/results/", cichlid_str, mouse.dataset, "_cluster_", glut_str, gaba_str, nn_str, sub1_str, "cor")
 if (out_name_overide != "") { out_name = out_name_overide }
 col.width = 2
-ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/4) + col.width, height = nrow(mz.mouse.cor)/4)
+ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/3) + col.width, height = nrow(mz.mouse.cor)/3)
 write.csv(mz.mouse.cor.maxed.out.melt, paste0(out_name, ".csv"))
 message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 system(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
