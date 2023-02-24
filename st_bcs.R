@@ -12,10 +12,12 @@ message(paste0("Running correlation comparison using the following arguments: mo
 # mouse.dataset = "saunders"; isGlut = T; isGABA = F; isNN = F; isSub1 = F
 
 # Load Libraries
+message("Loading Libraries")
 source("~/scratch/st/st_scripts/st_f.R")
 source("~/scratch/bcs/bcs_scripts/bcs_f.R")
 
 # Mouse Object
+message("Loading mouse object")
 rds.path = list()
 rds.path[["oritz"]]    = "~/scratch/bcs/data/mst_norm.rds"
 rds.path[["saunders"]] = "~/scratch/bcs/data/mouse_w_pc_down_norm.rds"
@@ -27,18 +29,19 @@ mouse.path = rds.path[[mouse.dataset]]
 mouse = readRDS(mouse.path)
 
 # Set Identity of Mouse Object
+message("Setting mouse identity")
 mouse.ident = list()
-# mouse.ident[["oritz"]] = mouse$cluster_name
-mouse.ident[["oritz"]] = mouse$ABA_parent
-mouse.ident[["saunders"]] = paste0(mouse$region, "_", mouse$subcluster)
-mouse.ident[["tasic"]] = mouse$subclass
-mouse.ident[["tran"]] = Idents(mouse)
-mouse.ident[["zeisel"]] = mouse$ClusterName
-# mouse.ident[["zei_yu"]] = mouse$my.broad
-mouse.ident[["zei_yu"]] = mouse$my.specific
-Idents(mouse) = mouse.ident[[mouse.dataset]]
+mouse.ident = switch(mouse.dataset,
+                     "oritz" = mouse$ABA_parent,
+                     "saunders" = paste0(mouse$region, "_", mouse$subcluster),
+                     "tasic" = mouse$subclass,
+                     "tran" = Idents(mouse),
+                     "zeisel" = mouse$ClusterName,
+                     "zei_yu" = mouse$my.specific)
+Idents(mouse) = mouse.ident
 
 # Mouse DEG
+message("Loading mouse DEGs")
 mouse.deg.path = list()
 # mouse.deg.path[["oritz"]]    = read.csv("~/scratch/bcs/results/mst_cluster_markers_020723.csv")
 mouse.deg.path[["oritz"]]    = read.csv("~/scratch/bcs/results/mst_aba_parent_markers_020823.csv")
@@ -105,6 +108,7 @@ if (isSub1) {
 }
 
 # Cichlid Object and DEG
+message("Loading Cichlid Data")
 isBB = T
 gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
 convert15 = read.csv("~/scratch/st/data/convert15.csv")
@@ -157,6 +161,7 @@ mz.deg$one_to_one_human = gene_info$one_to_one_human[match(mz.deg$gene, gene_inf
 
 # Find Correlations ============================================================
 # Find Common Gene Set
+message("Finding Correlations")
 common.gene.set = sort(unique(toupper(mouse.deg$gene)))
 common.gene.set = common.gene.set[which(common.gene.set %in% mz.deg$one_to_one_human)]
 mz.common.gene.set = mz.deg$gene[match(common.gene.set, mz.deg$one_to_one_human)]
@@ -193,6 +198,7 @@ permCor = function(old.mat) {
 # }
 
 # Permutations =================================================================
+message("Performing permutations")
 n.perms = 1000
 mz.mouse.cor.melt = reshape2::melt(mz.mouse.cor)
 orig.gene.labels = unname(rownames(mz.avg.exp.norm))
@@ -205,6 +211,7 @@ mz.mouse.cor.melt$p.perm = (mz.mouse.cor.melt$num_perm_greater) / n.perms
 mz.mouse.cor.melt$bon.perm = p.adjust(mz.mouse.cor.melt$p.perm, method = "bonferroni")
 
 # Spearman Correlation Test ====================================================
+message("Performing Spearman Correlation Test")
 mz.mouse.cor.p = matrix(NA, nrow = nrow(mz.mouse.cor), ncol = ncol(mz.mouse.cor), dimnames = list(rownames(mz.mouse.cor), colnames(mz.mouse.cor)))
 for (mz.clust in colnames(mz.avg.exp.norm)) {
   for (mouse.clust in colnames(mouse.avg.exp.norm)) {
@@ -214,6 +221,7 @@ for (mz.clust in colnames(mz.avg.exp.norm)) {
 mz.mouse.cor.bon = matrix(p.adjust(mz.mouse.cor.p, method = "bonferroni"), nrow = nrow(mz.mouse.cor), ncol = ncol(mz.mouse.cor), dimnames = list(rownames(mz.mouse.cor), colnames(mz.mouse.cor)))
 
 # Output: Plots and CSV ========================================================
+message("Plotting")
 mz.mouse.cor.maxed.out.melt = reshape2::melt(mz.mouse.cor)
 colnames(mz.mouse.cor.maxed.out.melt) = c("mz.cluster", "mouse.cluster", "cor")
 mz.mouse.cor.maxed.out.melt[, c("mouse.region", "mouse.celltype")] = reshape2::colsplit(mz.mouse.cor.maxed.out.melt$mouse.cluster, "_", c('1', '2'))
