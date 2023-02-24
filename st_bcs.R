@@ -258,7 +258,7 @@ sub1_str      = ifelse(isSub1, "sub1_", "")
 out_name = paste0("~/scratch/bcs/results/", cichlid_str, mouse.dataset, "_cluster_", glut_str, gaba_str, nn_str, sub1_str, "cor")
 if (out_name_overide != "") { out_name = out_name_overide }
 col.width = 2
-ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/3) + col.width, height = nrow(mz.mouse.cor)/3)
+ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/6) + col.width, height = nrow(mz.mouse.cor)/6)
 write.csv(mz.mouse.cor.maxed.out.melt, paste0(out_name, ".csv"))
 message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 system(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
