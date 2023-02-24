@@ -6,9 +6,14 @@ isGlut = as.logical(args[2])
 isGABA = as.logical(args[3])
 isNN   = as.logical(args[4])
 isSub1 = as.logical(args[5])
-out_name_overide = ""
-if (length(args) > 5) { out_name_overide = args[6] }
 message(paste0("Running correlation comparison using the following arguments: mouse.dataset= ", mouse.dataset, ", isGlut=", isGlut, ", isGABA=", isGABA, ", isNN=", isNN, ", isSub1=", isSub1))
+
+out_name_overide = ""
+max_overide = 0
+if (length(args) > 5) { 
+  if(is.na(as.numeric(args[6]))) { out_name_overide=args[6] } else { max_overide=args[6] }
+  message(paste0("Overide Argument = ", args[6]))
+}
 # mouse.dataset = "saunders"; isGlut = T; isGABA = F; isNN = F; isSub1 = F
 
 # Load Libraries
@@ -226,7 +231,7 @@ mz.mouse.cor.maxed.out.melt = reshape2::melt(mz.mouse.cor)
 colnames(mz.mouse.cor.maxed.out.melt) = c("mz.cluster", "mouse.cluster", "cor")
 mz.mouse.cor.maxed.out.melt[, c("mouse.region", "mouse.celltype")] = reshape2::colsplit(mz.mouse.cor.maxed.out.melt$mouse.cluster, "_", c('1', '2'))
 mz.mouse.cor.maxed.out.melt = mz.mouse.cor.maxed.out.melt[,c("mz.cluster", "mouse.cluster", "mouse.region", "mouse.celltype", "cor")]
-maxed.num = 0.15
+if (max_overide != 0) { maxed.num = quantile(mz.mouse.cor.maxed.out.melt$cor, 0.95) }
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor >  maxed.num)] =  maxed.num
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor < -maxed.num)] = -maxed.num
