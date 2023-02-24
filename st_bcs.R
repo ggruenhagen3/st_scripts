@@ -2,10 +2,10 @@
 # Read Input
 args = commandArgs(trailingOnly=TRUE)
 mouse.dataset = args[1]
-isGlut = args[2]
-isGABA = args[3]
-isNN   = args[4]
-isSub1 = args[5]
+isGlut = as.logical(args[2])
+isGABA = as.logical(args[3])
+isNN   = as.logical(args[4])
+isSub1 = as.logical(args[5])
 out_name_overide = ""
 if (length(args) > 5) { out_name_overide = args[6] }
 message(paste0("Running correlation comparison using the following arguments: mouse.dataset= ", mouse.dataset, ", isGlut=", isGlut, ", isGABA=", isGABA, ", isNN=", isNN, ", isSub1=", isSub1))
