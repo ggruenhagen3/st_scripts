@@ -6,13 +6,14 @@ isGlut = as.logical(args[2])
 isGABA = as.logical(args[3])
 isNN   = as.logical(args[4])
 isSub1 = as.logical(args[5])
+isBB   = as.logical(args[6])
 message(paste0("Running correlation comparison using the following arguments: mouse.dataset= ", mouse.dataset, ", isGlut=", isGlut, ", isGABA=", isGABA, ", isNN=", isNN, ", isSub1=", isSub1))
 
 out_name_overide = ""
 max_overide = 0
 if (length(args) > 5) { 
-  if(is.na(as.numeric(args[6]))) { out_name_overide=args[6] } else { max_overide=args[6] }
-  message(paste0("Overide Argument = ", args[6]))
+  if(is.na(as.numeric(args[7]))) { out_name_overide=args[7] } else { max_overide=args[7] }
+  message(paste0("Overide Argument = ", args[7]))
 }
 # mouse.dataset = "saunders"; isGlut = T; isGABA = F; isNN = F; isSub1 = F
 
@@ -25,6 +26,7 @@ suppressMessages(source("~/scratch/bcs/bcs_scripts/bcs_f.R"))
 message("Loading mouse object")
 rds.path = list()
 rds.path[["oritz"]]    = "~/scratch/bcs/data/mst_norm.rds"
+rds.path[["oritzb"]]    = "~/scratch/bcs/data/oritz_b_raw.rds"
 rds.path[["saunders"]] = "~/scratch/bcs/data/mouse_w_pc_down_norm.rds"
 rds.path[["tasic"]]    = "~/scratch/bcs/data/tasic_norm_020823.rds"
 rds.path[["tran"]]     = "~/scratch/bcs/data/tran_norm.rds"
@@ -38,6 +40,7 @@ message("Setting mouse identity")
 mouse.ident = list()
 mouse.ident = switch(mouse.dataset,
                      "oritz" = mouse$ABA_parent,
+                     "ortzb" = mouse$b_parent,
                      "saunders" = paste0(mouse$region, "_", mouse$subcluster),
                      "tasic" = mouse$subclass,
                      "tran" = Idents(mouse),
@@ -50,6 +53,7 @@ message("Loading mouse DEGs")
 mouse.deg.path = list()
 # mouse.deg.path[["oritz"]]    = read.csv("~/scratch/bcs/results/mst_cluster_markers_020723.csv")
 mouse.deg.path[["oritz"]]    = read.csv("~/scratch/bcs/results/mst_aba_parent_markers_020823.csv")
+mouse.deg.path[["oritzb"]]    = read.csv("~/scratch/bcs/results/mst_b_parent_022423.csv")
 mouse.deg.path[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_cluster_region_subcluster_020723.csv")
 mouse.deg.path[["tasic"]]    = read.csv("~/scratch/bcs/results/tasic_subclass_020823.csv")
 mouse.deg.path[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_021523.csv")
@@ -114,7 +118,6 @@ if (isSub1) {
 
 # Cichlid Object and DEG
 message("Loading cichlid data")
-isBB = T
 gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
 convert15 = read.csv("~/scratch/st/data/convert15.csv")
 convert53 = read.csv("~/scratch/st/data/convert53.csv")
