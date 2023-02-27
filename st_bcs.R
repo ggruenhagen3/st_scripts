@@ -21,6 +21,7 @@ if (length(args) > 5) {
 message("Loading Libraries")
 suppressMessages(source("~/scratch/st/st_scripts/st_f.R"))
 suppressMessages(source("~/scratch/bcs/bcs_scripts/bcs_f.R"))
+library("ggh4x")
 
 # Mouse Object
 message("Loading mouse object")
@@ -112,8 +113,10 @@ if (isNN) {
 }
 if (isSub1) {
   message("Using mouse sub1 clusters")
-  mouse = subset(mouse, cells=colnames(mouse)[which(mouse$ABA_parent %in% c( "Isocortex", "Olfactory areas", "Cortical subplate", "Retrohippocampal region", "Hippocampal region" ))])
-  mouse.deg = read.csv("~/scratch/bcs/results/mst_sub1_aba_parent_markers_022123.csv")
+  # mouse = subset(mouse, cells=colnames(mouse)[which(mouse$ABA_parent %in% c( "Isocortex", "Olfactory areas", "Cortical subplate", "Retrohippocampal region", "Hippocampal region" ))])
+  # mouse.deg = read.csv("~/scratch/bcs/results/mst_sub1_aba_parent_markers_022123.csv")
+  mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA", "BMA", "AON" ))])
+  mouse.deg = read.csv("~/scratch/bcs/results/oritzb_sub1_022723.csv")
 }
 
 # Cichlid Object and DEG
@@ -142,8 +145,9 @@ if (isBB) {
     message("Using bb sub1 glutamatergic clusters")
     mz = readRDS("~/scratch/st/data/bb_glut.rds")
     mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
-    mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut", "9.8_Glut", "8.7_Glut"))])
-    mz.deg = read.csv("~/scratch/st/data/bb53_glut_sub1_deg.csv")
+    # mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut", "9.8_Glut", "8.7_Glut"))])
+    # mz.deg = read.csv("~/scratch/st/data/bb53_glut_sub1_deg.csv")
+    mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut"))])
   }else {
     mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
     mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
@@ -252,7 +256,7 @@ mz.order  = hclust(dist(mz.mouse.cor), method = "complete")
 mz.mouse.cor.maxed.out.melt$mz.cluster = factor(mz.mouse.cor.maxed.out.melt$mz.cluster, levels = mz.order$labels[mz.order$order])
 mouse.order = hclust(dist(t(mz.mouse.cor)), method = "complete")
 mz.mouse.cor.maxed.out.melt$mouse.cluster = factor(mz.mouse.cor.maxed.out.melt$mouse.cluster, levels = mouse.order$labels[mouse.order$order])
-ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 1.2, color = "gray60") + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + xlab("") + ylab("") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 1.2, color = "gray60") + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + theme_void() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + force_panelsizes(rows = unit(nrow(mz.mouse.cor)/8, "in"), cols = unit(ncol(mz.mouse.cor)/8, "in"))
 # ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mz.cluster, y = mouse.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 0.8) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + xlab("") + ylab("") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 cichlid_str = ifelse(isBB, "bb_", "mz_")
 glut_str    = ifelse(isGlut, "glut_", "")
@@ -262,7 +266,7 @@ sub1_str      = ifelse(isSub1, "sub1_", "")
 out_name = paste0("~/scratch/bcs/results/", cichlid_str, mouse.dataset, "_cluster_", glut_str, gaba_str, nn_str, sub1_str, "cor")
 if (out_name_overide != "") { out_name = out_name_overide }
 col.width = 2
-ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/6) + col.width, height = nrow(mz.mouse.cor)/6)
+ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/5) + col.width, height = nrow(mz.mouse.cor)/5)
 write.csv(mz.mouse.cor.maxed.out.melt, paste0(out_name, ".csv"))
 message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
 system(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
