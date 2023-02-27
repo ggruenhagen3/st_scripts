@@ -148,11 +148,12 @@ if (isBB) {
     # mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut", "9.8_Glut", "8.7_Glut"))])
     # mz.deg = read.csv("~/scratch/st/data/bb53_glut_sub1_deg.csv")
     mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut"))])
+    mz.deg = read.csv("~/scratch/st/data/bb53_glut_sub1_deg_022723.csv")
   } else {
     mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
     mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
     Idents(mz) = "good_names53"
-    mz.deg = read.csv("~/scratch/brain/results/bb53_deg_w_one_012323.csv")
+    mz.deg = read.csv("~/scratch/brain/results/bb53_glut_sub1_deg_022723.csv")
   }
   mz.deg$cluster = stringr::str_replace(mz.deg$cluster, "Astro", "RG")
 } else { 
