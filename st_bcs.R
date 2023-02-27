@@ -195,19 +195,19 @@ mouse.avg.exp.norm = mouse.avg.exp.norm / rowMeans(mouse.avg.exp.norm)
 mz.mouse.cor = cor(mz.avg.exp.norm, mouse.avg.exp.norm, method = "spearman")
 
 # Permutation Function =========================================================
-permCor = function(old.mat) {
-  new.mat.list = lapply(1:nrow(old.mat), function(x) sample(old.mat[x,]))
-  new.mat = do.call('rbind', new.mat.list)
-  perm.cor = cor(new.mat, mouse.avg.exp.norm, method = "spearman")
-  perm.cor.melt = reshape2::melt(perm.cor)
-  return(perm.cor.melt[,3])
-}
 # permCor = function(old.mat) {
-#   new.mat = old.mat[sample(rownames(old.mat)),]
+#   new.mat.list = lapply(1:nrow(old.mat), function(x) sample(old.mat[x,]))
+#   new.mat = do.call('rbind', new.mat.list)
 #   perm.cor = cor(new.mat, mouse.avg.exp.norm, method = "spearman")
 #   perm.cor.melt = reshape2::melt(perm.cor)
 #   return(perm.cor.melt[,3])
 # }
+permCor = function(old.mat) {
+  new.mat = old.mat[sample(rownames(old.mat)),]
+  perm.cor = cor(new.mat, mouse.avg.exp.norm, method = "spearman")
+  perm.cor.melt = reshape2::melt(perm.cor)
+  return(perm.cor.melt[,3])
+}
 
 # Permutations =================================================================
 message("Performing permutations")
@@ -268,7 +268,7 @@ if (out_name_overide != "") { out_name = out_name_overide }
 col.width = 2
 ggsave(paste0(out_name, ".pdf"), width = (ncol(mz.mouse.cor)/5) + col.width, height = nrow(mz.mouse.cor)/5)
 write.csv(mz.mouse.cor.maxed.out.melt, paste0(out_name, ".csv"))
-message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
-system(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
-# message(paste0("rclone copy ", paste0(out_name, ".csv"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcs/", mouse.dataset))
+message(paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcsm/", mouse.dataset))
+system( paste0("rclone copy ", paste0(out_name, ".pdf"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcsm/", mouse.dataset))
+system( paste0("rclone copy ", paste0(out_name, ".csv"), " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/bcsm/", mouse.dataset))
 message("Done")
