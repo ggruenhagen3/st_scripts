@@ -148,7 +148,7 @@ if (isBB) {
     # mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut", "9.8_Glut", "8.7_Glut"))])
     # mz.deg = read.csv("~/scratch/st/data/bb53_glut_sub1_deg.csv")
     mz = subset(mz, cells=colnames(mz)[which(!mz$good_names53 %in% c("15.7_Glut", "15.6_Glut", "14_Glut", "9.5_Glut"))])
-  }else {
+  } else {
     mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
     mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
     Idents(mz) = "good_names53"
@@ -195,19 +195,20 @@ mouse.avg.exp.norm = mouse.avg.exp.norm / rowMeans(mouse.avg.exp.norm)
 mz.mouse.cor = cor(mz.avg.exp.norm, mouse.avg.exp.norm, method = "spearman")
 
 # Permutation Function =========================================================
-# permCor = function(old.mat) {
-#   new.mat.list = lapply(1:nrow(old.mat), function(x) sample(old.mat[x,]))
-#   new.mat = do.call('rbind', new.mat.list)
-#   perm.cor = cor(new.mat, mouse.avg.exp.norm, method = "spearman")
-#   perm.cor.melt = reshape2::melt(perm.cor)
-#   return(perm.cor.melt[,3])
-# }
 permCor = function(old.mat) {
-  new.mat = old.mat[sample(rownames(old.mat)),]
+  new.mat.list = lapply(1:nrow(old.mat), function(x) sample(old.mat[x,]))
+  new.mat = do.call('rbind', new.mat.list)
   perm.cor = cor(new.mat, mouse.avg.exp.norm, method = "spearman")
   perm.cor.melt = reshape2::melt(perm.cor)
   return(perm.cor.melt[,3])
 }
+# permCor = function(old.mat) {
+#   new.mat = old.mat[sample(rownames(old.mat)),]
+#   perm.cor = cor(new.mat, mouse.avg.exp.norm, method = "spearman")
+#   perm.cor.melt = reshape2::melt(perm.cor)
+#   return(perm.cor.melt[,3])
+# }
+
 
 # Permutations =================================================================
 message("Performing permutations")
@@ -251,7 +252,8 @@ mz.mouse.cor.maxed.out.melt$cor.test.p = reshape2::melt(mz.mouse.cor.p)[,3]
 mz.mouse.cor.maxed.out.melt$cor.test.bon = reshape2::melt(mz.mouse.cor.bon)[,3]
 mz.mouse.cor.maxed.out.melt$perm.test.p = mz.mouse.cor.melt$p.perm
 mz.mouse.cor.maxed.out.melt$perm.test.bon = mz.mouse.cor.melt$bon.perm
-mz.mouse.cor.maxed.out.melt$all.sig = mz.mouse.cor.maxed.out.melt$cor.test.bon < 0.05 & mz.mouse.cor.maxed.out.melt$perm.test.bon < 0.05
+# mz.mouse.cor.maxed.out.melt$all.sig = mz.mouse.cor.maxed.out.melt$cor.test.bon < 0.05 & mz.mouse.cor.maxed.out.melt$perm.test.bon < 0.05
+mz.mouse.cor.maxed.out.melt$all.sig = mz.mouse.cor.maxed.out.melt$perm.test.p < 0.05
 mz.order  = hclust(dist(mz.mouse.cor), method = "complete")
 mz.mouse.cor.maxed.out.melt$mz.cluster = factor(mz.mouse.cor.maxed.out.melt$mz.cluster, levels = mz.order$labels[mz.order$order])
 mouse.order = hclust(dist(t(mz.mouse.cor)), method = "complete")
