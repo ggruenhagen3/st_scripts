@@ -212,7 +212,7 @@ permCor = function(old.mat) {
 
 # Permutations =================================================================
 message("Performing permutations")
-n.perms = 1000
+n.perms = 10000
 mz.mouse.cor.melt = reshape2::melt(mz.mouse.cor)
 orig.gene.labels = unname(rownames(mz.avg.exp.norm))
 perm.cor.list = mclapply(1:n.perms, function(x) permCor(mz.avg.exp.norm), mc.cores = 20)
