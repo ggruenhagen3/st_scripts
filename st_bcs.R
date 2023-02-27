@@ -15,7 +15,7 @@ if (length(args) > 5) {
   if(is.na(as.numeric(args[7]))) { out_name_overide=args[7] } else { max_overide=args[7] }
   message(paste0("Overide Argument = ", args[7]))
 }
-# mouse.dataset = "saunders"; isGlut = T; isGABA = F; isNN = F; isSub1 = F
+# mouse.dataset = "zeisel"; isGlut = F; isGABA = F; isNN = F; isSub1 = F; isBB = T
 
 # Load Libraries
 message("Loading Libraries")
@@ -256,7 +256,7 @@ mz.order  = hclust(dist(mz.mouse.cor), method = "complete")
 mz.mouse.cor.maxed.out.melt$mz.cluster = factor(mz.mouse.cor.maxed.out.melt$mz.cluster, levels = mz.order$labels[mz.order$order])
 mouse.order = hclust(dist(t(mz.mouse.cor)), method = "complete")
 mz.mouse.cor.maxed.out.melt$mouse.cluster = factor(mz.mouse.cor.maxed.out.melt$mouse.cluster, levels = mouse.order$labels[mouse.order$order])
-ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 1.2, color = "gray60") + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + theme_void() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(vjust = 0.5, hjust = 1, size = 10), axis.ticks=element_line(linewidth=0.2)) + force_panelsizes(rows = unit(nrow(mz.mouse.cor)/8, "in"), cols = unit(ncol(mz.mouse.cor)/8, "in"))
+ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 1.2, color = "gray60") + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + theme_void() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(vjust = 0.5, hjust = 1, size = 10), axis.ticks=element_line(size=0.2)) + force_panelsizes(rows = unit(nrow(mz.mouse.cor)/8, "in"), cols = unit(ncol(mz.mouse.cor)/8, "in"))
 # ggplot(mz.mouse.cor.maxed.out.melt, aes(x = mz.cluster, y = mouse.cluster, fill = cor.maxed)) + geom_raster() + geom_point(data = mz.mouse.cor.maxed.out.melt[which(mz.mouse.cor.maxed.out.melt$all.sig),], size = 0.8) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + coord_fixed() + xlab("") + ylab("") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 cichlid_str = ifelse(isBB, "bb_", "mz_")
 glut_str    = ifelse(isGlut, "glut_", "")
