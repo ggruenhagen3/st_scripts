@@ -83,11 +83,13 @@ if (isGlut) {
 }
 if (isGABA) {
   mouse.gaba.cells = switch(mouse.dataset,
+                            "oritzb"   = colnames(mouse),
                             "saunders" = colnames(mouse)[which( !(grepl("Slc17a6", mouse$class_marker) | grepl("Slc17a7", mouse$class_marker)) & (grepl("Gad1", mouse$class_marker) | grepl("Gad2", mouse$class_marker)) & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) > 0 )],
                             "tran"     = colnames(mouse)[which( grepl("Inhib", mouse$broad) & colSums(mouse@assays$RNA@counts[c("SLC17A6","SLC17A7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("GAD1","GAD2"),]) > 0 )],
                             "zeisel"   = colnames(mouse)[which( startsWith(mouse$ClusterName, "TEINH") | startsWith(mouse$ClusterName, "MSN") | startsWith(mouse$ClusterName, "OBINH") & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),])==0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),])>0 )],
                             "zei_yu"   = colnames(mouse)[which( (startsWith(mouse$my.specific, "TEINH") | startsWith(mouse$my.specific, "MSN") | startsWith(mouse$my.specific, "OBINH") | grepl("InN", mouse$my.specific)) & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) > 0 )])
   mouse.deg.path.gaba = list()
+  mouse.deg.path.gaba[["oritzb"]]   = mouse.deg
   mouse.deg.path.gaba[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_gaba_022423.csv")
   mouse.deg.path.gaba[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_gaba_021623.csv")
   mouse.deg.path.gaba[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_gaba_020923.csv")
