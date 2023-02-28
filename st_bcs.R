@@ -111,14 +111,14 @@ if (isNN) {
   mouse = subset(mouse, cells=mouse.nn.cells)
   mouse.deg = mouse.deg.path.nn[[mouse.dataset]]
 }
-if (isSub1) {
-  message("Using mouse sub1 clusters")
-  # mouse = subset(mouse, cells=colnames(mouse)[which(mouse$ABA_parent %in% c( "Isocortex", "Olfactory areas", "Cortical subplate", "Retrohippocampal region", "Hippocampal region" ))])
-  # mouse.deg = read.csv("~/scratch/bcs/results/mst_sub1_aba_parent_markers_022123.csv")
-  mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA", "BMA", "AON" ))])
-  mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA" ))])
-  mouse.deg = read.csv("~/scratch/bcs/results/oritzb_sub1_022723.csv")
-}
+# if (isSub1) {
+#   message("Using mouse sub1 clusters")
+#   # mouse = subset(mouse, cells=colnames(mouse)[which(mouse$ABA_parent %in% c( "Isocortex", "Olfactory areas", "Cortical subplate", "Retrohippocampal region", "Hippocampal region" ))])
+#   # mouse.deg = read.csv("~/scratch/bcs/results/mst_sub1_aba_parent_markers_022123.csv")
+#   mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA", "BMA", "AON" ))])
+#   mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA" ))])
+#   mouse.deg = read.csv("~/scratch/bcs/results/oritzb_sub1_022723.csv")
+# }
 
 # Cichlid Object and DEG
 message("Loading cichlid data")
