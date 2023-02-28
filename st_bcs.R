@@ -116,6 +116,7 @@ if (isSub1) {
   # mouse = subset(mouse, cells=colnames(mouse)[which(mouse$ABA_parent %in% c( "Isocortex", "Olfactory areas", "Cortical subplate", "Retrohippocampal region", "Hippocampal region" ))])
   # mouse.deg = read.csv("~/scratch/bcs/results/mst_sub1_aba_parent_markers_022123.csv")
   mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA", "BMA", "AON" ))])
+  mouse = subset(mouse, cells = colnames(mouse)[which(mouse$b_parent %in% c( "Isocortex", "CA1", "DG", "CA2", "CA3", "RHP", "HIP-other", "PA", "TR", "U_CTX", "PAA", "LA", "TT", "DP", "PIR", "EP", "BLA", "CLA" ))])
   mouse.deg = read.csv("~/scratch/bcs/results/oritzb_sub1_022723.csv")
 }
 
@@ -245,6 +246,7 @@ if (max_overide != 0) {
 } else {
   maxed.num = plyr::round_any(as.numeric(quantile(mz.mouse.cor.maxed.out.melt$cor, 0.99)), .05, f=ceiling)
   maxed.num = ifelse(maxed.num > max(mz.mouse.cor.maxed.out.melt$cor), maxed.num - 0.5, maxed.num)
+  print(maxed.num)
 }
 mz.mouse.cor.maxed.out.melt$cor.maxed = mz.mouse.cor.maxed.out.melt$cor
 mz.mouse.cor.maxed.out.melt$cor.maxed[which(mz.mouse.cor.maxed.out.melt$cor >  maxed.num)] =  maxed.num
