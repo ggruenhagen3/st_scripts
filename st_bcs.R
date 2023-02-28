@@ -165,9 +165,9 @@ if (isBB) {
     message("Using cichlid spatial sub1 clusters")
     # mz = subset(mz, cells = colnames(mz)[which(mz$structure %in% c( "Dm-2r", "Dc-3", "Dd", "Dm-3", "Dc-1/2", "NT", "Dp", "Dl-g", "Dl-v" ))])
     mz = subset(mz, cells = colnames(mz)[which(mz$structure %in% c( "Dm-2r", "Dc-3", "Dd", "Dm-3", "Dc-1/2", "NT", "Dp", "Dl-g", "Dl-v", "Dc-4", "Dm-2c", "Dc-5", "Dm-1" ))])
-    mz = subset(mz, cells = colnames(mz)[which(mz$structure %in% c( "Dm-2r", "Dc-3", "Dd", "Dm-3", "Dc-1/2", "Dp", "Dl-g", "Dl-v", "Dc-4", "Dm-2c", "Dc-5", "Dm-1" ))])
-    mz.deg = read.csv("~/scratch/bcs/results/c2b2_sub3_deg_022123.csv")
-    # mz.deg = read.csv("~/scratch/bcs/results/c2b2_sub2_deg_022123.csv")
+    # mz = subset(mz, cells = colnames(mz)[which(mz$structure %in% c( "Dm-2r", "Dc-3", "Dd", "Dm-3", "Dc-1/2", "Dp", "Dl-g", "Dl-v", "Dc-4", "Dm-2c", "Dc-5", "Dm-1" ))])
+    # mz.deg = read.csv("~/scratch/bcs/results/c2b2_sub3_deg_022123.csv")
+    mz.deg = read.csv("~/scratch/bcs/results/c2b2_sub2_deg_022123.csv")
     # mz.deg = read.csv("~/scratch/bcs/results/c2b2_sub1_deg_022123.csv")
   }
 }
