@@ -5,7 +5,7 @@ args = commandArgs(trailingOnly=TRUE)
 my.dataset  = as.character(args[1])
 meta.col = as.character(args[2])
 set.seed(1)
-message(paste0("Initializng run with: ", obj.path))
+message(paste0("Initializng run with: ", my.dataset))
 
 # Load Libraries ===============================================================
 suppressMessages(library('CellChat',  quietly = T, warn.conflicts = F, verbose = F))
@@ -18,8 +18,8 @@ source("~/scratch/bcs/bcs_scripts/bcs_f.R")
 # Load Data ====================================================================
 message("Loading Object...")
 gene_info = read.table("~/scratch/brain/cellchat/gene_info.txt", sep="\t", header = T, stringsAsFactors = F) 
-combined = readRDS("/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/data/st/data/st_b2_120522.rds")
-if (datset == "st.sc") { stsc = readRDS() }
+combined = readRDS("~/scratch/st/data/st_c2b2_hi_022023.rds")
+if (my.dataset == "st.sc") { stsc = readRDS() }
 message("Done.")
 
 # Human Object =================================================================
@@ -72,7 +72,8 @@ CellChatWeights = function(x) {
 }
 
 # Getting correct labels
-if (meta.col == "celltype" && datset != "stsc") { meta.label = combined@meta.data[, meta.col] }
+if (meta.col == "ct"        && my.dataset != "stsc") { meta.label = combined@meta.data[, meta.col] }
+if (meta.col == "structure" && my.dataset != "stsc") { meta.label = combined@meta.data[, meta.col] }
 
 
 message("Running cellchat (this while take awhile)...")
@@ -94,7 +95,7 @@ message("Done.")
 message("Writing Output...")
 todays.date = stringr::str_split(Sys.Date(), pattern = "-")[[1]]
 todays.date = paste0(todays.date[2], todays.date[3], substr(todays.date[1], 3, 4))
-out.str = paste0("~/scratch/st/results/cellchat/cellchat_", my.dataset, "_weights.csv")
+out.str = paste0("~/scratch/st/results/cellchat/cellchat_", my.dataset, "_", meta.col, "_weights.csv")
 write.csv(out, out.str)
 message("Done.")
 message("All Done.")
