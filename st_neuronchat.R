@@ -53,12 +53,15 @@ CellChatWeights = function(x) {
   
   x <- createNeuronChat(data.input[,this.cells], DB='human',group.by = this.meta$label)
   x <- run_NeuronChat(x,M=100)
-  net_aggregated_x <- net_aggregation(x@net,method = 'weight')
+  net_weight <- net_aggregation(x@net,method = 'weight')
+  net_weight_vect = unlist(net_weight)
+  name_rep = rep(rownames(net_weight), ncol(net_weight))
+  names(net_weight_vect) = paste0(name_rep, ".", sort(name_rep))
   out.str = paste0("~/scratch/st/results/cellchat/neuronchat_", my.dataset, "_", meta.col, "_weights.rds")
-  saveRDS(net_aggregated_x, out.str)
+  saveRDS(x, out.str)
   print("SAVED!")
   
-  return(net_aggregated_x)
+  return(net_weight_vect)
 }
 
 # Getting correct labels
