@@ -70,7 +70,7 @@ CellChatWeights = function(x) {
 }
 
 # Getting correct labels
-if (meta.col == "ct"        && my.dataset != "stsc") { meta.label = combined@meta.data[, meta.col] }
+if (meta.col == "ct"        && my.dataset != "stsc") { meta.label = as.vector(combined@meta.data[, meta.col]) }
 if (meta.col == "structure" && my.dataset != "stsc") { meta.label = combined@meta.data[, meta.col] }
 
 rm(combined) # delete original Seurat object to save memory
