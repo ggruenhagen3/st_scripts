@@ -79,15 +79,16 @@ message("Running cellchat (this while take awhile)...")
 num.parallel.jobs = 1
 message(paste0("Using ", num.parallel.jobs, " cores."))
 sink(file="~/scratch/brain/cellchat_sink.txt")
-CellChatWeights(x)
+run_outs = CellChatWeights(x)
 sink()
 
 n.success = length(run_outs)
-if (n.success != num.perms) { message(paste0("Not all runs were successful (", (num.perms - n.success), "/", num.perms, ")")) }
-out = as.data.frame(do.call('cbind', run_outs))
-colnames(out) = paste0("run", 1:n.success)
-out[, c("clust1", "clust2")] = reshape2::colsplit(names(run_outs[[1]]), "\\.", c("1", "2"))
-out = out[, c(n.success+1, n.success+2, 1:n.success)]
+# if (n.success != num.perms) { message(paste0("Not all runs were successful (", (num.perms - n.success), "/", num.perms, ")")) }
+# out = as.data.frame(do.call('cbind', run_outs))
+# colnames(out) = paste0("run", 1:n.success)
+# out[, c("clust1", "clust2")] = reshape2::colsplit(names(run_outs[[1]]), "\\.", c("1", "2"))
+# out = out[, c(n.success+1, n.success+2, 1:n.success)]
+out = run_outs
 message("Done.")
 
 # Save Output ==================================================================
