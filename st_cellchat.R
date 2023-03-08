@@ -44,8 +44,6 @@ if (my.dataset == "st.sc") {
 rownames(data.input) = mz.df$human
 message("Done.")
 
-rm(combined) # delete original Seurat object to save memory
-
 # Cell Chat ====================================================================
 CellChatWeights = function(x) {
   this.cells = colnames(data.input)
@@ -75,6 +73,7 @@ CellChatWeights = function(x) {
 if (meta.col == "ct"        && my.dataset != "stsc") { meta.label = combined@meta.data[, meta.col] }
 if (meta.col == "structure" && my.dataset != "stsc") { meta.label = combined@meta.data[, meta.col] }
 
+rm(combined) # delete original Seurat object to save memory
 
 message("Running cellchat (this while take awhile)...")
 num.parallel.jobs = 1
