@@ -51,7 +51,7 @@ CellChatWeights = function(x) {
   this.cells = colnames(data.input)
   this.meta = data.frame(label = meta.label, row.names = this.cells)
   
-  x <- createNeuronChat(normalized_count_mtx, DB='human',group.by = this.meta$label)
+  x <- createNeuronChat(data.input[,this.cells], DB='human',group.by = this.meta$label)
   x <- run_NeuronChat(x,M=100)
   net_aggregated_x <- net_aggregation(x@net,method = 'weight')
   out.str = paste0("~/scratch/st/results/cellchat/neuronchat_", my.dataset, "_", meta.col, "_weights.rds")
