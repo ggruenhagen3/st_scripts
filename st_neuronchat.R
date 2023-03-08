@@ -34,9 +34,11 @@ message("Done.")
 # mz.df = rbind(data.frame(mz = "LOC101470250", human = "NRG2", rowsums = 5e6), mz.df)
 # 
 # mz.df = mz.df[!duplicated(mz.df$human),]
-mz.df = read.csv("~/scratch/brain/cellchat/bb_cc_gene_name_converter.csv")
-mz.df$X = NULL
 # data.input = as.matrix(combined@assays$RNA@data[mz.df$mz,])
+# mz.df = read.csv("~/scratch/brain/cellchat/bb_cc_gene_name_converter.csv")
+mz.df = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
+mz.df = mz.df[which(!is.na(mz.df$one_to_one_human)), c("seurat_name", "one_to_one_human")]
+colnames(mz.df) = c("mz", "human")
 if (my.dataset == "st.sc") {
   
 } else {
