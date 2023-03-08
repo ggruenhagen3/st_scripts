@@ -27,6 +27,13 @@ run_name = f'{results_folder}/cell2location_map_b2'
 # Convert("/storage/home/hcoda1/6/ggruenhagen3/scratch/brain/data/bb.h5seurat", dest = "h5ad")
 # SaveH5Seurat(st, filename = "/storage/home/hcoda1/6/ggruenhagen3/scratch/brain/data/st_diet_070822.h5seurat")
 # Convert("/storage/home/hcoda1/6/ggruenhagen3/scratch/brain/data/st_diet_070822.h5seurat", dest = "h5ad")
+# adata = sc.read(f'/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/oritz_b.h5ad')
+adata.var = pd.DataFrame({"gene":list(adata.var['features'])}, index = list(adata.var['features']))
+adata.var_names = adata.var['gene']
+tempAdata = adata.raw.to_adata()
+tempAdata.var = adata.var
+tempAdata.var_names = adata.var_names
+adata.raw = tempAdata
 
 adata_vis = sc.read(f'/storage/home/hcoda1/6/ggruenhagen3/scratch/brain/data/st_b2_diet_120522.h5ad')
 adata_ref = sc.read(f'/storage/home/hcoda1/6/ggruenhagen3/scratch/brain/data/bb.h5ad')

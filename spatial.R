@@ -2077,6 +2077,28 @@ my_ontology_df6$parent_st_level = ontology_df$st_level[match(my_ontology_df6$par
 my_ontology_df6$this_sum = cnu.aba$avg[match(my_ontology_df6$atlas_id, cnu.aba$atlas_id)]
 my_ontology_df6 = data.frame(my_ontology_df6 %>% group_by(parent_structure_id) %>% mutate(parent_sum = sum(this_sum, na.rm = T)))
 
+# *** Getting Brianna's Children ***#
+b_struct = read.csv("~/Downloads/aba_region_list1_gmod.csv")
+b_struct$isSmall = T
+b_struct = rbind(b_struct, data.frame(LIST.Old = c("OLF", "sAMY", "CTX"), LIST.New = c("OLF", "sAMY", "U_CTX"), isSmall = F))
+b_ont_df = data.frame()
+for (i in 1:nrow(b_struct)) {
+  struct = b_struct$LIST.Old[i]
+  this.id = ontology_df$id[which(ontology_df$acronym == struct)]
+  if ( b_struct$isSmall[i] ) { child.ids = diveOntology(this.id) } else { child.ids = this.id }
+  child.df = ontology_df[match(child.ids, ontology_df$id),]
+  child.df$parent_id = this.id
+  child.df$parent_acr_old = struct
+  child.df$parent_acr_new = b_struct$LIST.New[i]
+  if ( struct == "CTX" ) { print(i); print(child.df) }
+  b_ont_df = rbind(b_ont_df, child.df)
+}
+write.csv(b_ont_df, "~/Downloads/b_ont_df.csv")
+length(which(oritz$ABA_acronym %in% b_ont_df$acronym))
+oritz$b_parent = b_ont_df$parent_acr_new[match(oritz$ABA_acronym, b_ont_df$acronym)]
+oritz2 = subset(oritz, cells = colnames(oritz)[which(!is.na(oritz$b_parent))])
+# ***          End               ***#
+
 # annot.sum.vect.small = as.vector(tapply(annot.sum.vect, my_ontology_df6$parent_structure_id[match(names(annot.sum.vect), my_ontology_df6$acronym)], sum))
 aba.gene.annot.small = t(rowsum(t(aba.gene.annot), group = my_ontology_df6$parent_structure_id[match(colnames(aba.gene.annot), my_ontology_df6$acronym)], na.rm = T))
 aba.gene.annot.small = aba.gene.annot.small[,which(!is.na(colnames(aba.gene.annot.small)))]
@@ -2307,6 +2329,510 @@ real.cor.melt$ABA = factor(real.cor.melt$ABA, levels=aba.order)
 pdf("mz_aba_w_sig_020623.pdf", width = 6.5, height = 4)
 print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_viridis() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
 # print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), limits = c(-0.2, 0.2)) + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
+dev.off()
+
+#*******************************************************************************
+# Noise Zeisel =================================================================
+#*******************************************************************************
+zei = readRDS("~/scratch/bcs/data/l5_tel_norm.rds")
+zei = subset(zei, cells = colnames(zei)[which(!zei$ClusterName %in% c("TEGLU8", "TEINH16", "RGDG"))])
+zei.counts = zei@assays$RNA@counts
+zei.num.to.remove = round(zei$nCount_RNA * 0.10)
+# mclapply(1:ncol(zei.counts), function(x) { this.genes = rep(rownames(zei@assays$RNA@counts),table(zei@assays$RNA@counts[,1])); zei.num.to.remove[x] } )
+# rm.idx.mat = matrix(0L, nrow = nrow(zei.counts), ncol = ncol(zei.counts), dimnames = list(rownames(zei.counts), colnames(zei.counts)))
+# for (x in 1:ncol(zei.counts)) {
+#   pos.idx = which(zei.counts[,x] > 0)
+#   rm.idx = sample(pos.idx, zei.num.to.remove[x])
+#   rm.idx.mat[rm.idx,x] = zei.counts[rm.idx,x]-1
+# }
+# mclapply(1:ncol(zei.counts), function(x) { pos.idx = which(zei.counts[,x] > 0); rm.idx = sample(pos.idx, zei.num.to.remove[x]); zei.counts[rm.idx,x] = zei.counts[rm.idx,x]-1 } )
+idx.to.rm = mclapply(1:ncol(zei.counts), function(x) { pos.idx = which(zei.counts[,x] > 0); rm.idx = sample(pos.idx, zei.num.to.remove[x]); return(1:nrow(zei.counts) %in% rm.idx) }, mc.cores = 24 )
+idx.rm.mat = do.call('cbind', idx.to.rm)
+class(idx.rm.mat) = "numeric"
+zei.counts.down = zei.counts - idx.rm.mat
+down.zei = CreateSeuratObject(counts = zei.counts.down, meta.data = zei@meta.data)
+saveRDS(down.zei, "~/scratch/bcs/data/zei_down_022823.rds")
+
+mz.mouse.cor2 = mz.mouse.cor
+for (i in rownames(mz.mouse.cor2)) {
+  for (j in colnames(mz.mouse.cor2)) {
+    mz.mouse.cor2[i, j] = i == j
+  }
+}
+cor(as.vector(mz.mouse.cor), as.vector(mz.mouse.cor2))**2
+mz.mouse.cor3 = mz.mouse.cor
+mz.mouse.cor3[which(mz.mouse.cor3 < 0)] = 0
+cor(as.vector(mz.mouse.cor3), as.vector(mz.mouse.cor2))**2
+
+#*******************************************************************************
+# Gene-Cell Heatmap ============================================================
+#*******************************************************************************
+# Load Libraries
+message("Loading Libraries")
+suppressMessages(source("~/scratch/st/st_scripts/st_f.R"))
+suppressMessages(source("~/scratch/bcs/bcs_scripts/bcs_f.R"))
+library("ggh4x")
+
+# Mouse
+mouse.path ="~/scratch/bcs/data/oritz_b_raw.rds"
+mouse = readRDS(mouse.path)
+Idents(mouse) = mouse$b_parent
+
+# Cichlid
+gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
+mz = readRDS("~/scratch/st/data/st_c2b2_hi_022023.rds") 
+Idents(mz) = "structure"
+
+gp = read.csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/st_oritzb_genes.csv")
+gp$X = NULL
+gp_long = data.frame()
+for (i in seq(1, ncol(gp), by = 3)) { 
+  this.gp = gp[,i:(i+2)]
+  combo = colnames(this.gp)[1]
+  # combo = stringr::str_replace_all(combo, "U_CTX","U_CTX")
+  combo = stringr::str_replace_all(combo, "sAMY.other","sAMY-other")
+  combo = stringr::str_replace_all(combo, "STRv.other","STRv-other")
+  combo = stringr::str_replace_all(combo, "HIP.other","HIP-other")
+  combo = stringr::str_replace_all(combo, "fiber.tracts","fiber tracts")
+  mm_name = stringr::str_split(stringr::str_split(combo, "\\.")[[1]][1], "_")[[1]][2]
+  mz_name = stringr::str_split(stringr::str_split(combo, "\\.")[[1]][2], "_")[[1]][2]
+  if (TRUE) { mz_name = levels(mz)[as.numeric(mz_name)+1] }
+  this.gp$mm_name = mm_name
+  this.gp$mz_name = mz_name
+  this.gp$combo = paste0(mm_name, "_", mz_name)
+  this.gp = this.gp[which( !is.na(this.gp[,1]) & !is.na(this.gp[,2]) & !is.na(this.gp[,3]) ),]
+  colnames(this.gp) = c("genes", "mm_pval", "mz_pval", "mm_name", "mz_name", "combo")
+  this.gp[,c("mm_gene", "mz_gene")] = reshape2::colsplit(this.gp[,1], ";", c('1', '2')) 
+  this.gp$mm_gene =  reshape2::colsplit(this.gp$mm_gene, "_", c('1', '2'))[,2]
+  this.gp$mz_gene =  reshape2::colsplit(this.gp$mz_gene, "_", c('1', '2'))[,2]
+  gp_long = rbind(gp_long, this.gp)
+}
+gp_long = gp_long[which(gp_long$combo %in% c("MOB_OB gc", "ACB_Vd-r", "LSX_Vv", 'DG_Dl-v', "Isocortex_Dl-g")),]
+table(gp_long$combo)
+
+# DEGs in only that cluster
+gp_long_mz_table = as.data.frame(table(gp_long$mz_gene))
+gp_long_mz_table = gp_long_mz_table[which(gp_long_mz_table$Freq == 1),]
+gp_long_mm_table = as.data.frame(table(gp_long$mm_gene))
+gp_long_mm_table = gp_long_mm_table[which(gp_long_mm_table$Freq == 1),]
+gp_long_unique = gp_long[which(gp_long$mz_gene %in% gp_long_mz_table$Var1 & gp_long$mm_gene %in% gp_long_mm_table$Var1),]
+table(gp_long_unique$combo)
+gp_long_unique = gp_long_unique %>% group_by(combo) %>% slice(1:30)
+
+# P-val threshold
+gp_long$mm_neg_log = -log10(gp_long$mm_pval)
+gp_long$mz_neg_log = -log10(gp_long$mz_pval)
+gp_long_high = gp_long[which(gp_long$mm_neg_log > 10 & gp_long$mz_neg_log > 10),]
+table(gp_long_high$combo)
+gp_long_high = gp_long_high %>% group_by(combo) %>% slice(1:35)
+
+mz.gp = subset(mz, idents = unique(gp_long_high$mz_name), features = unique(gp_long_high$mz_gene))
+mz.gp = ScaleData(mz.gp, features = unique(gp_long_high$mz_gene))
+# mz.gp.mat = mz.gp@assays$SCT@var.features
+
+mouse.gp = subset(mouse, idents = unique(gp_long_high$mm_name), features = unique(gp_long_high$mm_gene))
+mouse.gp = ScaleData(mouse.gp, features = unique(gp_long_high$mm_gene))
+
+# mz.gp.fc = data.frame()
+# for (i in unique(gp_long_high$mz_name)) { this.fc = FoldChange(mz, features = gp_long_high$mz_gene, ident.1 = i); this.fc$gene = gp_long_high$mz_gene; this.fc$cluster = i; mz.gp.fc = rbind(mz.gp.fc, this.fc); }
+# mouse.gp.fc = data.frame()
+# for (i in unique(gp_long_high$mm_name)) { this.fc = FoldChange(mouse, features = gp_long_high$mm_gene, ident.1 = i); this.fc$gene = gp_long_high$mm_gene; this.fc$cluster = i; mouse.gp.fc = rbind(mouse.gp.fc, this.fc); }
+gp_long_high_tmp = gp_long[which(gp_long$mm_neg_log > 10 & gp_long$mz_neg_log > 10),]
+mz.gp.fc.mat.small.tmp    = AverageExpression(mz,    features = gp_long_high_tmp$mz_gene, ident.1 = i)$SCT
+mouse.gp.fc.mat.small.tmp = AverageExpression(mouse, features = gp_long_high_tmp$mm_gene, ident.1 = i)$SCT
+mz.gp.fc.mat.tmp   = mz.gp.fc.mat.small.tmp[gp_long_high_tmp$mz_gene,   ]
+mouse.gp.fc.mat.tmp = mouse.gp.fc.mat.small.tmp[gp_long_high_tmp$mm_gene,]
+mz.gp.fc.mat.tmp    = as.matrix(t(scale(t(mz.gp.fc.mat.tmp))))
+mouse.gp.fc.mat.tmp = as.matrix(t(scale(t(mouse.gp.fc.mat.tmp))))
+gp_long_high_tmp$mz_top = unlist(lapply(1:nrow(gp_long_high_tmp), function(x) mz.gp.fc.mat.tmp[gp_long_high_tmp$mz_gene[x],    gp_long_high_tmp$mz_name[x]]))
+gp_long_high_tmp$mm_top = unlist(lapply(1:nrow(gp_long_high_tmp), function(x) mouse.gp.fc.mat.tmp[gp_long_high_tmp$mm_gene[x], gp_long_high_tmp$mm_name[x]]))
+gp_long_high_tmp$mean_top = rowMeans(gp_long_high_tmp[, c("mz_top", "mm_top")])
+gp_long_high = data.frame(gp_long_high_tmp %>% group_by(combo) %>% arrange(-mean_top) %>% slice(1:35))
+
+mz.gp.fc.mat.small    = AverageExpression(mz,    features = gp_long_high$mz_gene, ident.1 = i)$SCT
+mouse.gp.fc.mat.small = AverageExpression(mouse, features = gp_long_high$mm_gene, ident.1 = i)$SCT
+mz.gp.fc.mat    = mz.gp.fc.mat.small[gp_long_high$mz_gene,   ]
+mouse.gp.fc.mat = mouse.gp.fc.mat.small[gp_long_high$mm_gene,]
+mz.gp.fc.mat    = as.matrix(t(scale(t(mz.gp.fc.mat))))
+mouse.gp.fc.mat = as.matrix(t(scale(t(mouse.gp.fc.mat))))
+mz.gp.fc.mat    = mz.gp.fc.mat[,unique(gp_long_high$mz_name)]
+mouse.gp.fc.mat = mouse.gp.fc.mat[,unique(gp_long_high$mm_name)]
+mz.gp.fc = reshape2::melt(mz.gp.fc.mat)
+mouse.gp.fc = reshape2::melt(mouse.gp.fc.mat)
+colnames(mz.gp.fc) = colnames(mouse.gp.fc) = c("gene", "cluster", "avg_log2FC")
+
+gp_long_high$gene_id = 1:nrow(gp_long_high)
+mz.gp.fc$gene_id    = rep(gp_long_high$gene_id, length(unique(gp_long_high$mz_name)))
+mouse.gp.fc$gene_id = rep(gp_long_high$gene_id, length(unique(gp_long_high$mm_name)))
+mz.gp.fc$cluster    = factor(mz.gp.fc$cluster, levels = unique(gp_long_high$mz_name))
+mouse.gp.fc$cluster = factor(mouse.gp.fc$cluster, levels = unique(gp_long_high$mm_name))
+mz.maxed = 4
+mz.gp.fc$maxed = mz.gp.fc$avg_log2FC
+mz.gp.fc$maxed[which(mz.gp.fc$maxed >  mz.maxed)] =  mz.maxed
+mz.gp.fc$maxed[which(mz.gp.fc$maxed < 0)] = 0
+mouse.maxed = 4
+mouse.gp.fc$maxed = mouse.gp.fc$avg_log2FC
+mouse.gp.fc$maxed[which(mouse.gp.fc$maxed >  mouse.maxed)] =  mouse.maxed
+mouse.gp.fc$maxed[which(mouse.gp.fc$maxed < 0)] = 0
+
+# mz.gp.fc.mat = reshape2::dcast(mz.gp.fc, )
+pdf('~/scratch/bcs/results/st_oritzb_gene_heatmap_avgexp.pdf', width = 12, height = 6)
+p1 = ggplot(mz.gp.fc,    aes(x = gene_id, y = cluster, fill = maxed)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_y_discrete(name = "", expand=c(0,0)) + scale_x_discrete(name = "", expand=c(0,0)) + force_panelsizes(rows = unit(length(unique(gp_long_high$mz_name))/8, "in"), cols = unit(length(gp_long_high$mz_gene)/20, "in")) + theme(axis.line=element_blank())
+p2 = ggplot(mouse.gp.fc, aes(x = gene_id, y = cluster, fill = maxed)) + geom_raster() + scale_fill_viridis() + theme_classic() + scale_y_discrete(name = "", expand=c(0,0)) + scale_x_discrete(name = "", expand=c(0,0)) + force_panelsizes(rows = unit(length(unique(gp_long_high$mm_name))/8, "in"), cols = unit(length(gp_long_high$mm_gene)/20, "in")) + theme(axis.line=element_blank())
+cowplot::plot_grid(plotlist = list(p1, p2), ncol = 1)
+dev.off()
+
+Idents(mz.gp)    = factor(as.vector(mz.gp$structure),   levels = unique(gp_long_high$mz_name))
+Idents(mouse.gp) = factor(as.vector(mouse.gp$b_parent), levels = unique(gp_long_high$mm_name))
+pdf('~/scratch/bcs/results/st_oritzb_gene_heatmap.pdf', width = 16, height = 8)
+p1 = DoHeatmap(mz.gp,    features = gp_long_high$mz_gene)
+p2 = DoHeatmap(mouse.gp, features = gp_long_high$mm_gene)
+cowplot::plot_grid(plotlist = list(p1, p2))
+dev.off()
+
+#*******************************************************************************
+# SAMap ========================================================================
+#*******************************************************************************
+# conda activate SeuratDisk
+.libPaths("/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/conda_envs/SeuratDisk/lib/R/library")
+library("Seurat")
+library("SeuratObject")
+library("SeuratDisk")
+library("ggplot2")
+Convert("~/scratch/bcs/data/mz_mm_zei.h5ad", dest = "h5seurat", overwrite = TRUE)
+merged = LoadH5Seurat("~/scratch/bcs/data/mz_mm_zei.h5seurat", meta.data = FALSE, misc = FALSE)
+# library(rhdf5)
+# merged[["mised_meta_value"]] <- h5read("~/scratch/bcs/data/mz_mm_zei_keys.h5ad", "/obs/mised_meta_value")
+merged = readRDS("~/scratch/brain/data/mz_mm_zei.rds")
+mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
+mm = readRDS("~/scratch/bcs/data/l5_tel_norm.rds")
+# mm = readRDS("~/scratch/bcs/data/mouse_w_pc_down_norm.rds")
+# mm = readRDS("~/scratch/bcs/data/oritz_b_raw.rds")
+convert53 = read.csv("~/scratch/st/data/convert53.csv")
+merged$mz_seuratclusters53 = mz$seuratclusters53[match(colnames(merged), colnames(mz))]
+merged$mz_cluster = factor(convert53$new[match(merged$mz_seuratclusters53, convert53$old)], levels = convert53$new)
+merged$mm_cluster = mm$ClusterName[match(colnames(merged), colnames(mm))]
+# merged$mm_cluster = mm$tissue_cluster[match(colnames(merged), colnames(mm))]
+# merged$mm_cluster = mm$b_parent[match(colnames(merged), colnames(mm))]
+merged$cluster = as.vector(merged$mz_cluster)
+merged$cluster[which(is.na(merged$cluster))] = merged$mm_cluster[which(is.na(merged$cluster))]
+merged$species = plyr::revalue(as.character(colnames(merged) %in% colnames(mz)), replace = c("TRUE" = "mz", "FALSE" = "mm"))
+
+# Plot the merged data
+Idents(merged) = merged$species
+pdf("~/scratch/bcs/results/mz_mm_zei_umap.pdf", width = 5, height = 5)
+print(DimPlot(merged) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+dev.off()
+Idents(merged) = merged$cluster
+pdf("~/scratch/bcs/results/mz_mm_zei_split.pdf", width = 10, height = 5)
+print(DimPlot(merged, split.by = "species", label = F) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
+dev.off()
+pdf("~/scratch/bcs/results/mz_mm_zei_split_label.pdf", width = 20, height = 5)
+print(DimPlot(merged, split.by = "species", label = T) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+dev.off()
+
+# pdf("~/scratch/bcs/results/mz_mm_zei_umap_black.pdf", width = 4, height = 4)
+# print(DimPlot(merged, cols = c("black", RColorBrewer::brewer.pal(9, "Greens")[8])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+# dev.off()
+# pdf("~/scratch/bcs/results/mz_mm_zei_split_black.pdf", width = 8, height = 4)
+# print(DimPlot(merged, split.by = "species", label = F, cols = c("black", RColorBrewer::brewer.pal(9, "Greens")[8])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
+# dev.off()
+
+Cairo::Cairo("~/scratch/bcs/results/mz_mm_zei_umap_black.png", width = 1600, height = 1600, res = 300)
+print(DimPlot(merged, cols = c("black", RColorBrewer::brewer.pal(9, "Greens")[8])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+dev.off()
+Cairo::Cairo("~/scratch/bcs/results/mz_mm_zei_split_black.png", width = 3200, height = 1600, res = 300)
+print(DimPlot(merged, split.by = "species", label = F, cols = c("black", RColorBrewer::brewer.pal(9, "Greens")[8])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
+dev.off()
+
+Cairo::Cairo("~/scratch/bcs/results/mz_mm_saunders_umap_black.png", width = 1600, height = 1600, res = 300)
+print(DimPlot(merged, raster = F, cols = c("black", RColorBrewer::brewer.pal(11, "PiYG")[2])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+dev.off()
+Cairo::Cairo("~/scratch/bcs/results/mz_mm_saunders_split_black.png", width = 3200, height = 1600, res = 300)
+print(DimPlot(merged, split.by = "species", raster = F, label = F, cols = c("black", RColorBrewer::brewer.pal(11, "PiYG")[2])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
+dev.off()
+
+Cairo::Cairo("~/scratch/bcs/results/mz_mm_oritzb_umap_black.png", width = 1600, height = 1600, res = 300)
+print(DimPlot(merged, raster = F, cols = c("black", RColorBrewer::brewer.pal(9, "Blues")[8])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+dev.off()
+Cairo::Cairo("~/scratch/bcs/results/mz_mm_oritzb_split_black.png", width = 3200, height = 1600, res = 300)
+print(DimPlot(merged, split.by = "species", label = F, raster = F, cols = c("black", RColorBrewer::brewer.pal(9, "Blues")[8])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
+dev.off()
+
+# pdf("~/scratch/bcs/results/mz_mm_saunders_umap_cols.pdf", width = 4, height = 4)
+# print(DimPlot(merged, cols = c("#FBCBC7", RColorBrewer::brewer.pal(11, "PiYG")[2])) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()))
+# dev.off()
+# pdf("~/scratch/bcs/results/mz_mm_saunders_split_cols.pdf", width = 4, height = 8)
+# print(DimPlot(merged, split.by = "species", label = F, cols = c("#FBCBC7", RColorBrewer::brewer.pal(11, "PiYG")[2]), ncol = 1) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
+# dev.off()
+
+# Celltype-Celltype mapping
+mzmm = read.csv("~/Downloads/mz_mm_oritz_mapping_table.csv")
+mzmm = mzmm[54:nrow(mzmm),1:54]
+# mzmm = mzmm[27:nrow(mzmm),1:27]
+# colnames(mzmm) = levels(all_merge$struct)[match(as.numeric(reshape2::colsplit(colnames(mzmm), "_", c('1','2'))[,2])+1, 1:26)]
+colnames(mzmm) = convert53$new[match(as.numeric(reshape2::colsplit(colnames(mzmm), "_", c('1','2'))[,2]), convert53$old)]
+mzmm[,1] = reshape2::colsplit(mzmm[,1], "_", c('1', '2'))[,2]
+mzmm.melt = reshape2::melt(mzmm)
+mzmm.melt = mzmm.melt[which(!is.na(mzmm.melt$value)),]
+colnames(mzmm.melt) = c("mm_name", "mz_name", "Score")
+# mzmm.melt$mz_name = convert53$new[match(as.numeric(reshape2::colsplit(mzmm.melt$variable, "_", c('1','2'))[,2]), convert53$old)] 
+# mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = convert53$new)
+# mzmm.melt$mm_name = reshape2::colsplit(mzmm.melt$X, "_", c('1', '2'))[,2]
+mzmm.mat = mzmm; rownames(mzmm.mat) = mzmm.mat[,1]; mzmm.mat[,1] = NULL;
+mz.order  = hclust(dist(t(mzmm.mat)), method = "complete")
+mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz.order$labels[mz.order$order])
+mouse.order = hclust(dist(mzmm.mat), method = "complete")
+mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
+
+pdf("~/research/st/results/mz_mm_oritz_mapping_keys.pdf", width = 4, height = 4.5)
+# pdf("~/research/st/results/mz_mm_oritz_mapping.pdf", width = 4, height = 8)
+# pdf("~/research/st/results/mz_mm_zei_broad_mapping.pdf", width = 4.5, height = 12)
+# pdf("~/research/st/results/mz_mm_zei_mapping.pdf", width = 10, height = 10)
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = value)) + geom_raster() + scale_fill_gradientn(colors = c("#ffffff", rev(brewer.pal(11, "RdBu"))[7:11])) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+dev.off()
+
+# My mapping
+mzmm = as.matrix(read.csv("~/Downloads/bb_zeisel_mapping_mine.csv", row.names = 1))
+# colnames(mzmm) = str_replace_all(colnames(mzmm), "\\.", "-")
+# colnames(mzmm) = plyr::revalue(colnames(mzmm), c("Dc-1-2" = "Dc-1/2"))
+colnames(mzmm) = str_sub(colnames(mzmm), 2, 50)
+colnames(mzmm) = str_replace(colnames(mzmm), "Astro", "RG")
+colnames(mzmm) = plyr::revalue(colnames(mzmm), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
+mzmm = scale(mzmm) # scale by cichlid cluster
+mzmm.melt = reshape2::melt(mzmm)
+mzmm.melt = mzmm.melt[which(!is.na(mzmm.melt$value) & mzmm.melt$Var2 != ""),]
+colnames(mzmm.melt) = c("mm_name", "mz_name", "Score")
+mzmm.melt$id = paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name)
+
+mzmm.p = as.matrix(read.csv("~/Downloads/bb_zeisel_mapping_mine_p_030823.csv", row.names = 1))
+# colnames(mzmm.p) = str_replace_all(colnames(mzmm.p), "\\.", "-")
+# colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("Dc-1-2" = "Dc-1/2"))
+colnames(mzmm.p) = str_sub(colnames(mzmm.p), 2, 50)
+colnames(mzmm.p) = str_replace(colnames(mzmm.p), "Astro", "RG")
+colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
+mzmm.p.melt = reshape2::melt(mzmm.p)
+colnames(mzmm.p.melt) = c("mm_name", "mz_name", "p")
+mzmm.p.melt$id = paste0(mzmm.p.melt$mm_name, "_", mzmm.p.melt$mz_name)
+mzmm.melt$p_perm = mzmm.p.melt$p[match(mzmm.melt$id, mzmm.p.melt$id)]
+mzmm.melt$sig = mzmm.melt$p_perm < 0.05
+mzmm.melt$sig = mzmm.melt$p_perm == 0
+
+mz.order  = hclust(dist(t(mzmm)), method = "complete")
+mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz.order$labels[mz.order$order])
+mouse.order = hclust(dist(mzmm), method = "complete")
+mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
+
+pdf("~/research/st/results/bb_oritzb_mine_p_blue.pdf", width = (ncol(mzmm)/5) + 2, height = (nrow(mzmm)/5) + 2)
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_blank(), axis.text.y = element_blank(), axis.line=element_blank(), axis.ticks = element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(rows = unit(nrow(mzmm)/8, "in"), cols = unit(ncol(mzmm)/8, "in"))
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in"))
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradient(low = "white", high = "#0f9783ff") + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Greens")) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
+ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6])) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Blues")) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
+dev.off()
+
+maxed.num = 1e-4
+mzmm.melt$maxed = mzmm.melt$Score
+mzmm.melt$maxed[which(mzmm.melt$maxed > maxed.num)]  =  maxed.num
+mzmm.melt$maxed[which(mzmm.melt$maxed < -maxed.num)] = -maxed.num
+pdf("~/research/st/results/mz_mm_saunders_mapping_minemax.pdf", width = 9, height = 9)
+ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = maxed)) + geom_raster() + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+dev.off()
+
+# SAMap Mine vs Cors
+cor.res = read.csv("~/Downloads/mz_saunders_cor.csv")
+cor.res.mat = reshape2::acast(cor.res, mouse.cluster ~ mz.cluster, value.var = "cor")
+# cor.res.mat = scale(cor.res.mat)
+cor(as.vector(cor.res.mat), as.vector(mzmm[rownames(cor.res.mat), colnames(cor.res.mat)]))
+cor(as.vector(cor.res.mat), as.vector(mzmm[rownames(cor.res.mat), colnames(cor.res.mat)]), method = "spearman")
+cor.res.mat.melt = reshape2::melt(cor.res.mat)
+cor.res.mat.melt$Var1 = factor(cor.res.mat.melt$Var1, levels = mouse.order$labels[mouse.order$order])
+cor.res.mat.melt$Var2 = factor(cor.res.mat.melt$Var2, levels = mz.order$labels[mz.order$order])
+maxed.num = 0.35
+cor.res.mat.melt$maxed = cor.res.mat.melt$value
+cor.res.mat.melt$maxed[which(cor.res.mat.melt$maxed > maxed.num)]   =  maxed.num
+cor.res.mat.melt$maxed[which(cor.res.mat.melt$maxed < -maxed.num)]  = -maxed.num
+pdf("~/research/st/results/mz_mm_saunders_cor_w_samap_hclust.pdf", width = 9, height = 9)
+# ggplot(cor.res.mat.melt, aes(x = Var1, y = Var2, fill = maxed)) + geom_raster() + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+ggplot(cor.res.mat.melt, aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+dev.off()
+mzmm.melt$cor = cor.res.mat.melt$value[match(paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name), paste0(cor.res.mat.melt$Var1, "_", cor.res.mat.melt$Var2))]
+ggplot(mzmm.melt, aes(x = Score, y = cor)) + geom_point(alpha = 0.5) 
+
+cor.res.glut = read.csv("~/Downloads/bb_saunders_subcluster_glut_cor2.csv")
+cor.res.gaba = read.csv("~/Downloads/bb_saunders_subcluster_gaba_cor.csv")
+cor.res.nn   = read.csv("~/Downloads/bb_saunders_subcluster_nn_cor.csv")
+# cor.res.stich = (cor.res.mat == "hi") * 1 # trying to make a matrix of 0's
+mouse_clusters = unique(c(cor.res.glut$mouse.cluster, cor.res.gaba$mouse.cluster, cor.res.nn$mouse.cluster))
+mz_clusters = unique(c(cor.res.glut$mz.cluster, cor.res.gaba$mz.cluster, cor.res.nn$mz.cluster))
+cor.res.stich = reshape2::melt(matrix(0L, nrow = length(mouse_clusters), ncol = length(mz_clusters), dimnames = list(mouse_clusters, mz_clusters)))
+cor.res.stich$value = 0
+cor.res.stich$id = paste0(cor.res.stich$Var1, "_", cor.res.stich$Var2)
+cor.res.glut$id  = paste0(cor.res.glut$mouse.cluster,  "_", cor.res.glut$mz.cluster)
+cor.res.gaba$id  = paste0(cor.res.gaba$mouse.cluster,  "_", cor.res.gaba$mz.cluster)
+cor.res.nn$id    = paste0(cor.res.nn$mouse.cluster,    "_", cor.res.nn$mz.cluster)
+cor.res.stich$value[which(cor.res.stich$id %in% cor.res.glut$id)] = cor.res.glut$cor[match(cor.res.stich$id[which(cor.res.stich$id %in% cor.res.glut$id)], cor.res.glut$id)]
+cor.res.stich$value[which(cor.res.stich$id %in% cor.res.gaba$id)] = cor.res.gaba$cor[match(cor.res.stich$id[which(cor.res.stich$id %in% cor.res.gaba$id)], cor.res.gaba$id)]
+cor.res.stich$value[which(cor.res.stich$id %in% cor.res.nn$id)]   = cor.res.nn$cor[match(cor.res.stich$id[which(cor.res.stich$id   %in% cor.res.nn$id)],   cor.res.nn$id)]
+maxed.num = 0.2
+cor.res.stich$maxed = cor.res.stich$value
+cor.res.stich$maxed[which(cor.res.stich$maxedd >  maxed.num)] =  maxed.num
+cor.res.stich$maxed[which(cor.res.stich$maxedd < -maxed.num)] = -maxed.num
+ggplot(cor.res.stich, aes(x = Var1, y = Var2, fill = maxed)) + geom_raster() + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), n.breaks = 6, limits = c(-maxed.num, maxed.num)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
+cor.res.stich$samap = mzmm.melt$Score[match(cor.res.stich$id, mzmm.melt$id)]
+cor(cor.res.stich$value[which(!is.na(cor.res.stich$samap) )], cor.res.stich$samap[which(!is.na(cor.res.stich$samap) )])
+
+# Celltype-Celltype mapping gene pairs
+gp = read.csv("~/Downloads/mz_mm_zei_broad_gene_pair.csv")
+gp$X = NULL
+gp.long = data.frame()
+for (this.col in colnames(gp)[c(T,F,F)]) {
+  print(which(colnames(gp) == this.col))
+  this.split = stringr::str_split(this.col, "_")[[1]]
+  this.mm.cluster =  stringr::str_split(this.split[3], "\\.")[[1]]
+  this.mm.cluster = paste(this.mm.cluster[1:(length(this.mm.cluster)-1)], collapse = " ")
+  this.mm.cluster = paste( c(this.split[2], "_", this.mm.cluster), collapse = "" )
+  this.mz.cluster = convert53$new[match(as.numeric(this.split[4]), convert53$old)]
+  for (this.row in 1:nrow(gp)) {
+    this.genes = gp[this.row,this.col]
+    if (this.genes == "" || is.na(this.genes)) { break; }
+    this.genes = stringr::str_split(this.genes, "_")[[1]]
+    mm.gene = stringr::str_split(this.genes[2], ";")[[1]][1]
+    mz.gene = this.genes[3]
+    this.p1 = gp[this.row, which(colnames(gp) == this.col)+1]
+    this.p2 = gp[this.row, which(colnames(gp) == this.col)+2]
+    this.df = data.frame(mz_cluster = this.mz.cluster, mm_cluster = this.mm.cluster, mz_gene = mz.gene, mm_gene = mm.gene, p1 = this.p1, p2 = this.p2)
+    gp.long = rbind(gp.long, this.df)
+  }
+}
+gp.long$neg_log_p1 = -log10(gp.long$p1)
+gp.long$neg_log_p2 = -log10(gp.long$p2)
+gp.long$neg_log_p1[which(gp.long$neg_log_p1 > 500)] = 500
+gp.long$neg_log_p2[which(gp.long$neg_log_p2 > 500)] = 500
+num.genes = as.data.frame(table(gp.long$mz_cluster, gp.long$mm_cluster))
+ggplot(num.genes, aes(x = Var2, y = Var1, fill = Freq)) + geom_raster() + xlab("") + ylab("") + scale_fill_viridis() + coord_fixed() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+pdf("~/research/st/results/test.pdf", width = 20, height = 20)
+ggplot(gp.long, aes(x = neg_log_p1, y = neg_log_p2)) + geom_point() + facet_grid(vars(mz_cluster), vars(mm_cluster))
+dev.off()
+
+
+# SAMap vs Cors
+# cor.res = read.csv("~/Downloads/mz_zei_cor_cluster.csv")
+# samap.res = read.csv("~/Downloads/mz_mm_zei_mapping_table.csv")
+cor.res = read.csv("~/Downloads/mz_saunders_cor.csv")
+samap.res = read.csv("~/Downloads/mz_mm_saunders_cluster_mapping_table.csv")
+cor.res.mat = reshape2::acast(cor.res, mouse.cluster ~ mz.cluster, value.var = "cor")
+# cor.res.mat[which(cor.res.mat < 0)] = 0
+samap.res = samap.res[54:nrow(samap.res),1:54]
+rownames(samap.res) = reshape2::colsplit(samap.res[,1], "_", c('1', '2'))[,2]
+colnames(samap.res) = reshape2::colsplit(colnames(samap.res), "_", c('1', '2'))[,2]
+samap.res[,1] = NULL
+colnames(samap.res) = convert53$new[match(as.numeric(colnames(samap.res)), convert53$old)]
+samap.res = as.matrix(samap.res[,colnames(cor.res.mat)])
+cor(as.vector(cor.res.mat),  as.vector(samap.res) )
+cor(as.vector(cor.res.mat),  as.vector(samap.res), method = "spearman")
+# cor(as.vector(cor.res.mat^2),  as.vector(samap.res^(1/2)) )
+# cor(as.vector(cor.res.mat^2),  as.vector(samap.res^(1/2)) )^2
+
+top.x = 5
+cor.combos.top   = unlist(lapply(colnames(cor.res.mat), function(x) paste(rownames(cor.res.mat)[order(cor.res.mat[,x], decreasing = T)[1:top.x]], x) ) )
+samap.combos.top = unlist(lapply(colnames(samap.res),   function(x) paste(rownames(samap.res)[order(samap.res[,x],     decreasing = T)[1:top.x]],     x) ) )
+length(which(cor.combos.top %in% samap.combos.top)) / length(unique(c(cor.combos.top, samap.combos.top)))
+
+cor.combos.top   = unlist(lapply(rownames(cor.res.mat), function(x) paste(colnames(cor.res.mat)[order(cor.res.mat[x,], decreasing = T)[1:top.x]], x) ) )
+samap.combos.top = unlist(lapply(rownames(samap.res),   function(x) paste(colnames(samap.res)[order(samap.res[x,],     decreasing = T)[1:top.x]],     x) ) )
+length(which(cor.combos.top %in% samap.combos.top)) / length(unique(c(cor.combos.top, samap.combos.top)))
+
+pheatmap::pheatmap(samap.res^(1/2), color=viridis(100), border_color = NA, cluster_rows = F, cluster_cols = F, cellwidth = 6, cellheight = 6, show_rownames = F, show_colnames = F)
+# pheatmap::pheatmap(cor.res.mat^2, color=viridis(100), border_color = NA, cluster_rows = F, cluster_cols = F)
+
+cor.res.mat2 = t(scale(t( cor.res.mat^5 )))
+cor.res.mat2[which(cor.res.mat2 < 0)] = 0
+pheatmap::pheatmap(cor.res.mat2, color=viridis(100), border_color = NA, cluster_rows = F, cluster_cols = F, cellwidth = 6, cellheight = 6, show_rownames = F, show_colnames = F)
+cor(as.vector(cor.res.mat2),  as.vector(samap.res^(1/2)) )
+# cowplot::plot_grid(plist = list(p1, p2)) 
+
+mzmm = read.csv("~/scratch/bcs/results/mz_mm_zei_broad_mapping_table.csv")
+mzmm = mzmm[54:nrow(mzmm),1:54]
+colnames(mzmm) = convert53$new[match(as.numeric(reshape2::colsplit(colnames(mzmm), "_", c('1','2'))[,2]), convert53$old)]
+mzmm[,1] = reshape2::colsplit(mzmm[,1], "_", c('1', '2'))[,2]
+rownames(mzmm) = mzmm[,1]; mzmm[,1] = NULL;
+mz_mouse_cluster = data.frame(mz = colnames(mzmm), mm = unlist(lapply(1:ncol(mzmm), function(x) rownames(mzmm)[which.max(mzmm[,x])])))
+mz_mouse_cluster$value = unlist(lapply(1:ncol(mzmm), function(x) max(mzmm[,x])))
+mz_mouse_cluster = mz_mouse_cluster[which(mz_mouse_cluster$value >= 0.2),]
+
+mz.min.size = min(table(mz$seuratclusters53))
+mz.cells = unlist(lapply(mz_mouse_cluster$mz, function(x) sample(colnames(mz)[which(mz$good_names53 == x)], mz.min.size) ))
+
+mm$broad = paste0(mm$Region, "_", mm$TaxonomyRank4)
+mm.min.size = min(table(mm$broad))
+mm.cells = unlist(lapply(unique(mz_mouse_cluster$mm), function(x) sample(colnames(mm)[which(mm$broad == x)], mm.min.size) ))
+
+dp.mz = subset(mz, cells = mz.cells)
+dp.mm = subset(mm, cells = mm.cells)
+
+# Testing making my own SAMap score
+xsim = data.table::fread("~/scratch/bcs/results/test.csv", data.table = F, header = T, drop = 1)
+meta = data.table::fread("~/scratch/bcs/results/test2.csv", data.table = F, header = T)
+xsim.comp = xsim[which(meta$species == "mz"), which(meta$species == "mm")]
+# xsim.comp.small   = t(rowsum(t(xsim.comp), group = meta$mm_ABA_parent[which(meta$species == "mm")], na.rm = T))
+# xsim.comp.smaller = t(rowsum(xsim.comp.small, group = meta$mz_struct_b2_vdc[which(meta$species == "mz")], na.rm = T))
+all_mm_clusters = sort(unique(meta$mm_ABA_parent[which(meta$species == "mm")]))
+all_mz_clusters = sort(unique(meta$mz_struct_b2_vdc[which(meta$species == "mz")]))
+xsim.comp.smaller = matrix(0L, nrow = length(all_mm_clusters), ncol = length(all_mz_clusters), dimnames = list(all_mm_clusters, all_mz_clusters))
+for (mm.cluster in all_mm_clusters) {
+  for (mz.cluster in all_mz_clusters) {
+    xsim.comp.smaller[mm.cluster, mz.cluster] = mean(as.matrix( xsim[which(meta$mm_ABA_parent == mm.cluster),which(meta$mz_struct_b2_vdc == mz.cluster)] ))
+  }
+}
+pheatmap::pheatmap(xsim.comp.smaller, color = viridis(100), cellwidth = 10, cellheight = 10, filename = "~/scratch/bcs/results/test.pdf")
+xsim.comp.smaller2 = matrix(0L, nrow = length(all_mz_clusters), ncol = length(all_mm_clusters), dimnames = list(all_mz_clusters, all_mm_clusters))
+for (mz.cluster in all_mz_clusters) {
+  for (mm.cluster in all_mm_clusters) {
+    xsim.comp.smaller2[mz.cluster, mm.cluster] = mean(as.matrix( xsim[which(meta$mz_struct_b2_vdc == mz.cluster),which(meta$mm_ABA_parent == mm.cluster)] ))
+  }
+}
+pheatmap::pheatmap(xsim.comp.smaller, color = viridis(100), cellwidth = 10, cellheight = 10, filename = "~/scratch/bcs/results/test2.pdf")
+
+mz.df = data.frame(table(meta$mz_struct_b2_vdc[which(meta$mz_struct_b2_vdc != "unassigned")]))
+mm.df = data.frame(table(meta$mm_ABA_parent[which(meta$mm_ABA_parent != "unassigned")]))
+xsim.comp.smaller.norm = xsim.comp.smaller / mm.df[,2]
+xsim.comp.smaller.norm = xsim.comp.smaller.norm / mz.df[col(xsim.comp.smaller.norm),2]
+pheatmap::pheatmap(xsim.comp.smaller.norm, color = viridis(100), cellwidth = 10, cellheight = 10, filename = "~/scratch/bcs/results/test.pdf")
+
+# Single cell vs spatial results
+library(ggh4x)
+mzmm.st = as.matrix(read.csv("~/Downloads/st_oritz_b_mapping_mine.csv", row.names = 1))
+colnames(mzmm.st) = str_replace(colnames(mzmm.st), "\\.", "-")
+mzmm.sc = as.matrix(read.csv("~/Downloads/bb_oritz_b_mapping_mine.csv", row.names = 1))
+colnames(mzmm.sc) = str_sub(colnames(mzmm.sc), 2, 50)
+colnames(mzmm.sc) = str_replace(colnames(mzmm.sc), "Astro", "RG")
+colnames(mzmm.sc) = plyr::revalue(colnames(mzmm.sc), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
+mzmm.st = scale(mzmm.st)
+mzmm.sc = scale(mzmm.sc)
+mzmm.sc = mzmm.sc[,colnames(c2l_mean)]
+spot.mm = as.data.frame(as.matrix(c2l_mean) %*% t(mzmm.sc))
+# st.mm = matrix(0L, nrow = ncol(mzmm.st), ncol = ncol(spot.mm), dimnames = list(colnames(mzmm.st), colnames(spot.mm)))
+spot.mm$struct = all_merge$struct
+spot.mm = spot.mm %>% group_by(struct) %>% dplyr::summarise(across(everything(), mean, na.rm = TRUE))
+spot.mm.mat = as.matrix(spot.mm); rownames(spot.mm.mat) = spot.mm.mat[,1]; spot.mm.mat = spot.mm.mat[,-1];
+# class(spot.mm.mat) = "numeric"; spot.mm.mat = scale(spot.mm.mat); spot.mm = spot.mm.mat;
+spot.mm.melt = reshape2::melt(spot.mm, id.var = "struct")
+# colnames(spot.mm.melt) = c("struct", "variable", "value")
+mz.order  = hclust(dist(spot.mm.mat), method = "complete")
+spot.mm.melt$struct = factor(spot.mm.melt$struct, levels = mz.order$labels[mz.order$order])
+mouse.order = hclust(dist(t(spot.mm.mat)), method = "complete")
+spot.mm.melt$variable = factor(spot.mm.melt$variable, levels = mouse.order$labels[mouse.order$order])
+maxed.num = 30
+spot.mm.melt$maxed = spot.mm.melt$value
+spot.mm.melt$maxed[which(spot.mm.melt$maxed >  maxed.num)] =  maxed.num
+spot.mm.melt$maxed[which(spot.mm.melt$maxed < -maxed.num)] = -maxed.num
+pdf("~/research/st/results/bb_to_oritz_to_spatial_max.pdf", width = 6, height = 4.5)
+ggplot(spot.mm.melt, aes(x = variable, y = struct, fill = maxed)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed() + force_panelsizes(rows = unit(nrow(spot.mm.mat)/8, "in"), cols = unit(ncol(spot.mm.mat)/8, "in"))
 dev.off()
 
 
@@ -2879,3 +3405,41 @@ for (this.clust in unique(deg$cluster)) {
 }
 ggplot(reshape2::melt(as.matrix(cluster.annot)),        aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis()
 ggplot(reshape2::melt(as.matrix(scale(cluster.annot))), aes(x = Var1, y = Var2, fill = value)) + geom_raster() + scale_fill_viridis()
+
+# My method
+# mz.deg$hgnc = gene_info$human[match(mz.deg$gene, gene_info$seurat_name)]
+# mouse.deg$hgnc = toupper(mouse.deg$gene)
+# res = bigHeatmap(list('mz' = mz.deg, 'mm' = mouse.deg), pdf.name = "~/scratch/bcs/results/mz_zei_cluster_pct.pdf", rm.self = T)
+# mz.deg.unique.genes = data.frame(table(mz.deg$gene))
+# mz.deg.unique.genes = mz.deg.unique.genes[which(mz.deg.unique.genes[,2] == 1),1]
+# mz.deg.unique = mz.deg[which(mz.deg$gene %in% mz.deg.unique.genes),]
+# mouse.deg.unique.genes = data.frame(table(mouse.deg$gene))
+# mouse.deg.unique.genes = mouse.deg.unique.genes[which(mouse.deg.unique.genes[,2] == 1),1]
+# mouse.deg.unique = mouse.deg[which(mouse.deg$gene %in% mouse.deg.unique.genes),]
+# res = bigHeatmap(list('mz' = mz.deg.unique, 'mm' = mouse.deg.unique), pdf.name = "~/scratch/bcs/results/mz_zei_cluster_small_pct_unique.pdf", rm.self = T)
+# Testing
+# Cichlid
+findMZpct = function(this.ident) { this.pct = FoldChange(mz,    ident.1 = this.ident, features = mz.common.gene.set);    this.pct$gene = rownames(this.pct); this.pct$cluster = this.ident; return(data.frame(this.pct)) }
+findMMpct = function(this.ident) { this.pct = FoldChange(mouse, ident.1 = this.ident, features = mouse.common.gene.set); this.pct$gene = rownames(this.pct); this.pct$cluster = this.ident; return(data.frame(this.pct)) }
+mz.assay.to.use = ifelse("SCT" %in% names(mz@assays), "SCT", "RNA")
+mz.avg.exp = AverageExpression(mz, features = mz.common.gene.set, assays = mz.assay.to.use, slot = "data")[[1]]
+mz.avg.exp.norm = log(mz.avg.exp+1) + 0.1
+mz.avg.exp.norm = mz.avg.exp.norm / rowMeans(mz.avg.exp.norm)
+mz.pct.df = data.frame(data.table::rbindlist( parallel::mclapply(unique(Idents(mz)), function(x) findMZpct(x), mc.cores = 4) ))
+mz.pct.df$pct.dif = mz.pct.df$pct.1 - mz.pct.df$pct.2
+mz.pct1.mat = reshape2::acast(mz.pct.df, gene ~ cluster, value.var = "pct.1")
+mz.pct2.mat = reshape2::acast(mz.pct.df, gene ~ cluster, value.var = "pct.2")
+mz.pct.dif.mat = reshape2::acast(mz.pct.df, gene ~ cluster, value.var = "pct.dif")
+mz.pct.dif.mat = t(scale(t(mz.pct.dif.mat[rownames(mz.avg.exp.norm), colnames(mz.avg.exp.norm)])))
+# Mouse
+mouse.avg.exp = AverageExpression(mouse, features = mouse.common.gene.set, assays = "SCT", slot = "data")[[1]]
+mouse.avg.exp.norm = log(mouse.avg.exp+1) + 0.1
+mouse.avg.exp.norm = mouse.avg.exp.norm / rowMeans(mouse.avg.exp.norm)
+mouse.pct.df = data.frame(data.table::rbindlist( parallel::mclapply(unique(Idents(mouse)), function(x) findMMpct(x), mc.cores = 4) ))
+mouse.pct.df$pct.dif = mouse.pct.df$pct.1 - mouse.pct.df$pct.2
+mouse.pct1.mat = reshape2::acast(mouse.pct.df, gene ~ cluster, value.var = "pct.1")
+mouse.pct2.mat = reshape2::acast(mouse.pct.df, gene ~ cluster, value.var = "pct.2")
+mouse.pct.dif.mat = reshape2::acast(mouse.pct.df, gene ~ cluster, value.var = "pct.dif")
+mouse.pct.dif.mat = t(scale(t(mouse.pct.dif.mat[rownames(mouse.avg.exp.norm), colnames(mouse.avg.exp.norm)])))
+mz.mouse.cor = cor(mz.avg.exp.norm*mz.pct.dif.mat, mouse.avg.exp.norm*mouse.pct.dif.mat, method = "spearman")
+pheatmap::pheatmap(mz.mouse.cor, cellwidth = 8, cellheight = 8, filename="~/scratch/bcs/results/spec_ind_test.pdf")

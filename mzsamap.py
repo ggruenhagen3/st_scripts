@@ -8,6 +8,8 @@ from samap.analysis import (get_mapping_scores, GenePairFinder,
 from samalg import SAM
 import pandas as pd
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # BLAST Results
 map_dir = '/storage/home/hcoda1/6/ggruenhagen3/p-js585-0/George/rich_project_pb1/bin/samap_directory/mouse_mz/maps/'
@@ -77,6 +79,63 @@ samap = sm.samap
 # D,MappingTable = get_mapping_scores(sm,keys_rc,n_top = 0)
 # MappingTable.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/mz_mm_saunders_cluster_mapping_table.csv")
 
+# Oritiz
+keys_cluster = {'mz':'seuratclusters53','mm':'ABA_parent'}
+D,MappingTable = get_mapping_scores(sm,keys_cluster,n_top = 0)
+MappingTable.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/mz_mm_oritz_mapping_table.csv")
+
+keys_cluster = {'mz':'structure','mm':'ABA_parent'}
+D,MappingTable = get_mapping_scores(sm,keys_cluster,n_top = 0)
+MappingTable.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/mz_mm_st_oritz_mapping_table.csv")
+
+# sm.samap.adata.obs['mz_struct'] = sm.samap.adata.obs['mz_struct_b2_vdc']
+# sm.samap.adata.obs.loc[sm.samap.adata.obs['mz_struct'] == "Dl-d", 'mz_struct'] = "Dl-v"
+# sm.samap.adata.obs.loc[sm.samap.adata.obs['mz_struct'] == "SP-u", 'mz_struct'] = "Vx"
+# sm.samap.adata.obs.loc[sm.samap.adata.obs['mz_struct'] == "tract", 'mz_struct'] = "ON"
+my_map = my_mapper(mz_col = 'mz_good_names', mm_col = 'mm_b_parent', mode = "mz_to_mm")
+my_map = my_map[my_map.columns].astype(float)
+sns.clustermap(my_map, annot=False, cmap = "viridis", figsize = [my_map.shape[1]/2, my_map.shape[0]/2], z_score=1)
+plt.savefig("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/mz_mm_oritz_b_mapping_mztomm_z.png")
+my_map.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/mz_mm_oritz_b_mapping_mine.csv")
+
+perm_nums = 1000
+import multiprocessing
+with multiprocessing.Pool(multiprocessing.cpu_count()) as mp_pool:
+    perm_list = mp_pool.starmap(perm_mapper, zip(list(range(1, perm_nums+1)), ['mz_good_names'] * perm_nums, ['mm_b_parent'] * perm_nums, ['mz_to_mm'] * perm_nums))
+
+from functools import reduce
+perm_p = reduce(lambda x, y: x.add(y, fill_value=0), perm_list)
+perm_p = perm_p / perm_nums
+
+def my_mapper(mz_col = 'mz_struct_b2_vdc', mm_col = 'mm_ABA_parent', mode = "mutual"):
+    meta = sm.samap.adata.obs
+    all_species = meta['species'].unique()
+    all_mz_cluster = meta.loc[meta['species'] == all_species[0], mz_col].unique()
+    all_mm_cluster = meta.loc[meta['species'] == all_species[1], mm_col].unique()
+    xsim_mean = pd.DataFrame(columns=all_mz_cluster, index=all_mm_cluster)
+    for mz_cluster in all_mz_cluster:
+        for mm_cluster in all_mm_cluster:
+            if mode == "mutual":
+                this_mat = sm.samap.adata.obsp['xsim'][np.where(meta[mz_col] == mz_cluster)[0],:]
+                xsim_mean.loc[mm_cluster, mz_cluster] = this_mat[:,np.where(meta[mm_col] == mm_cluster)[0]].mean().astype(float)
+            elif mode == "mz_to_mm":
+                this_mat = sm.samap.adata.obsp['knn'][np.where(meta[mz_col] == mz_cluster)[0],:]
+                xsim_mean.loc[mm_cluster, mz_cluster] = this_mat[:,np.where(meta[mm_col] == mm_cluster)[0]].mean().astype(float)
+            elif mode == "mm_to_mz":
+                this_mat = sm.samap.adata.obsp['knn'][:,np.where(meta[mz_col] == mz_cluster)[0]]
+                xsim_mean.loc[mm_cluster, mz_cluster] = this_mat[np.where(meta[mm_col] == mm_cluster)[0],].mean().astype(float)
+    return(xsim_mean)
+
+def perm_mapper(seed_num, mz_col = 'mz_struct_b2_vdc', mm_col = 'mm_ABA_parent', mode = "mutual"):
+    np.random.seed(seed_num)
+    sm.samap.adata.obs['mz_perm'] = sm.samap.adata.obs[mz_col]
+    sm.samap.adata.obs.loc[sm.samap.adata.obs['mz_perm'] != 'unassigned', 'mz_perm'] = np.random.permutation(sm.samap.adata.obs.loc[sm.samap.adata.obs['mz_perm'] != 'unassigned', 'mz_perm'])
+    sm.samap.adata.obs['mm_perm'] = sm.samap.adata.obs[mm_col]
+    sm.samap.adata.obs.loc[sm.samap.adata.obs['mm_perm'] != 'unassigned', 'mm_perm'] = np.random.permutation(sm.samap.adata.obs.loc[sm.samap.adata.obs['mm_perm'] != 'unassigned', 'mm_perm'])
+    perm_map = my_mapper('mz_perm', 'mm_perm', mode)
+    perm_map = perm_map.ge(real) * 1
+    return(perm_map)
+
 # Chord celltype-celltype mapping visulizations
 # from matplotlib import pyplot as plt
 # import holoviews as hv
@@ -93,13 +152,16 @@ with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/mz_mm_oritiz_sam
     pickle.dump(samap, out_file)
 
 
-with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/mz_mm_oritiz_sm_ran.pkl', 'wb') as out_file:
+with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/bb_saunders_sm_ran.pkl', 'wb') as out_file:
     pickle.dump(sm, out_file)
 
 # Read samap
-# import pickle
-# with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/mz_mm_saunders_sm_ran.pkl', 'rb') as out_file:
-#     sm = pickle.load(out_file)
+import pickle
+with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/bb_saunders_sm_ran.pkl', 'rb') as out_file:
+    sm = pickle.load(out_file)
+
+with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/zei_down_sm_ran2.pkl', 'rb') as out_file:
+    sm = pickle.load(out_file)
 
 # Export as h5ad so it can be loaded into Seurat
 samap.adata.write_h5ad("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/mz_mm_oritiz.h5ad")
