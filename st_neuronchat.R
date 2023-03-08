@@ -56,6 +56,7 @@ CellChatWeights = function(x) {
   net_aggregated_x <- net_aggregation(x@net,method = 'weight')
   out.str = paste0("~/scratch/st/results/cellchat/neuronchat_", my.dataset, "_", meta.col, "_weights.rds")
   saveRDS(net_aggregated_x, out.str)
+  print("SAVED!")
   
   return(net_aggregated_x)
 }
@@ -86,7 +87,7 @@ message("Done.")
 message("Writing Output...")
 todays.date = stringr::str_split(Sys.Date(), pattern = "-")[[1]]
 todays.date = paste0(todays.date[2], todays.date[3], substr(todays.date[1], 3, 4))
-out.str = paste0("~/scratch/st/results/cellchat/cellchat_", my.dataset, "_", meta.col, "_weights.csv")
+out.str = paste0("~/scratch/st/results/cellchat/neuronchat_", my.dataset, "_", meta.col, "_weights.csv")
 write.csv(out, out.str)
 message("Done.")
 message("All Done.")
