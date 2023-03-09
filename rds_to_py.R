@@ -3,6 +3,11 @@ rds_path = args[1]
 isRDS     = as.logical(args[2])
 isSpatial = as.logical(args[3])
 
+.libPaths("/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/conda_envs/SeuratDisk/lib/R/library")
+library("Seurat")
+library("SeuratObject")
+library("SeuratDisk")
+
 if (isRDS)     { obj = readRDS(rds_path) } else { obj = qs::qread(rds_path) }
 if (isSpatial) { obj_assay = "Spatial"   } else { obj_assay = "RNA"         }
 
