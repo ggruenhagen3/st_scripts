@@ -363,6 +363,16 @@ pdf(paste0(out_dir, paste0("cell2loc_sep_class2_81_84_", my.thresh, "_2.pdf")), 
 print(myMultiSFP(all_merge_hi, feature = "class2_81_84", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)), rm.zero = T, col.ident = T, high.res = T ))
 dev.off()
 
+# Correlation w/ manual annotation
+library(ggpmisc)
+this.num = read.csv("~/Downloads/c2bl_num_cells.csv")
+colnames(this.num) = c("Barcode", "num.cells")
+this.num$Barcode = paste0("c2b_", this.num$Barcode)
+this.num$cell2loc = all_merge$num.cells[match(this.num$Barcode, colnames(all_merge))]
+cor(this.num[,2], this.num$cell2loc)
+cor(this.num[,2], this.num$cell2loc, method = "spearman")
+ggplot(this.num, aes(x = num.cells, y = cell2loc)) + geom_point() + stat_poly_line() + stat_poly_eq()
+
 #*******************************************************************************
 # BB Figure of Spatial =========================================================
 #*******************************************************************************
@@ -1588,6 +1598,13 @@ all_merge$structure[which(all_merge$structure == "Dc-2")] = "Dc-1/2"
 all_merge$structure[which(all_merge$structure == "Vs-m")] = "Vs-m"
 all_merge$structure[which(all_merge$structure == "Vs-l")] = "Vs-l"
 all_merge$structure[which(all_merge$structure == "Dm")] = "Dm-3"
+all_merge$structure[which(all_merge$structure == "Dl-d")] = "Dl-v"
+all_merge$structure[which(all_merge$structure == "tract")] = "ON"
+all_merge$structure[which(all_merge$structure == "NT")] = "Dl-vv"
+all_merge$structure[which(all_merge$structure == "SP-u")] = "Vx"
+b_order = read.csv("~/Downloads/b2c2_struct_order.csv")[,1]
+all_merge$structure_no_order = all_merge$structure
+all_merge$structure = factor(all_merge$structure, levels = b_order)
 all_merge$struct = all_merge$structure
 # all_merge$struct_b2_vdc = all_merge$struct
 
@@ -2491,8 +2508,102 @@ cowplot::plot_grid(plotlist = list(p1, p2))
 dev.off()
 
 #*******************************************************************************
+# SAMap Half Clusters ==========================================================
+#*******************************************************************************
+lapply(c("c2dr", "c2dl", "c2cr", "c2cl", "c2br", "c2bl", "b2ar", "b2al", "b2br", "b2cr", "b2dr", "b2bl", "b2cl", "b2dl"), sh_map)
+sh_map = function(sh) {
+  mzmm = as.matrix(read.csv(paste0("~/research/st/results/sh_samap/clusters/", sh, "_mapping_mine3.csv"), row.names = 1))
+  colnames(mzmm) = str_sub(colnames(mzmm), 2, 50)
+  mzmm[which(mzmm > quantile(mzmm, 0.99))] = quantile(mzmm, 0.99)
+  mzmm.melt = reshape2::melt(mzmm)
+  mzmm.melt = mzmm.melt[which(!is.na(mzmm.melt$value) & mzmm.melt$Var2 != ""),]
+  colnames(mzmm.melt) = c("mm_name", "mz_name", "Score")
+  mzmm.melt$id = paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name)
+  
+  mzmm.p = as.matrix(read.csv(paste0("~/research/st/results/sh_samap/clusters/", sh, "_mapping_mine_p3.csv"), row.names = 1))
+  colnames(mzmm.p) = str_sub(colnames(mzmm.p), 2, 50)
+  mzmm.p.melt = reshape2::melt(mzmm.p)
+  colnames(mzmm.p.melt) = c("mm_name", "mz_name", "p")
+  mzmm.p.melt$id = paste0(mzmm.p.melt$mm_name, "_", mzmm.p.melt$mz_name)
+  mzmm.melt$p_perm = mzmm.p.melt$p[match(mzmm.melt$id, mzmm.p.melt$id)]
+  mzmm.melt$bh_perm = p.adjust(mzmm.melt$p_perm, method = "BH")
+  mzmm.melt$bh_sig = mzmm.melt$bh_perm < 0.05
+  mzmm.melt$p_sig  = mzmm.melt$p_perm < 0.05
+  mzmm.melt$p0     = mzmm.melt$p_perm == 0
+  
+  mz.order  = hclust(dist(t(mzmm)), method = "complete")
+  mz_order = reshape2::colsplit(mz.order$labels[mz.order$order], "\\.", c('1', '2'))[,1]
+  mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz_order)
+  mouse.order = hclust(dist(mzmm), method = "complete")
+  mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
+  
+  pdf(paste0("~/research/st/results/sh_samap/", sh, ".pdf"), width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
+  # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Greens"), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+  # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+  # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="", labels=mzmm.melt$mm_num[match(levels(mzmm.melt$mm_name), mzmm.melt$mm_name)]) + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+  # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Blues"), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+  # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis(breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$p_sig),], size = 0.6, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+  print(ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis(breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$p_sig),], size = 0.6, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white"))
+  dev.off()
+}
+
+
+#*******************************************************************************
 # SAMap ========================================================================
 #*******************************************************************************
+# library("jsonlite")
+# proteinToGene = function(x) { 
+#   if ("transcripts" %in% names(x)) {
+#     if ("protein" %in% names(x$transcripts)) {
+#       if ("accessionVersion" %in% names(x$transcripts$protein)) {
+#         return(data.frame(protein = x$transcripts$protein$accessionVersion, gene_id = x$geneId, symbol = x$symbol))
+#       }
+#     }
+#   }
+# }
+# raw = readLines("~/scratch/m_zebra_ref/bird_protein.jsonl")
+# json_raw = lapply(raw, fromJSON)
+# json_me = lapply(json_raw, proteinToGene)
+# json_df = do.call('rbind', json_me)
+# gene_df = data.table::fread("~/scratch/m_zebra_ref/bird_genes.tsv", data.table = F)
+# org = qs::qread(paste0(data_dir, "bird.qs"))
+# gene_df$syb_in_sc = gene_df$Symbol %in% rownames(org@assays$RNA@counts)
+# gene_df$syn_in_sc = gene_df$Synonyms %in% rownames(org@assays$RNA@counts)
+# gene_df = gene_df[which( !(gene_df$syb_in_sc & gene_df$syn_in_sc) & (gene_df$syb_in_sc | gene_df$syn_in_sc) ),]
+# gene_df$gene = gene_df$Symbol
+# gene_df$gene[which(gene_df$syn_in_sc)] = gene_df$Synonyms[which(gene_df$syn_in_sc)]
+# json_df$gene = gene_df$gene[match(json_df$gene_id, gene_df[,1])]
+# write.csv(json_df, "~/scratch/m_zebra_ref/bird_gene_prot_table2.csv")
+# length(which(unique(json_df$gene) %in% rownames(org@assays$RNA@counts)))
+
+gtf = data.table::fread("~/scratch/m_zebra_ref/GCF_000241765.3_Chrysemys_picta_bellii-3.0.3_genomic.gtf", data.table = F)
+# gtf = data.table::fread("~/scratch/m_zebra_ref/GCF_000001635.27.gtf", data.table = F)
+gtf$loc_id = paste0("LOC", reshape2::colsplit( reshape2::colsplit(gtf$V9, 'db_xref "GeneID:', c('1', '2'))[,2], '"', c('1', '2'))[,1])
+gtf$gene_id = reshape2::colsplit( reshape2::colsplit(gtf$V9, '";', c('1', '2'))[,1], 'gene_id "', c('1', '2'))[,2]
+gtf$protein_id = reshape2::colsplit( reshape2::colsplit(gtf$V9, 'protein_id "', c('1', '2'))[,2], '";', c('1', '2') )[,1]
+gtf_small = unique(gtf[,c("loc_id", "gene_id", "protein_id")])
+gtf_small = gtf_small[which(gtf_small$gene_id != "" & gtf_small$protein_id != ""),]
+write.csv(gtf_small, "~/scratch/m_zebra_ref/turtle_prot_table3.csv")
+
+gtf_small$gene2_id = stringr::str_replace_all(gtf_small$gene_id, "_", "-")
+gtf_small$gene2_id_in_obj = gtf_small$gene2_id %in% rownames(org@assays$RNA@counts)
+gtf_small$gene_id_in_obj = gtf_small$gene_id %in% rownames(org@assays$RNA@counts)
+gtf_small$loc_id_in_obj  = gtf_small$loc_id %in% rownames(org@assays$RNA@counts)
+gtf_small$gene = gtf_small$gene_id
+gtf_small$gene[which(gtf_small$loc_id_in_obj)] = gtf_small$loc_id[which(gtf_small$loc_id_in_obj)]
+gtf_small$gene[which(gtf_small$gene2_id_in_obj)] = gtf_small$gene2_id[which(gtf_small$gene2_id_in_obj)]
+
+length(which(! unique(gtf_small$gene) %in% rownames(org@assays$RNA@counts) ))
+length(which(! rownames(org@assays$RNA@counts) %in% unique(gtf_small$gene) ))
+length(which(! unique(gtf_small$gene_id) %in% rownames(org@assays$RNA@counts) ))
+length(which(! rownames(org@assays$RNA@counts) %in% unique(gtf_small$gene_id) ))
+
+
+gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
+json_df$loc = paste0("LOC", json_df$gene_id)
+json_df$seurat_name = gene_info$seurat_name[match(json_df$loc, gene_info$loc)]
+write.csv(json_df, "~/scratch/m_zebra_ref/mz_gene_prot_table2.csv")
+
 # conda activate SeuratDisk
 .libPaths("/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/conda_envs/SeuratDisk/lib/R/library")
 library("Seurat")
@@ -2594,19 +2705,21 @@ ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() +
 dev.off()
 
 # My mapping
-mzmm = as.matrix(read.csv("~/Downloads/bb_zeisel_mapping_mine.csv", row.names = 1))
+mzmm = as.matrix(read.csv("~/Downloads/bb_turtle_mapping_mine3.csv", row.names = 1))
 # colnames(mzmm) = str_replace_all(colnames(mzmm), "\\.", "-")
 # colnames(mzmm) = plyr::revalue(colnames(mzmm), c("Dc-1-2" = "Dc-1/2"))
 colnames(mzmm) = str_sub(colnames(mzmm), 2, 50)
 colnames(mzmm) = str_replace(colnames(mzmm), "Astro", "RG")
 colnames(mzmm) = plyr::revalue(colnames(mzmm), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
-mzmm = scale(mzmm) # scale by cichlid cluster
+# mzmm = scale(mzmm) # scale by cichlid cluster
+mzmm[which(mzmm > quantile(mzmm, 0.99))] = quantile(mzmm, 0.99)
+# mzmm[which(mzmm > 0.5)] = 0.5
 mzmm.melt = reshape2::melt(mzmm)
 mzmm.melt = mzmm.melt[which(!is.na(mzmm.melt$value) & mzmm.melt$Var2 != ""),]
 colnames(mzmm.melt) = c("mm_name", "mz_name", "Score")
 mzmm.melt$id = paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name)
 
-mzmm.p = as.matrix(read.csv("~/Downloads/bb_zeisel_mapping_mine_p_030823.csv", row.names = 1))
+mzmm.p = as.matrix(read.csv("~/Downloads/bb_turtle_mapping_mine_p3.csv", row.names = 1))
 # colnames(mzmm.p) = str_replace_all(colnames(mzmm.p), "\\.", "-")
 # colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("Dc-1-2" = "Dc-1/2"))
 colnames(mzmm.p) = str_sub(colnames(mzmm.p), 2, 50)
@@ -2616,23 +2729,27 @@ mzmm.p.melt = reshape2::melt(mzmm.p)
 colnames(mzmm.p.melt) = c("mm_name", "mz_name", "p")
 mzmm.p.melt$id = paste0(mzmm.p.melt$mm_name, "_", mzmm.p.melt$mz_name)
 mzmm.melt$p_perm = mzmm.p.melt$p[match(mzmm.melt$id, mzmm.p.melt$id)]
-mzmm.melt$sig = mzmm.melt$p_perm < 0.05
-mzmm.melt$sig = mzmm.melt$p_perm == 0
+# mzmm.melt$bh_perm = p.adjust(mzmm.melt$p_perm, method = "BH")
+mzmm.melt$bh_perm = p.adjust(mzmm.melt$p_perm, method = "BH")
+mzmm.melt$bh_sig = mzmm.melt$bh_perm < 0.05
+mzmm.melt$p_sig  = mzmm.melt$p_perm < 0.05
+mzmm.melt$p0     = mzmm.melt$p_perm == 0
+# mzmm.melt$sig    = mzmm.melt$bh_perm < 0.05
+# mzmm.melt$sig    = mzmm.melt$p_perm == 0
 
 mz.order  = hclust(dist(t(mzmm)), method = "complete")
 mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz.order$labels[mz.order$order])
 mouse.order = hclust(dist(mzmm), method = "complete")
 mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
+# mzmm.melt$mm_num = reshape2::colsplit(mzmm.melt$mm_name, "_", c('1', '2'))[,2]
 
-pdf("~/research/st/results/bb_oritzb_mine_p_blue.pdf", width = (ncol(mzmm)/5) + 2, height = (nrow(mzmm)/5) + 2)
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed()
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_blank(), axis.text.y = element_blank(), axis.line=element_blank(), axis.ticks = element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(rows = unit(nrow(mzmm)/8, "in"), cols = unit(ncol(mzmm)/8, "in"))
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in"))
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradient(low = "white", high = "#0f9783ff") + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Greens")) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
-ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6])) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
-# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Blues")) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$sig),], size = 1.2, color = "black")
+pdf("~/research/st/results/bb_turtle_mine3.pdf", width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Greens"), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="", labels=mzmm.melt$mm_num[match(levels(mzmm.melt$mm_name), mzmm.melt$mm_name)]) + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Blues"), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+# ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis(breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$p_sig),], size = 0.6, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
+ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis(breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$p_sig),], size = 0.6, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 dev.off()
 
 maxed.num = 1e-4
@@ -2852,6 +2969,41 @@ print(FeaturePlot(all_merge, "slc17a6", order = T, cols=c("lightgrey", "#FDE725F
 dev.off()
 pdf(paste0( "~/research/st/results/c2b2_gad1.pdf"), width = 2.5, height = 2.5)
 print(FeaturePlot(all_merge, "gad1", order = T, cols=c("lightgrey", "#440154FF")) + theme_void() + NoLegend() + coord_fixed() + ggtitle(""))
+dev.off()
+
+# Figure Cross Species Drivers
+pdf("~/research/st/results/paintings-cross-species/c2b2_zic1.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "zic1", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_prdm16.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "prdm16", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_penk_LOC101474395.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "LOC101474395", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_six3.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "six3", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_sp8_LOC101468530.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "LOC101468530", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_sall1.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "sall1", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_gpsm1.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "gpsm1", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_lamp5.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "lamp5", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_cacnb3.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "cacnb3", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_bhlhe22.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "bhlhe22", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_neurod2.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "neurod2", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
 dev.off()
 
 # Figure 2 C
