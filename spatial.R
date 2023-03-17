@@ -1668,6 +1668,59 @@ df$struct_gene = factor(df$struct_gene, levels = c(unique(df$struct_gene)[which(
 df = df[order(df$struct_gene, decreasing = T),]
 ggplot(df, aes(x = UMAP_1, y = UMAP_2, color = struct_gene)) + geom_point() + scale_color_identity(guide = "legend", labels = bs.genes$structure[match(levels(df$struct_gene), bs.genes$col)]) + theme_void() + ggtitle(paste0("Threshold = ", this.threshold))
 
+#*******************************************************************************
+# CellChat =====================================================================
+#*******************************************************************************
+cc = read.csv("~/scratch/st/results/cellchat/cellchat_st_ct_weights.csv")
+convert53 = read.csv("~/scratch/st/data/convert53.csv")
+cc$Sender   = unlist(lapply(1:nrow(cc), function(x) paste(strsplit(cc$X[x], "\\.", perl = T)[[1]][1:2], collapse = ".") ))
+cc$Sender   = unlist(lapply(1:nrow(cc), function(x) { this.split = strsplit(cc$Sender[x], "_", perl = T)[[1]]; this.start = this.split[1]; this.end = strsplit(this.split[2], "\\.", perl = T)[[1]][1]; paste(c(this.start, this.end), collapse = "_") }  ))
+cc$Receiver = unlist(lapply(1:nrow(cc), function(x) strsplit(cc$X[x], "\\d_[A-z0-9/-]+\\.", perl = T)[[1]][2] ))
+cc$Sender   = factor(cc$Sender,   levels = convert53$new)
+cc$Receiver = factor(cc$Receiver, levels = convert53$new)
+pdf("~/scratch/st/results/cellchat_st_ct_weights.pdf", width = 10, height = 10)
+ggplot(cc, aes(x = Sender, y = Receiver, fill = x)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(vjust = 0.5, hjust = 1, size = 10), axis.line=element_blank()) + force_panelsizes(rows = unit(length(unique(cc$Sender))/8, "in"), cols = unit(length(unique(cc$Receiver))/8, "in"))
+dev.off()
+system("rclone copy ~/scratch/st/results/cellchat_st_ct_weights.pdf dropbox:BioSci-Streelman/George/Brain/spatial/analysis/cellchat/")
+
+cc = read.csv("~/scratch/st/results/cellchat/neuronchat_st_structure_weights.csv")
+# cc = read.csv("C:/Users/miles/Downloads/neuronchat_st_structure_weights.csv")
+cc[,c("Sender", "Receiver")] = reshape2::colsplit(cc$X, "\\.", c('1', '2'))
+pdf("~/scratch/st/results/neuronchat_st_structure_weights.pdf", width = 10, height = 10)
+ggplot(cc, aes(x = Sender, y = Receiver, fill = x)) + geom_raster() + scale_fill_viridis() + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(vjust = 0.5, hjust = 1, size = 10), axis.line=element_blank()) + force_panelsizes(rows = unit(length(unique(cc$Sender))/8, "in"), cols = unit(length(unique(cc$Receiver))/8, "in"))
+dev.off()
+system("rclone copy ~/scratch/st/results/neuronchat_st_structure_weights.pdf dropbox:BioSci-Streelman/George/Brain/spatial/analysis/cellchat/")
+
+# Graph the network
+library("igraph")
+cc.backup = cc
+
+cc = cc.backup
+cc = cc[which(cc$x > quantile(cc$x, 0.9)),c("Sender", "Receiver", "x")]
+colnames(cc)[3] = c("weight")
+my.nodes = data.frame(label = unique(c(cc$Sender, cc$Receiver)))
+my.nodes$sum = unlist(lapply(my.nodes$label, function(x) sum(cc.backup$x[which(cc$Sender == x | cc$Receiver == x)]) ))
+my.nodes$color = scales::hue_pal()(nrow(my.nodes))
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+my.nodes$sum = 15 * (range01(my.nodes$sum) + 0.5)
+cc$weight = 2.5 * (range01(cc$weight) + 0.25)
+g1 = graph_from_data_frame(cc, vertices = my.nodes)
+V(g1)$color = my.nodes$color
+V(g1)$size = my.nodes$sum
+V(g1)$label.color = "black"
+V(g1)$frame.color = NA
+# E(g1)$color = E(g1)$col
+E(g1)$width = E(g1)$weight
+lfr = layout_with_fr(g1)
+plot.igraph(g1, edge.arrow.size=.2)
+
+tkid <- tkplot(g1, vertex.label=my.nodes$label, vertex.label.dist=1)
+l <- tkplot.getcoords(tkid)
+tk_close(tkid, window.close = T)
+
+pdf("C:/Users/miles/Downloads/st_cc_structure_network.pdf", width = 6, height = 6)
+plot.igraph(g1, layout = l, edge.arrow.size = 0.4)
+dev.off()
 
 #*******************************************************************************
 # CCI ==========================================================================
