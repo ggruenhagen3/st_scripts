@@ -27,11 +27,12 @@ library("ggh4x")
 message("Loading mouse object")
 rds.path = list()
 rds.path[["oritz"]]    = "~/scratch/bcs/data/mst_norm.rds"
-rds.path[["oritzb"]]    = "~/scratch/bcs/data/oritz_b_raw.rds"
+rds.path[["oritzb"]]   = "~/scratch/bcs/data/oritz_b_raw.rds"
 rds.path[["saunders"]] = "~/scratch/bcs/data/mouse_w_pc_down_norm.rds"
 rds.path[["tasic"]]    = "~/scratch/bcs/data/tasic_norm_020823.rds"
 rds.path[["tran"]]     = "~/scratch/bcs/data/tran_norm.rds"
 rds.path[["zeisel"]]   = "~/scratch/bcs/data/l5_tel_norm.rds"
+rds.path[["zei_down"]] = "~/scratch/bcs/data/zei_down_norm_022823.rds"
 rds.path[["zei_yu"]]   = "~/scratch/bcs/data/zei_yu_norm.rds"
 mouse.path = rds.path[[mouse.dataset]]
 mouse = readRDS(mouse.path)
@@ -46,6 +47,7 @@ mouse.ident = switch(mouse.dataset,
                      "tasic" = mouse$subclass,
                      "tran" = Idents(mouse),
                      "zeisel" = mouse$ClusterName,
+                     "zei_down" = mouse$ClusterName,
                      "zei_yu" = mouse$my.specific)
 Idents(mouse) = mouse.ident
 

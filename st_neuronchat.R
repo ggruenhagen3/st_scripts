@@ -34,9 +34,11 @@ message("Done.")
 # mz.df = rbind(data.frame(mz = "LOC101470250", human = "NRG2", rowsums = 5e6), mz.df)
 # 
 # mz.df = mz.df[!duplicated(mz.df$human),]
-mz.df = read.csv("~/scratch/brain/cellchat/bb_cc_gene_name_converter.csv")
-mz.df$X = NULL
 # data.input = as.matrix(combined@assays$RNA@data[mz.df$mz,])
+# mz.df = read.csv("~/scratch/brain/cellchat/bb_cc_gene_name_converter.csv")
+mz.df = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
+mz.df = mz.df[which(!is.na(mz.df$one_to_one_human)), c("seurat_name", "one_to_one_human")]
+colnames(mz.df) = c("mz", "human")
 if (my.dataset == "st.sc") {
   
 } else {
@@ -51,14 +53,17 @@ CellChatWeights = function(x) {
   this.cells = colnames(data.input)
   this.meta = data.frame(label = meta.label, row.names = this.cells)
   
-  x <- createNeuronChat(normalized_count_mtx, DB='human',group.by = this.meta$label)
+  x <- createNeuronChat(data.input[,this.cells], DB='human',group.by = this.meta$label)
   x <- run_NeuronChat(x,M=100)
-  net_aggregated_x <- net_aggregation(x@net,method = 'weight')
+  net_weight <- net_aggregation(x@net,method = 'weight')
+  net_weight_vect = unlist(data.frame(net_weight))
+  name_rep = rep(rownames(net_weight), ncol(net_weight))
+  names(net_weight_vect) = paste0(name_rep, ".", sort(name_rep))
   out.str = paste0("~/scratch/st/results/cellchat/neuronchat_", my.dataset, "_", meta.col, "_weights.rds")
-  saveRDS(net_aggregated_x, out.str)
+  saveRDS(x, out.str)
   print("SAVED!")
   
-  return(net_aggregated_x)
+  return(net_weight_vect)
 }
 
 # Getting correct labels
