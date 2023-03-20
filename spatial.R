@@ -2705,7 +2705,7 @@ ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() +
 dev.off()
 
 # My mapping
-mzmm = as.matrix(read.csv("~/Downloads/bb_turtle_mapping_mine3.csv", row.names = 1))
+mzmm = as.matrix(read.csv("~/Downloads/bb_bird_mapping_mine3.csv", row.names = 1))
 # colnames(mzmm) = str_replace_all(colnames(mzmm), "\\.", "-")
 # colnames(mzmm) = plyr::revalue(colnames(mzmm), c("Dc-1-2" = "Dc-1/2"))
 colnames(mzmm) = str_sub(colnames(mzmm), 2, 50)
@@ -2719,7 +2719,7 @@ mzmm.melt = mzmm.melt[which(!is.na(mzmm.melt$value) & mzmm.melt$Var2 != ""),]
 colnames(mzmm.melt) = c("mm_name", "mz_name", "Score")
 mzmm.melt$id = paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name)
 
-mzmm.p = as.matrix(read.csv("~/Downloads/bb_turtle_mapping_mine_p3.csv", row.names = 1))
+mzmm.p = as.matrix(read.csv("~/Downloads/bb_bird_mapping_mine_p3.csv", row.names = 1))
 # colnames(mzmm.p) = str_replace_all(colnames(mzmm.p), "\\.", "-")
 # colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("Dc-1-2" = "Dc-1/2"))
 colnames(mzmm.p) = str_sub(colnames(mzmm.p), 2, 50)
@@ -2743,7 +2743,7 @@ mouse.order = hclust(dist(mzmm), method = "complete")
 mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
 # mzmm.melt$mm_num = reshape2::colsplit(mzmm.melt$mm_name, "_", c('1', '2'))[,2]
 
-pdf("~/research/st/results/bb_turtle_mine3.pdf", width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
+pdf("~/research/st/results/bb_bird_mine3.pdf", width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Greens"), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="", labels=mzmm.melt$mm_num[match(levels(mzmm.melt$mm_name), mzmm.melt$mm_name)]) + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
