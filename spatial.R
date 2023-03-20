@@ -2604,20 +2604,20 @@ sh_map = function(sh) {
 #*******************************************************************************
 # SAMap ========================================================================
 #*******************************************************************************
-# library("jsonlite")
-# proteinToGene = function(x) { 
-#   if ("transcripts" %in% names(x)) {
-#     if ("protein" %in% names(x$transcripts)) {
-#       if ("accessionVersion" %in% names(x$transcripts$protein)) {
-#         return(data.frame(protein = x$transcripts$protein$accessionVersion, gene_id = x$geneId, symbol = x$symbol))
-#       }
-#     }
-#   }
-# }
-# raw = readLines("~/scratch/m_zebra_ref/bird_protein.jsonl")
-# json_raw = lapply(raw, fromJSON)
-# json_me = lapply(json_raw, proteinToGene)
-# json_df = do.call('rbind', json_me)
+library("jsonlite")
+proteinToGene = function(x) {
+  if ("transcripts" %in% names(x)) {
+    if ("protein" %in% names(x$transcripts)) {
+      if ("accessionVersion" %in% names(x$transcripts$protein)) {
+        return(data.frame(protein = x$transcripts$protein$accessionVersion, gene_id = x$geneId, symbol = x$symbol))
+      }
+    }
+  }
+}
+raw = readLines("~/scratch/m_zebra_ref/mouse_protein.jsonl")
+json_raw = lapply(raw, fromJSON)
+json_me = lapply(json_raw, proteinToGene)
+json_df = do.call('rbind', json_me)
 # gene_df = data.table::fread("~/scratch/m_zebra_ref/bird_genes.tsv", data.table = F)
 # org = qs::qread(paste0(data_dir, "bird.qs"))
 # gene_df$syb_in_sc = gene_df$Symbol %in% rownames(org@assays$RNA@counts)
@@ -2651,6 +2651,18 @@ length(which(! rownames(org@assays$RNA@counts) %in% unique(gtf_small$gene) ))
 length(which(! unique(gtf_small$gene_id) %in% rownames(org@assays$RNA@counts) ))
 length(which(! rownames(org@assays$RNA@counts) %in% unique(gtf_small$gene_id) ))
 
+gene_df = data.table::fread("~/scratch/m_zebra_ref/mouse_genes.tsv", data.table = F)
+gene_df$loc_id = paste0("LOC", gene_df[,1])
+gtf_small[,c("Symbol", "Synonyms")] = gene_df[match(gtf_small$loc_id, gene_df$loc_id), c("Symbol", "Synonyms")]
+gtf_small$gene[which(gtf_small$Symbol %in% rownames(org@assays$RNA@counts))] = gtf_small$Symbol[which(gtf_small$Symbol %in% rownames(org@assays$RNA@counts))]
+for (i in which(!gtf_small$gene %in% rownames(org@assays$RNA@counts) & !is.na(gtf_small$Synonyms))) {
+  syns = gtf_small$Synonyms[i]
+  syns = stringr::str_split(syns, ",")[[1]]
+  syns_logical = syns %in% rownames(org@assays$RNA@counts)
+  if (any(syns_logical)) {
+    gtf_small$gene[i] = syns[which(syns_logical)[1]]
+  }
+}
 
 gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
 json_df$loc = paste0("LOC", json_df$gene_id)
