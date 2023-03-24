@@ -11,9 +11,11 @@ message(paste0("Running correlation comparison using the following arguments: mo
 
 out_name_overide = ""
 max_overide = 0
-if (length(args) > 5) { 
-  if(is.na(as.numeric(args[7]))) { out_name_overide=args[7] } else { max_overide=args[7] }
-  message(paste0("Overide Argument = ", args[7]))
+if (length(args) > 5) {
+  if (! is.na(args[7])) {
+    if(is.na(as.numeric(args[7]))) { out_name_overide=args[7] } else { max_overide=args[7] }
+    message(paste0("Overide Argument = ", args[7]))
+  }
 }
 # mouse.dataset = "zeisel"; isGlut = F; isGABA = F; isNN = F; isSub1 = F; isBB = T
 
