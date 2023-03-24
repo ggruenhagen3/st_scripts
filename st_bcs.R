@@ -189,7 +189,7 @@ common.gene.set = sort(unique(toupper(mouse.deg$gene)))
 common.gene.set = common.gene.set[which(common.gene.set %in% mz.deg$one_to_one_human)]
 mz.common.gene.set = mz.deg$gene[match(common.gene.set, mz.deg$one_to_one_human)]
 mouse.common.gene.set = common.gene.set
-if (mouse.dataset != "tran") { mouse.common.gene.set = stringr::str_to_title(common.gene.set) }
+if (!mouse.dataset %in% c("tran", "turtle")) { mouse.common.gene.set = stringr::str_to_title(common.gene.set) }
 
 # Cichlid Average Expression
 mz.assay.to.use = ifelse("SCT" %in% names(mz@assays), "SCT", "RNA")
