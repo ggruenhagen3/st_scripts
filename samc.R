@@ -4,9 +4,10 @@
 args = commandArgs(trailingOnly=TRUE)
 mz.dataset = as.character(args[1])
 mm.dataset = as.character(args[2])
-message(paste0("Running comparison on the following datasets: mz.dataset=", mz.dataset, ", mm.dataset=", mouse.dataset))
+message(paste0("Running comparison on the following datasets: mz.dataset=", mz.dataset, ", mm.dataset=", mm.dataset))
 
 # Load Libraries
+message("Loading Libraries")
 library("ggplot2")
 library("scales")
 library("viridis")
@@ -15,6 +16,7 @@ library("ggh4x")
 library("parallel")
 
 # Read Data
+message("Reading Data")
 samc_folder = "~/scratch/bcs/samc/"
 meta = as.matrix(read.csv(paste0(samc_folder, mz.dataset, "_", mm.dataset, ".csv"),   row.names = 1))
 
@@ -50,6 +52,7 @@ mm_both = mm_both[which(rownames(mm_both) != "unassigned"),]
 mm_both = mm_both / rowSums(mm_both)
 
 # Find Correlation
+message("Finding Correlations")
 mzmm.cor = cor(t(mz_both), t(mm_both))
 mzmm.melt = reshape2::melt(mzmm.cor)
 colnames(mzmm.melt) = c("mz.cluster", "mm.cluster", "cor")
@@ -71,6 +74,7 @@ permCluster = function() {
 }
 
 # Permutations
+message("Performing Permutations")
 nperm = 1000
 perm_cor = mclapply(1:5, function(x) permCluster(), mc.cores = 20)
 perm_cor_vector = as.vector(unlist(perm_cor))
@@ -91,8 +95,11 @@ mouse.order = hclust(dist(t(arrange_mat)), method = "complete")
 mzmm.melt$mm.cluster = factor(as.vector(mzmm.melt$mm.cluster), levels = mouse.order$labels[mouse.order$order])
 
 # Save Data
+message("Saving Supplementary Data")
 write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"))
 
 # Plot
+message("Plotting")
 ggplot(mzmm.melt, aes(x = mm.cluster, y = mz.cluster, fill = cor)) + geom_raster() + scale_fill_gradientn(colors = col.pal, limits = c(0, 1), oob=squish) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + force_panelsizes(rows = unit(nrow(mzmm.cor)/8, "in"), cols = unit(ncol(mzmm.cor)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.4, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1, color = "white")
 ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, ".pdf"), width = (ncol(mzmm.cor)/5), height = (nrow(mzmm.cor)/5))
+message("All Done")
