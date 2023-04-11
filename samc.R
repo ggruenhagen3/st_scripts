@@ -123,8 +123,23 @@ mzmm.melt$mm.cluster = factor(as.vector(mzmm.melt$mm.cluster), levels = mouse.or
 message("Saving Supplementary Data")
 write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"))
 
+# Proportion Plot
+message("Plotting SAMap Cluster Proportion")
+mm_over_mm_cluster = unclass(table(meta$species, meta$leiden_clusters))
+mm_over_mm_cluster = mm_over_mm_cluster[1,] / mm_over_mm_cluster[2,]
+mm_over_mz = length(which(meta[,mm_col] != "unassigned")) / length(which(meta[,mz_col] != "unassigned"))
+relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
+df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
+                data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
+df_prop$cluster = factor(df_prop$cluster, levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
+df_prop$prop = df_prop$prop * 100
+df_prop$color = "goldenrod1"
+df_prop$color[which(df_prop$species == "mm")] = col.pal[6]
+print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0)) + theme_classic() + scale_fill_identity()) 
+ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 3, height = 8, limitsize = F)
+
 # Plot
-message("Plotting")
+message("Plotting Celltype Mapping")
 ggplot(mzmm.melt, aes(x = mm.cluster, y = mz.cluster, fill = cor)) + geom_raster() + scale_fill_gradientn(colors = col.pal, limits = c(0, 1), oob=squish) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + force_panelsizes(rows = unit(nrow(mzmm.cor)/8, "in"), cols = unit(ncol(mzmm.cor)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.4, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1, color = "white")
 ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, ".pdf"), width = (ncol(mzmm.cor)/5)+2, height = (nrow(mzmm.cor)/5)+2, limitsize = F)
 message("All Done")
