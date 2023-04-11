@@ -138,7 +138,7 @@ df_prop$prop = df_prop$prop * 100
 df_prop$color = "goldenrod1"
 df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
 print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
-ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = 8, limitsize = F)
+ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
 
 # Plot
 message("Plotting Celltype Mapping")
