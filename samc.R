@@ -140,7 +140,7 @@ df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[
 # print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray40") + geom_vline(xintercept = 25, linetype = "dashed", color = "gray60") + geom_vline(xintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
 # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
 print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
-ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.3, height = 2.5, limitsize = F)
+ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.25, height = 2.5, limitsize = F)
 
 # Plot
 message("Plotting Celltype Mapping")
