@@ -28,6 +28,8 @@ if (grepl("tasic", mm.dataset)) {
   mm_col = "mm_cluster"
   col.pal = rev(brewer.pal(11, "PRGn")[1:6])
 } else if (grepl("saunders", mm.dataset)) {
+  # mm_col = "mm_tissue_cluster"
+  mm_col = "mm_tissue_subcluster"
   col.pal = rev(brewer.pal(11, "PiYG")[1:6])
 } else if (grepl("oritz", mm.dataset)) {
   mm_col = "mm_g_parent"
