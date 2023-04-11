@@ -125,7 +125,7 @@ write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"
 
 # Proportion Plot
 message("Plotting SAMap Cluster Proportion")
-mm_over_mm_cluster = unclass(table(meta$species, meta$leiden_clusters))
+mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
 mm_over_mm_cluster = mm_over_mm_cluster[1,] / mm_over_mm_cluster[2,]
 mm_over_mz = length(which(meta[,mm_col] != "unassigned")) / length(which(meta[,mz_col] != "unassigned"))
 relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
