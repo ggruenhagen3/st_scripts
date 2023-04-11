@@ -66,15 +66,15 @@ colnames(mzmm.melt) = c("mz.cluster", "mm.cluster", "cor")
 
 permCluster = function() {
   mz_perm = meta[,mz_col]
-  mz_perm = mz_perm[which(mz_perm != "unassigned")]
-  mz_perm = sample(mz_perm)
-  mz_perm_both = unclass(table(mz_perm, meta[which(meta[,mz_col] != "unassigned"),'leiden_clusters']))
+  mz_perm[which(mz_perm != "unassigned")] = sample(mz_perm[which(mz_perm != "unassigned")])
+  mz_perm_both = unclass(table(mz_perm, meta[,'leiden_clusters']))
+  mz_perm_both = mz_perm_both[which(rownames(mz_perm_both) != "unassigned"),]
   mz_perm_both = mz_perm_both / rowSums(mz_perm_both)
   
   mm_perm = meta[,mm_col]
-  mm_perm = mm_perm[which(mm_perm != "unassigned")]
-  mm_perm = sample(mm_perm)
-  mm_perm_both = unclass(table(mm_perm, meta[which(meta[,mm_col] != "unassigned"),'leiden_clusters']))
+  mm_perm[which(mm_perm != "unassigned")] = sample(mm_perm[which(mm_perm != "unassigned")])
+  mm_perm_both = unclass(table(mm_perm, meta[,'leiden_clusters']))
+  mm_perm_both = mm_perm_both[which(rownames(mm_perm_both) != "unassigned"),]
   mm_perm_both = mm_perm_both / rowSums(mm_perm_both)
   perm_cor = cor(t(mz_perm_both), t(mm_perm_both))
   return(perm_cor)
@@ -83,8 +83,8 @@ permCluster = function() {
 # Permutations
 message("Performing Permutations")
 nperm = 1000
-perm_cor = mclapply(1:5, function(x) permCluster(), mc.cores = 20)
-perm_cor_vector = as.vector(unlist(perm_cor))
+perm_cor = mclapply(1:nperm, function(x) permCluster(), mc.cores = 20)
+perm_cor_vector = unlist(perm_cor)
 mzmm.melt$p   = sapply(1:nrow(mzmm.melt), function(x) 1 - (length(which(perm_cor_vector<mzmm.melt$cor[x])) / length(perm_cor_vector)) )
 mzmm.melt$bh  = p.adjust(mzmm.melt$p, method = "BH")
 mzmm.melt$bon = p.adjust(mzmm.melt$p, method = "bonferroni")
