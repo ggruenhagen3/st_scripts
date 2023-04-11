@@ -42,9 +42,10 @@ if (grepl("tasic", mm.dataset)) {
   col.pal = rev(brewer.pal(11, "PuOr")[1:6])
 }
 
-if (! mz_col %in% colnames(meta) ) { stop(paste0("Aborting: mz_col not in metadata, mz_col=", mz_col)) }
-if (! mm_col %in% colnames(meta) ) { stop(paste0("Aborting: mm_col not in metadata, mm_col=", mm_col)) }
-if (! mm_col %in% colnames(meta) ) { stop(paste0("Aborting: leiden_clusters not in metadata")) }
+# Input Checks
+if (! mz_col            %in% colnames(meta) ) { stop(paste0("Aborting: mz_col not in metadata, mz_col=", mz_col)) }
+if (! mm_col            %in% colnames(meta) ) { stop(paste0("Aborting: mm_col not in metadata, mm_col=", mm_col)) }
+if (! 'leiden_clusters' %in% colnames(meta) ) { stop(paste0("Aborting: leiden_clusters not in metadata"))         }
 
 # Find distribution of cichild clusters in combined clusters
 mz_both = unclass(table(meta[,mz_col], meta[,'leiden_clusters']))
