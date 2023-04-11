@@ -136,8 +136,8 @@ df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names
 df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
 df_prop$prop = df_prop$prop * 100
 df_prop$color = "goldenrod1"
-df_prop$color[which(df_prop$species == "mm")] = col.pal[6]
-print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0)) + theme_classic() + scale_fill_identity()) 
+df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
+print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + scale_fill_identity()) 
 ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 3, height = 8, limitsize = F)
 
 # Plot
