@@ -77,7 +77,7 @@ permCluster = function() {
   mm_perm_both = mm_perm_both[which(rownames(mm_perm_both) != "unassigned"),]
   mm_perm_both = mm_perm_both / rowSums(mm_perm_both)
   perm_cor = cor(t(mz_perm_both), t(mm_perm_both))
-  return(perm_cor)
+  return(as.vector(perm_cor))
 }
 
 # Permutations
