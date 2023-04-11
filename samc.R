@@ -11,7 +11,7 @@ message("Loading Libraries")
 if (! "ggh4x" %in% installed.packages()) { stop(paste0("Aborting: package ggh4x is not available. Ensure that the SeuratDisk conda environment is active.")) }
 library("ggplot2")
 library("scales")
-library("viridis")
+library("viridisLite")
 library("RColorBrewer")
 library("ggh4x")
 library("parallel")
