@@ -85,7 +85,15 @@ message("Performing Permutations")
 nperm = 1000
 perm_cor = mclapply(1:nperm, function(x) permCluster(), mc.cores = 20)
 perm_cor_vector = unlist(perm_cor)
-mzmm.melt$p   = sapply(1:nrow(mzmm.melt), function(x) 1 - (length(which(perm_cor_vector<mzmm.melt$cor[x])) / length(perm_cor_vector)) )
+# mzmm.melt$p   = sapply(1:nrow(mzmm.melt), function(x) 1 - (length(which(perm_cor_vector<mzmm.melt$cor[x])) / length(perm_cor_vector)) )
+rank_df = rbind(data.frame(id = 1:nrow(mzmm.melt), value = mzmm.melt$cor, real = T),
+                data.frame(id = "perm", value = perm_cor_vector, real = F))
+rank_df = rank_df[order(rank_df$value, decreasing = T),]
+rank_df$num_perm_greater = cumsum(!rank_df$real)
+rank_df$p = rank_df$num_perm_greater / length(perm_cor_vector)
+mzmm.melt$p = rank_df$p[match(1:nrow(mzmm.melt), rank_df$id)]
+
+# Multiple Hypothesis Test Correction
 mzmm.melt$bh  = p.adjust(mzmm.melt$p, method = "BH")
 mzmm.melt$bon = p.adjust(mzmm.melt$p, method = "bonferroni")
 mzmm.melt$p_sig   = mzmm.melt$p   < 0.05
