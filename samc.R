@@ -8,7 +8,7 @@ message(paste0("Running comparison on the following datasets: mz.dataset=", mz.d
 
 # Load Libraries
 message("Loading Libraries")
-if (! "ggh4x" %in% installed.packages()) { stop(paste0("Aborting: package ggh4x is not available. Ensure that the SeuratDisk conda environment is active.")) }
+if (! "ggh4x" %in% installed.packages()) { stop(paste0("package ggh4x is not available. Ensure that the SeuratDisk conda environment is active.")) }
 library("ggplot2")
 library("scales")
 library("viridisLite")
@@ -43,9 +43,9 @@ if (grepl("tasic", mm.dataset)) {
 }
 
 # Input Checks
-if (! mz_col            %in% colnames(meta) ) { stop(paste0("Aborting: mz_col not in metadata, mz_col=", mz_col)) }
-if (! mm_col            %in% colnames(meta) ) { stop(paste0("Aborting: mm_col not in metadata, mm_col=", mm_col)) }
-if (! 'leiden_clusters' %in% colnames(meta) ) { stop(paste0("Aborting: leiden_clusters not in metadata"))         }
+if (! mz_col            %in% colnames(meta) ) { stop(paste0("mz_col not in metadata, mz_col=", mz_col)) }
+if (! mm_col            %in% colnames(meta) ) { stop(paste0("mm_col not in metadata, mm_col=", mm_col)) }
+if (! 'leiden_clusters' %in% colnames(meta) ) { stop(paste0("leiden_clusters not in metadata"))         }
 
 # Find distribution of cichild clusters in combined clusters
 mz_both = unclass(table(meta[,mz_col], meta[,'leiden_clusters']))
