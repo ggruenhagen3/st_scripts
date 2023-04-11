@@ -125,13 +125,15 @@ write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"
 
 # Proportion Plot
 message("Plotting SAMap Cluster Proportion")
+mz_species = meta[which(meta[,mz_col] != "unassigned")[1], "species"]
+mm_species = meta[which(meta[,mm_col] != "unassigned")[1], "species"]
 mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
-mm_over_mm_cluster = mm_over_mm_cluster[1,] / mm_over_mm_cluster[2,]
+mm_over_mm_cluster = mm_over_mm_cluster[mm_species,] / mm_over_mm_cluster[mz_species,]
 mm_over_mz = length(which(meta[,mm_col] != "unassigned")) / length(which(meta[,mz_col] != "unassigned"))
 relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
 df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
                 data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
-df_prop$cluster = factor(as.character(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
+df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
 df_prop$prop = df_prop$prop * 100
 df_prop$color = "goldenrod1"
 df_prop$color[which(df_prop$species == "mm")] = col.pal[6]
