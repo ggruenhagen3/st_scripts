@@ -120,7 +120,5 @@ write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"
 # Plot
 message("Plotting")
 ggplot(mzmm.melt, aes(x = mm.cluster, y = mz.cluster, fill = cor)) + geom_raster() + scale_fill_gradientn(colors = col.pal, limits = c(0, 1), oob=squish) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + force_panelsizes(rows = unit(nrow(mzmm.cor)/8, "in"), cols = unit(ncol(mzmm.cor)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.4, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1, color = "white")
-plot_width  = ifelse((ncol(mzmm.cor)/5)+2 < 50, (ncol(mzmm.cor)/5)+2, 49)
-plot_height = ifelse((nrow(mzmm.cor)/5)+2 < 50, (nrow(mzmm.cor)/5)+2, 49)
-ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, ".pdf"), width = plot_width, height = plot_height)
+ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, ".pdf"), width = (ncol(mzmm.cor)/5)+2, height = (nrow(mzmm.cor)/5)+2, limitsize = F)
 message("All Done")
