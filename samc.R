@@ -27,8 +27,10 @@ if (grepl("bb", mz.dataset)) { mz_col = "mz_good_names" } else { mz_col = "mz_st
 if (grepl("tasic", mm.dataset)) {
   mm_col = "mm_cluster"
   col.pal = rev(brewer.pal(11, "PRGn")[1:6])
-} else if (grepl("saunders", mm.dataset)) {
-  # mm_col = "mm_tissue_cluster"
+} else if ( mm.dataset == "saunders" ) {
+  mm_col = "mm_tissue_cluster"
+  col.pal = rev(brewer.pal(11, "PiYG")[1:6])
+} else if ( mm.dataset == "saunders_sub" ) {
   mm_col = "mm_tissue_subcluster"
   col.pal = rev(brewer.pal(11, "PiYG")[1:6])
 } else if (grepl("oritz", mm.dataset)) {
