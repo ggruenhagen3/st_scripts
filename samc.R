@@ -25,6 +25,7 @@ meta = as.matrix(read.csv(paste0(samc_folder, mz.dataset, "_", mm.dataset, ".csv
 col.pal = viridis(100)
 if (grepl("bb", mz.dataset)) { mz_col = "mz_good_names" } else { mz_col = "mz_struct" }
 if (grepl("tasic", mm.dataset)) {
+  mm_col = "mm_cluster"
   col.pal = rev(brewer.pal(11, "PRGn")[1:6])
 } else if (grepl("saunders", mm.dataset)) {
   col.pal = rev(brewer.pal(11, "PiYG")[1:6])
