@@ -48,6 +48,7 @@ if (grepl("tasic", mm.dataset)) {
   mm_col = "mm_ClusterName"
   col.pal = brewer.pal(9, "Greens")
 } else if (grepl("turtle", mm.dataset)) {
+  mm_col = "cp_cluster"
   col.pal = brewer.pal(11, "BrBG")[6:11]
 } else if (grepl("axolotl", mm.dataset)) {
   col.pal = magma(100)
