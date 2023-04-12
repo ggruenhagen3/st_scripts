@@ -29,6 +29,8 @@ if (grepl("bb", mz.dataset)) {
   mz_col = "mz_struct" 
 } else if (grepl("zeisel", mz.dataset)) {
   mz_col = "ms_ClusterName"
+} else {
+  mz_col = "mz_good_names" 
 }
 if (grepl("tasic", mm.dataset)) {
   mm_col = "mm_cluster"
