@@ -139,9 +139,7 @@ if (mz.dataset == "vert2") {
   relative_prop = mm_over_mm_cluster / species_count_adj
   relative_prop = t(t(relative_prop) / colSums(relative_prop))
   df_prop = reshape2::melt(relative_prop)
-  print(head(df_prop))
-  df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
-                  data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
+  colnames(df_prop) = c("species", "cluster", "prop")
   df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
   df_prop$prop = df_prop$prop * 100
   df_prop$color = "goldenrod1"
