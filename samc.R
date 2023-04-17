@@ -143,7 +143,7 @@ if (mz.dataset == "vert2") {
   df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
   df_prop$prop = df_prop$prop * 100
   df_prop$color = "goldenrod1"
-  df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
+  df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(brewer.pal(9, "Greens"))(100)[80]
   df_prop$color[which(df_prop$species == "cp")] =  colorRampPalette(brewer.pal(11, "BrBG")[6:11])(100)[80]
   df_prop$color[which(df_prop$species == "tg")] =  colorRampPalette(rev(brewer.pal(11, "PuOr")[1:6]))(100)[80]
   df_prop$color[which(df_prop$species == "am")] =  magma(100)[80]
