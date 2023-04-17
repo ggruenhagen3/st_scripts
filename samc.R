@@ -133,8 +133,13 @@ if (mz.dataset == "vert2") {
   mm_over_mm_cluster = mm_over_mm_cluster / colSums(mm_over_mm_cluster)
   species_count = unclass(table(meta[,"species"]))
   species_count_adj = species_count / sum(species_count)
+  print(mm_over_mm_cluster[1:5])
+  print(species_count_adj)
+  print(dim(mm_over_mm_cluster))
   relative_prop = mm_over_mm_cluster / species_count_adj
   relative_prop = t(t(relative_prop) / colSums(relative_prop))
+  df_prop = reshape2::melt(relative_prop)
+  print(head(df_prop))
   df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
                   data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
   df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
