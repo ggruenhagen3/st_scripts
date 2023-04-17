@@ -128,22 +128,44 @@ write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"
 
 # Proportion Plot
 message("Plotting SAMap Cluster Proportion")
-mz_species = meta[which(meta[,mz_col] != "unassigned")[1], "species"]
-mm_species = meta[which(meta[,mm_col] != "unassigned")[1], "species"]
-mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
-mm_over_mm_cluster = mm_over_mm_cluster[mm_species,] / mm_over_mm_cluster[mz_species,]
-mm_over_mz = length(which(meta[,mm_col] != "unassigned")) / length(which(meta[,mz_col] != "unassigned"))
-relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
-df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
-                data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
-df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
-df_prop$prop = df_prop$prop * 100
-df_prop$color = "goldenrod1"
-df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
-# print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray40") + geom_vline(xintercept = 25, linetype = "dashed", color = "gray60") + geom_vline(xintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
-# ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
-print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
-ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.225, height = 2.5, limitsize = F)
+if (mz.dataset == "vert2") {
+  mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
+  mm_over_mm_cluster = mm_over_mm_cluster / colSums(mm_over_mm_cluster)
+  species_count = unclass(table(meta[,"species"]))
+  species_count_adj = species_count / sum(species_count)
+  relative_prop = mm_over_mm_cluster / species_count_adj
+  relative_prop = t(t(relative_prop) / colSums(relative_prop))
+  df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
+                  data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
+  df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
+  df_prop$prop = df_prop$prop * 100
+  df_prop$color = "goldenrod1"
+  df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
+  df_prop$color[which(df_prop$species == "cp")] =  colorRampPalette(brewer.pal(11, "BrBG")[6:11])(100)[80]
+  df_prop$color[which(df_prop$species == "tg")] =  colorRampPalette(rev(brewer.pal(11, "PuOr")[1:6]))(100)[80]
+  df_prop$color[which(df_prop$species == "am")] =  magma(100)[80]
+  # print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray40") + geom_vline(xintercept = 25, linetype = "dashed", color = "gray60") + geom_vline(xintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
+  # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
+  print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
+  ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.225, height = 2.5, limitsize = F)
+} else {
+  mz_species = meta[which(meta[,mz_col] != "unassigned")[1], "species"]
+  mm_species = meta[which(meta[,mm_col] != "unassigned")[1], "species"]
+  mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
+  mm_over_mm_cluster = mm_over_mm_cluster[mm_species,] / mm_over_mm_cluster[mz_species,]
+  mm_over_mz = length(which(meta[,mm_col] != "unassigned")) / length(which(meta[,mz_col] != "unassigned"))
+  relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
+  df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
+                  data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
+  df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
+  df_prop$prop = df_prop$prop * 100
+  df_prop$color = "goldenrod1"
+  df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
+  # print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray40") + geom_vline(xintercept = 25, linetype = "dashed", color = "gray60") + geom_vline(xintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
+  # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
+  print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
+  ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.225, height = 2.5, limitsize = F)
+}
 
 # Plot
 message("Plotting Celltype Mapping")
