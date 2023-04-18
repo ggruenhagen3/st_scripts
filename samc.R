@@ -168,46 +168,46 @@ if (mz.dataset == "vert2") {
   # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
   print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
   ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = ncol(relative_prop)*0.225, height = 2.5, limitsize = F)
-  
-  cp_col = "cp_detail"
-  tg_col = "tg_cluster_orig2"
-  am_col = "am_cluster"
-  
-  prop_thresh  = 10
-  prop_thresh2 = .75
-  df_prop_specific = df_prop[which(df_prop$prop < prop_thresh),]
-  meta = cbind(meta, cpSpecificJoint = F)
-  meta[which(meta[,"species"] == "cp" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "cp")]) ), "cpSpecificJoint"]=T
-  cp_dist = unclass(table(meta[,cp_col], meta[,"cpSpecificJoint"]))
-  cp_dist = cp_dist / rowSums(cp_dist)
-  
-  meta = cbind(meta, mzSpecificJoint = F)
-  meta[which(meta[,"species"] == "mz" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "mz")]) ), "mzSpecificJoint"]=T
-  mz_dist = unclass(table(meta[,mz_col], meta[,"mzSpecificJoint"]))
-  mz_dist = mz_dist / rowSums(mz_dist)
-  
-  meta = cbind(meta, mmSpecificJoint = F)
-  meta[which(meta[,"species"] == "mm" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "mm")]) ), "mmSpecificJoint"]=T
-  mm_dist = unclass(table(meta[,mm_col], meta[,"mmSpecificJoint"]))
-  mm_dist = mm_dist / rowSums(mm_dist)
-  
-  meta = cbind(meta, tgSpecificJoint = F)
-  meta[which(meta[,"species"] == "tg" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "tg")]) ), "tgSpecificJoint"]=T
-  tg_dist = unclass(table(meta[,tg_col], meta[,"tgSpecificJoint"]))
-  tg_dist = tg_dist / rowSums(tg_dist)
-  
-  meta = cbind(meta, amSpecificJoint = F)
-  meta[which(meta[,"species"] == "am" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "am")]) ), "amSpecificJoint"]=T
-  am_dist = unclass(table(meta[,am_col], meta[,"amSpecificJoint"]))
-  am_dist = am_dist / rowSums(am_dist)
-  
-  species_specific = data.frame()
-  if (ncol(cp_dist) > 1 && length(which(cp_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(cp_dist)[which(cp_dist[,"TRUE"] > prop_thresh2)], species = "cp")) }
-  if (ncol(mz_dist) > 1 && length(which(mz_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(mz_dist)[which(mz_dist[,"TRUE"] > prop_thresh2)], species = "mz")) }
-  if (ncol(tg_dist) > 1 && length(which(tg_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(tg_dist)[which(tg_dist[,"TRUE"] > prop_thresh2)], species = "tg")) }
-  if (ncol(am_dist) > 1 && length(which(am_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(am_dist)[which(am_dist[,"TRUE"] > prop_thresh2)], species = "am")) }
-  if (ncol(mm_dist) > 1 && length(which(mm_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(mm_dist)[which(mm_dist[,"TRUE"] > prop_thresh2)], species = "mm")) }
-  
+  # 
+  # cp_col = "cp_detail"
+  # tg_col = "tg_cluster_orig2"
+  # am_col = "am_cluster"
+  # 
+  # prop_thresh  = 10
+  # prop_thresh2 = .75
+  # df_prop_specific = df_prop[which(df_prop$prop < prop_thresh),]
+  # meta = cbind(meta, cpSpecificJoint = F)
+  # meta[which(meta[,"species"] == "cp" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "cp")]) ), "cpSpecificJoint"]=T
+  # cp_dist = unclass(table(meta[,cp_col], meta[,"cpSpecificJoint"]))
+  # cp_dist = cp_dist / rowSums(cp_dist)
+  # 
+  # meta = cbind(meta, mzSpecificJoint = F)
+  # meta[which(meta[,"species"] == "mz" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "mz")]) ), "mzSpecificJoint"]=T
+  # mz_dist = unclass(table(meta[,mz_col], meta[,"mzSpecificJoint"]))
+  # mz_dist = mz_dist / rowSums(mz_dist)
+  # 
+  # meta = cbind(meta, mmSpecificJoint = F)
+  # meta[which(meta[,"species"] == "mm" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "mm")]) ), "mmSpecificJoint"]=T
+  # mm_dist = unclass(table(meta[,mm_col], meta[,"mmSpecificJoint"]))
+  # mm_dist = mm_dist / rowSums(mm_dist)
+  # 
+  # meta = cbind(meta, tgSpecificJoint = F)
+  # meta[which(meta[,"species"] == "tg" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "tg")]) ), "tgSpecificJoint"]=T
+  # tg_dist = unclass(table(meta[,tg_col], meta[,"tgSpecificJoint"]))
+  # tg_dist = tg_dist / rowSums(tg_dist)
+  # 
+  # meta = cbind(meta, amSpecificJoint = F)
+  # meta[which(meta[,"species"] == "am" & meta[,"leiden_clusters"] %in% as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "am")]) ), "amSpecificJoint"]=T
+  # am_dist = unclass(table(meta[,am_col], meta[,"amSpecificJoint"]))
+  # am_dist = am_dist / rowSums(am_dist)
+  # 
+  # species_specific = data.frame()
+  # if (ncol(cp_dist) > 1 && length(which(cp_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(cp_dist)[which(cp_dist[,"TRUE"] > prop_thresh2)], species = "cp")) }
+  # if (ncol(mz_dist) > 1 && length(which(mz_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(mz_dist)[which(mz_dist[,"TRUE"] > prop_thresh2)], species = "mz")) }
+  # if (ncol(tg_dist) > 1 && length(which(tg_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(tg_dist)[which(tg_dist[,"TRUE"] > prop_thresh2)], species = "tg")) }
+  # if (ncol(am_dist) > 1 && length(which(am_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(am_dist)[which(am_dist[,"TRUE"] > prop_thresh2)], species = "am")) }
+  # if (ncol(mm_dist) > 1 && length(which(mm_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(mm_dist)[which(mm_dist[,"TRUE"] > prop_thresh2)], species = "mm")) }
+  # 
 } else {
   mz_species = meta[which(meta[,mz_col] != "unassigned")[1], "species"]
   mm_species = meta[which(meta[,mm_col] != "unassigned")[1], "species"]
