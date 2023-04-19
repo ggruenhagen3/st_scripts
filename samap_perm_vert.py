@@ -154,22 +154,22 @@ perm_p = real.applymap(my_p)
 
 perm_p.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/vert2_axolotl_mapping_mine_p3.csv")
 
-# import scipy
-# from scipy.sparse import dok_matrix
-# from scipy.spatial import distance
-# import pandas as pd
-# from numba import njit, prange
-# import numpy as np
-# # dist_vect = scipy.spatial.distance.pdist(sm.samap.adata.obsm['X_umap'])
-# mz_idx = np.where(sm.samap.adata.obs['species'] == 'mz')[0]
-# mm_idx = np.where(sm.samap.adata.obs['species'] == 'mm')[0]
-# tg_idx = np.where(sm.samap.adata.obs['species'] == 'tg')[0]
-# am_idx = np.where(sm.samap.adata.obs['species'] == 'am')[0]
-# cp_idx = np.where(sm.samap.adata.obs['species'] == 'cp')[0]
-#
-# dist = euclidean_distance2(sm.samap.adata.obsm['X_umap'][mz_idx], sm.samap.adata.obsm['X_umap'][mm_idx])
-# knn = dist
-# real = my_mapper2(mz_col = 'mz_good_names', mm_col = 'mm_ClusterName')
+import scipy
+from scipy.sparse import dok_matrix
+from scipy.spatial import distance
+import pandas as pd
+from numba import njit, prange
+import numpy as np
+# dist_vect = scipy.spatial.distance.pdist(sm.samap.adata.obsm['X_umap'])
+mz_idx = np.where(sm.samap.adata.obs['species'] == 'mz')[0]
+mm_idx = np.where(sm.samap.adata.obs['species'] == 'mm')[0]
+tg_idx = np.where(sm.samap.adata.obs['species'] == 'tg')[0]
+am_idx = np.where(sm.samap.adata.obs['species'] == 'am')[0]
+cp_idx = np.where(sm.samap.adata.obs['species'] == 'cp')[0]
+
+dist = euclidean_distance2(sm.samap.adata.obsm['X_umap'][mz_idx], sm.samap.adata.obsm['X_umap'][mm_idx])
+knn = dist
+real = my_mapper2(mz_col = 'mz_good_names', mm_col = 'mm_ClusterName')
 
 # dist_all = scipy.sparse.csr_matrix((len(mz_idx), sm.samap.adata.obsm['X_umap'].shape[0]-len(mz_idx)), dtype=np.int8)
 # dist_all[mz_idx[:, None], mm_idx] = dist
