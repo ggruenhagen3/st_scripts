@@ -134,9 +134,6 @@ mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
 mm_over_mm_cluster = mm_over_mm_cluster / colSums(mm_over_mm_cluster)
 species_count = as.vector(unclass(table(meta[,"species"])))
 species_count_adj = species_count / sum(species_count)
-print(mm_over_mm_cluster[1:5])
-print(species_count_adj)
-print(dim(mm_over_mm_cluster))
 relative_prop = mm_over_mm_cluster / species_count_adj
 relative_prop = t(t(relative_prop) / colSums(relative_prop))
 df_prop = reshape2::melt(relative_prop)
@@ -147,7 +144,8 @@ df_prop$color = "goldenrod1"
 df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(brewer.pal(9, "Greens"))(100)[80]
 df_prop$color[which(df_prop$species == "cp")] =  colorRampPalette(brewer.pal(11, "BrBG")[6:11])(100)[80]
 df_prop$color[which(df_prop$species == "tg")] =  colorRampPalette(rev(brewer.pal(11, "PuOr")[1:6]))(100)[80]
-df_prop$color[which(df_prop$species == "am")] =  magma(100)[80]  num_mat=unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
+df_prop$color[which(df_prop$species == "am")] =  magma(100)[80]
+num_mat=unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
 num_df=reshape2::melt(num_mat)
 df_prop$num = num_df[,3]
 num_mat_notSpecies = abs(sweep(num_mat, 2, colSums(num_mat)))
