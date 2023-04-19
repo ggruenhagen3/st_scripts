@@ -53,6 +53,10 @@ with open('/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/vert2_pair_sm_ra
 turtle_meta = pd.read_csv("/storage/coda1/p-js585/0/ggruenhagen3/George/rich_project_pb1/data/bcs/data/turtle_meta.csv", index_col = 0)
 sm.samap.adata.obs['cp_areaident'] = 'unassigned'
 sm.samap.adata.obs.loc[turtle_meta.index, 'cp_areaident'] = turtle_meta['areaident']
+turtle_neurons_meta = pd.read_csv("~/scratch/bcs/data/turtle_neurons_meta.csv", index_col = 0)
+turtle_neurons_meta = turtle_neurons_meta.loc[turtle_neurons_meta.index.isin(sm.samap.adata.obs.index),]
+sm.samap.adata.obs['cp_detail'] = sm.samap.adata.obs['cp_cluster']
+sm.samap.adata.obs.loc[turtle_neurons_meta.index, 'cp_detail'] = turtle_neurons_meta['clusters']
 
 sm.samap.adata.obs['tg_region_cluster'] = sm.samap.adata.obs['tg_region'] + "_" + sm.samap.adata.obs['tg_cluster_orig2']
 sm.samap.adata.obs.loc[sm.samap.adata.obs['tg_region_cluster'] == "unassigned_unassigned", 'tg_region_cluster'] = "unassigned"
@@ -151,32 +155,28 @@ perm_p = real.applymap(my_p)
 perm_p.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/vert2_axolotl_mapping_mine_p3.csv")
 
 # import scipy
-# dist_vect = scipy.spatial.distance.pdist(sm.samap.adata.obsm['X_umap'])
-# dist = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(sm.samap.adata.obsm['X_umap']), checks = False) # overloads memory even at 192 GB of memory
-#
-# mz_idx = np.where(sm.samap.adata.obs['species'] == 'mz')[0]
-# mm_idx = np.where(sm.samap.adata.obs['species'] == 'mm')[0]
-# tg_idx = np.where(sm.samap.adata.obs['species'] == 'tg')[0]
-# am_idx = np.where(sm.samap.adata.obs['species'] == 'am')[0]
-# cp_idx = np.where(sm.samap.adata.obs['species'] == 'cp')[0]
-# # dist_all = dok_matrix((len(mz_idx), sm.samap.adata.obsm['X_umap'].shape[0]-len(mz_idx)))
-# dist_all = scipy.sparse.csr_matrix((len(mz_idx), sm.samap.adata.obsm['X_umap'].shape[0]-len(mz_idx)), dtype=np.int8)
-#
-# dist = euclidean_distance2(sm.samap.adata.obsm['X_umap'][mz_idx], sm.samap.adata.obsm['X_umap'][mm_idx])
-# dist_all[mz_idx[:, None], mm_idx] = dist
-# knn = dist
-# real = my_mapper2(mz_col = 'mz_good_names', mm_col = 'mm_ClusterName')
-# # dist = np.pad(dist, ((0,dist.shape[1]-dist.shape[0]),(0,0)), mode='constant', constant_values=0)
-# # out = dist.T + dist
-# # np.fill_diagonal(out,np.diag(dist))
-#
-#
 # from scipy.sparse import dok_matrix
 # from scipy.spatial import distance
 # import pandas as pd
 # from numba import njit, prange
 # import numpy as np
+# # dist_vect = scipy.spatial.distance.pdist(sm.samap.adata.obsm['X_umap'])
+# mz_idx = np.where(sm.samap.adata.obs['species'] == 'mz')[0]
+# mm_idx = np.where(sm.samap.adata.obs['species'] == 'mm')[0]
+# tg_idx = np.where(sm.samap.adata.obs['species'] == 'tg')[0]
+# am_idx = np.where(sm.samap.adata.obs['species'] == 'am')[0]
+# cp_idx = np.where(sm.samap.adata.obs['species'] == 'cp')[0]
 #
+# dist = euclidean_distance2(sm.samap.adata.obsm['X_umap'][mz_idx], sm.samap.adata.obsm['X_umap'][mm_idx])
+# knn = dist
+# real = my_mapper2(mz_col = 'mz_good_names', mm_col = 'mm_ClusterName')
+
+# dist_all = scipy.sparse.csr_matrix((len(mz_idx), sm.samap.adata.obsm['X_umap'].shape[0]-len(mz_idx)), dtype=np.int8)
+# dist_all[mz_idx[:, None], mm_idx] = dist
+# dist = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(sm.samap.adata.obsm['X_umap']), checks = False) # overloads memory even at 192 GB of memory
+# dist = np.pad(dist, ((0,dist.shape[1]-dist.shape[0]),(0,0)), mode='constant', constant_values=0)
+# out = dist.T + dist
+# np.fill_diagonal(out,np.diag(dist))
 # @njit(parallel=True)
 # def euclidean_distance(coords1, coords2):
 #     # allocate output array
@@ -192,8 +192,7 @@ perm_p.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/vert2_axo
 #             else:
 #                 out[lat_ix, lon_ix] = 0
 #     return out
-#
-#
+
 # @njit(parallel=True)
 # def euclidean_distance2(coords1, coords2):
 #     # allocate output array
@@ -221,24 +220,24 @@ perm_p.to_csv("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/results/vert2_axo
 #
 # this_idx = square_to_condensed(np.where(sm.samap.adata.obs['mz_good_names'] == "8.1_Glut"), np.where(sm.samap.adata.obs['mm_ClusterName'] == "TEGLU6"), sm.samap.adata.obsm['X_umap'].shape[0])
 #
-# def my_mapper2(mz_col = 'mz_struct_b2_vdc', mm_col = 'mm_ABA_parent'):
-#     meta = sm.samap.adata.obs
-#     all_mz_cluster = meta[mz_col].unique()
-#     all_mm_cluster = meta[mm_col].unique()
-#     all_mz_cluster.sort()
-#     all_mm_cluster.sort()
-#     lb = LabelBinarizer(sparse_output=True)
-#     knn_mz  = lb.fit_transform(sm.samap.adata.obs.loc[sm.samap.adata.obs['species'] == 'mz', mz_col]).T.dot(knn)
-#     knn_sum = pd.DataFrame(lb.fit_transform(sm.samap.adata.obs.loc[sm.samap.adata.obs['species'] == 'mm', mm_col]).T.dot(knn_mz.T))
-#     mz_counts = meta[mz_col].value_counts().sort_index()
-#     mm_counts = meta[mm_col].value_counts().sort_index()
-#     mz_mm_counts = pd.DataFrame(np.array(mz_counts) * np.array(mm_counts).reshape(len(mm_counts), 1))
-#     knn_mean = knn_sum / mz_mm_counts
-#     knn_mean.index = all_mm_cluster
-#     knn_mean.columns = all_mz_cluster
-#     knn_mean = knn_mean.drop("unassigned", axis=0)
-#     knn_mean = knn_mean.drop("unassigned", axis=1)
-#     return(knn_mean)
+def my_mapper2(mz_col = 'mz_struct_b2_vdc', mm_col = 'mm_ABA_parent'):
+    meta = sm.samap.adata.obs
+    all_mz_cluster = meta[mz_col].unique()
+    all_mm_cluster = meta[mm_col].unique()
+    all_mz_cluster.sort()
+    all_mm_cluster.sort()
+    lb = LabelBinarizer(sparse_output=True)
+    knn_mz  = lb.fit_transform(sm.samap.adata.obs.loc[sm.samap.adata.obs['species'] == 'mz', mz_col]).T.dot(knn)
+    knn_sum = pd.DataFrame(lb.fit_transform(sm.samap.adata.obs.loc[sm.samap.adata.obs['species'] == 'mm', mm_col]).T.dot(knn_mz.T))
+    mz_counts = meta[mz_col].value_counts().sort_index()
+    mm_counts = meta[mm_col].value_counts().sort_index()
+    mz_mm_counts = pd.DataFrame(np.array(mz_counts) * np.array(mm_counts).reshape(len(mm_counts), 1))
+    knn_mean = knn_sum / mz_mm_counts
+    knn_mean.index = all_mm_cluster
+    knn_mean.columns = all_mz_cluster
+    knn_mean = knn_mean.drop("unassigned", axis=0)
+    knn_mean = knn_mean.drop("unassigned", axis=1)
+    return(knn_mean)
 
 # def run_euc(point):
 #     list_a = sm.samap.adata.obsm['X_umap'][point]
