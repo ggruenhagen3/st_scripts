@@ -130,45 +130,39 @@ write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"
 
 # Proportion Plot
 message("Plotting SAMap Cluster Proportion")
+mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
+mm_over_mm_cluster = mm_over_mm_cluster / colSums(mm_over_mm_cluster)
+species_count = as.vector(unclass(table(meta[,"species"])))
+species_count_adj = species_count / sum(species_count)
+print(mm_over_mm_cluster[1:5])
+print(species_count_adj)
+print(dim(mm_over_mm_cluster))
+relative_prop = mm_over_mm_cluster / species_count_adj
+relative_prop = t(t(relative_prop) / colSums(relative_prop))
+df_prop = reshape2::melt(relative_prop)
+colnames(df_prop) = c("species", "cluster", "prop")
+df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
+df_prop$prop = df_prop$prop * 100
+df_prop$color = "goldenrod1"
+df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(brewer.pal(9, "Greens"))(100)[80]
+df_prop$color[which(df_prop$species == "cp")] =  colorRampPalette(brewer.pal(11, "BrBG")[6:11])(100)[80]
+df_prop$color[which(df_prop$species == "tg")] =  colorRampPalette(rev(brewer.pal(11, "PuOr")[1:6]))(100)[80]
+df_prop$color[which(df_prop$species == "am")] =  magma(100)[80]  num_mat=unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
+num_df=reshape2::melt(num_mat)
+df_prop$num = num_df[,3]
+num_mat_notSpecies = abs(sweep(num_mat, 2, colSums(num_mat)))
+num_df_notSpecies = reshape2::melt(num_mat_notSpecies)
+df_prop$num2 = num_df_notSpecies[,3]
+num_mat_notCluster = rowSums(num_mat) - num_mat
+num_df_notCluster = reshape2::melt(num_mat_notCluster)
+df_prop$num3 = num_df_notCluster[,3]
+tot_num = sum(rowSums(num_mat))
+df_prop$num4 = tot_num - df_prop$num - df_prop$num2 - df_prop$num3
+df_prop$p = unlist(mclapply(1:nrow(df_prop), function(x) chisq.test(matrix(c(df_prop$num[x], df_prop$num2[x], df_prop$num3[x], df_prop$num4[x]), ncol=2))$p.value, mc.cores=20))
+df_prop$v = unlist(mclapply(1:nrow(df_prop), function(x) vcd::assocstats(matrix(c(df_prop$num[x], df_prop$num2[x], df_prop$num3[x], df_prop$num4[x]), ncol=2))$cramer, mc.cores=20))
+print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
+ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = ncol(relative_prop)*0.225, height = 2.5, limitsize = F)
 if (mz.dataset == "vert2") {
-  mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
-  mm_over_mm_cluster = mm_over_mm_cluster / colSums(mm_over_mm_cluster)
-  species_count = as.vector(unclass(table(meta[,"species"])))
-  species_count_adj = species_count / sum(species_count)
-  print(mm_over_mm_cluster[1:5])
-  print(species_count_adj)
-  print(dim(mm_over_mm_cluster))
-  relative_prop = mm_over_mm_cluster / species_count_adj
-  relative_prop = t(t(relative_prop) / colSums(relative_prop))
-  df_prop = reshape2::melt(relative_prop)
-  colnames(df_prop) = c("species", "cluster", "prop")
-  df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
-  df_prop$prop = df_prop$prop * 100
-  df_prop$color = "goldenrod1"
-  df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(brewer.pal(9, "Greens"))(100)[80]
-  df_prop$color[which(df_prop$species == "cp")] =  colorRampPalette(brewer.pal(11, "BrBG")[6:11])(100)[80]
-  df_prop$color[which(df_prop$species == "tg")] =  colorRampPalette(rev(brewer.pal(11, "PuOr")[1:6]))(100)[80]
-  df_prop$color[which(df_prop$species == "am")] =  magma(100)[80]
-  
-  num_mat=unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
-  num_df=reshape2::melt(num_mat)
-  df_prop$num = num_df[,3]
-  num_mat_notSpecies = abs(sweep(num_mat, 2, colSums(num_mat)))
-  num_df_notSpecies = reshape2::melt(num_mat_notSpecies)
-  df_prop$num2 = num_df_notSpecies[,3]
-  num_mat_notCluster = rowSums(num_mat) - num_mat
-  num_df_notCluster = reshape2::melt(num_mat_notCluster)
-  df_prop$num3 = num_df_notCluster[,3]
-  tot_num = sum(rowSums(num_mat))
-  df_prop$num4 = tot_num - df_prop$num - df_prop$num2 - df_prop$num3
-  df_prop$p = unlist(mclapply(1:nrow(df_prop), function(x) chisq.test(matrix(c(df_prop$num[x], df_prop$num2[x], df_prop$num3[x], df_prop$num4[x]), ncol=2))$p.value, mc.cores=20))
-  df_prop$v = unlist(mclapply(1:nrow(df_prop), function(x) vcd::assocstats(matrix(c(df_prop$num[x], df_prop$num2[x], df_prop$num3[x], df_prop$num4[x]), ncol=2))$cramer, mc.cores=20))
-  
-  # print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray40") + geom_vline(xintercept = 25, linetype = "dashed", color = "gray60") + geom_vline(xintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
-  # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
-  print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
-  ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = ncol(relative_prop)*0.225, height = 2.5, limitsize = F)
-  # 
   # cp_col = "cp_detail"
   # tg_col = "tg_cluster_orig2"
   # am_col = "am_cluster"
@@ -207,25 +201,51 @@ if (mz.dataset == "vert2") {
   # if (ncol(tg_dist) > 1 && length(which(tg_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(tg_dist)[which(tg_dist[,"TRUE"] > prop_thresh2)], species = "tg")) }
   # if (ncol(am_dist) > 1 && length(which(am_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(am_dist)[which(am_dist[,"TRUE"] > prop_thresh2)], species = "am")) }
   # if (ncol(mm_dist) > 1 && length(which(mm_dist[,"TRUE"] > prop_thresh2))) { species_specific = rbind(species_specific, data.frame(cluster = rownames(mm_dist)[which(mm_dist[,"TRUE"] > prop_thresh2)], species = "mm")) }
-  # 
 } else {
-  mz_species = meta[which(meta[,mz_col] != "unassigned")[1], "species"]
-  mm_species = meta[which(meta[,mm_col] != "unassigned")[1], "species"]
-  mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
-  mm_over_mm_cluster = mm_over_mm_cluster[mm_species,] / mm_over_mm_cluster[mz_species,]
-  mm_over_mz = length(which(meta[,mm_col] != "unassigned")) / length(which(meta[,mz_col] != "unassigned"))
-  relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
-  df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
-                  data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
-  df_prop$cluster = factor(as.numeric(df_prop$cluster), levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
-  df_prop$prop = df_prop$prop * 100
-  df_prop$color = "goldenrod1"
-  df_prop$color[which(df_prop$species == "mm")] =  colorRampPalette(col.pal)(100)[80]
   # print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0), name = "") + ylab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_vline(xintercept = 50, linetype = "dashed", color = "gray40") + geom_vline(xintercept = 25, linetype = "dashed", color = "gray60") + geom_vline(xintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity()) 
   # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = 2.5, height = length(relative_prop)*0.15, limitsize = F)
-  print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
-  ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.225, height = 2.5, limitsize = F)
+  # print(ggplot(df_prop, aes(x = cluster, y = prop, fill = color)) + geom_bar(stat='identity') + scale_y_continuous(expand = c(0,0), name = "") + xlab("") + theme_classic() + theme(axis.text = element_text(size = 10)) + geom_hline(yintercept = 50, linetype = "dashed", color = "gray40") + geom_hline(yintercept = 25, linetype = "dashed", color = "gray60") + geom_hline(yintercept = 75, linetype = "dashed", color = "gray60") + scale_fill_identity())
+  # ggsave(paste0(samc_folder, mz.dataset, "_", mm.dataset, "_prop.pdf"), width = length(relative_prop)*0.225, height = 2.5, limitsize = F)
+  v_thresh1 = 0.1
+  df_prop_specific = df_prop[which(df_prop$v > v_thresh1),]
+  not_mz_species = unique(meta[,"species"])
+  not_mz_species = not_mz_species[which(not_mz_species != "mz")]
+  species_specific = data.frame()
   
+  mz_specific_joint_cluster = as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "mz" & df_prop_specific$prop > 50)])
+  if (length(mz_specific_joint_cluster) > 0) {
+    meta = cbind(meta, mzSpecificJoint = F)
+    meta[which(meta[,"species"] == "mz" & meta[,"leiden_clusters"] %in% mz_specific_joint_cluster ), "mzSpecificJoint"]=T
+    mz_dist = unclass(table(meta[,mz_col], meta[,"mzSpecificJoint"]))
+    mz_dist = mz_dist[which(rownames(mz_dist) != "unassigned"),]
+    mz_dist_df = data.frame(num = mz_dist[,"TRUE"], num2 = sum(mz_dist[,"TRUE"])-mz_dist[,"TRUE"], num3 = mz_dist[,"FALSE"])
+    mz_dist_df$num4 = length(which(meta[,"species"] == "mz")) - mz_dist_df$num - mz_dist_df$num2 - mz_dist_df$num3
+    mz_dist_df$v = unlist(mclapply(1:nrow(mz_dist_df), function(x) vcd::assocstats(matrix(c(mz_dist_df$num[x], mz_dist_df$num2[x], mz_dist_df$num3[x], mz_dist_df$num4[x]), ncol=2))$cramer, mc.cores=20))
+    mz_dist_df$prop1 = mz_dist_df$num  / mz_dist_df$num3
+    mz_dist_df$prop2 = mz_dist_df$num2 / mz_dist_df$num4
+    mz_specific = rownames(mz_dist_df)[which(mz_dist_df$v > v_thresh1 & mz_dist_df$prop1 > mz_dist_df$prop2)]
+    if (length(mz_specific) > 0) {
+      species_specific = rbind(species_specific, data.frame(cluster = mz_specific, species = "mz"))
+    }
+  }
+  
+  mm_specific_joint_cluster = as.vector(df_prop_specific$cluster[which(df_prop_specific$species == not_mz_species & df_prop_specific$prop > 50)])
+  if (length(mm_specific_joint_cluster) > 0) {
+    meta = cbind(meta, mmSpecificJoint = F)
+    meta[which(meta[,"species"] == not_mz_species & meta[,"leiden_clusters"] %in% mm_specific_joint_cluster ), "mmSpecificJoint"]=T
+    mm_dist = unclass(table(meta[,mm_col], meta[,"mmSpecificJoint"]))
+    mm_dist = mm_dist[which(rownames(mm_dist) != "unassigned"),]
+    mm_dist_df = data.frame(num = mm_dist[,"TRUE"], num2 = sum(mm_dist[,"TRUE"])-mm_dist[,"TRUE"], num3 = mm_dist[,"FALSE"])
+    mm_dist_df$num4 = length(which(meta[,"species"] == not_mz_species)) - mm_dist_df$num - mm_dist_df$num2 - mm_dist_df$num3
+    mm_dist_df$v = unlist(mclapply(1:nrow(mm_dist_df), function(x) vcd::assocstats(matrix(c(mm_dist_df$num[x], mm_dist_df$num2[x], mm_dist_df$num3[x], mm_dist_df$num4[x]), ncol=2))$cramer, mc.cores=20))
+    mm_dist_df$prop1 = mm_dist_df$num  / mm_dist_df$num3
+    mm_dist_df$prop2 = mm_dist_df$num2 / mm_dist_df$num4
+    mm_specific = rownames(mm_dist_df)[which(mm_dist_df$v > v_thresh1 & mm_dist_df$prop1 > mm_dist_df$prop2)]
+    if (length(mm_specific) > 0) {
+      species_specific = rbind(species_specific, data.frame(cluster = mm_specific, species = not_mz_species))
+    }
+  }
+  write.csv(species_specific, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_species_specific.csv"))
 }
 
 # Plot
