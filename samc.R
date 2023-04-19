@@ -130,6 +130,7 @@ write.csv(mzmm.melt, paste0(samc_folder, mz.dataset, "_", mm.dataset, "_sup.csv"
 
 # Proportion Plot
 message("Plotting SAMap Cluster Proportion")
+meta[,"leiden_clusters"] = as.numeric(meta[,"leiden_clusters"])
 mm_over_mm_cluster = unclass(table(meta[,"species"], meta[,"leiden_clusters"]))
 mm_over_mm_cluster = mm_over_mm_cluster / colSums(mm_over_mm_cluster)
 species_count = as.vector(unclass(table(meta[,"species"])))
@@ -213,9 +214,11 @@ if (mz.dataset == "vert2") {
   mz_specific_joint_cluster = as.vector(df_prop_specific$cluster[which(df_prop_specific$species == "mz" & df_prop_specific$prop > 50)])
   if (length(mz_specific_joint_cluster) > 0) {
     meta = cbind(meta, mzSpecificJoint = F)
-    meta[which(meta[,"species"] == "mz" & meta[,"leiden_clusters"] %in% mz_specific_joint_cluster ), "mzSpecificJoint"]=T
+    meta[which(meta[,"species"] == "mz" & meta[,"leiden_clusters"] %in% mz_specific_joint_cluster), "mzSpecificJoint"]=T
     mz_dist = unclass(table(meta[,mz_col], meta[,"mzSpecificJoint"]))
     mz_dist = mz_dist[which(rownames(mz_dist) != "unassigned"),]
+    print(head(mz_dist))
+    print(mz_specific_joint_cluster)
     mz_dist_df = data.frame(num = mz_dist[,"TRUE"], num2 = sum(mz_dist[,"TRUE"])-mz_dist[,"TRUE"], num3 = mz_dist[,"FALSE"])
     mz_dist_df$num4 = length(which(meta[,"species"] == "mz")) - mz_dist_df$num - mz_dist_df$num2 - mz_dist_df$num3
     mz_dist_df$v = unlist(mclapply(1:nrow(mz_dist_df), function(x) vcd::assocstats(matrix(c(mz_dist_df$num[x], mz_dist_df$num2[x], mz_dist_df$num3[x], mz_dist_df$num4[x]), ncol=2))$cramer, mc.cores=20))
