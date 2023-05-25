@@ -217,8 +217,6 @@ if (mz.dataset == "vert2") {
     meta[which(meta[,"species"] == "mz" & meta[,"leiden_clusters"] %in% mz_specific_joint_cluster), "mzSpecificJoint"]=T
     mz_dist = unclass(table(meta[,mz_col], meta[,"mzSpecificJoint"]))
     mz_dist = mz_dist[which(rownames(mz_dist) != "unassigned"),]
-    print(head(mz_dist))
-    print(mz_specific_joint_cluster)
     mz_dist_df = data.frame(num = mz_dist[,"TRUE"], num2 = sum(mz_dist[,"TRUE"])-mz_dist[,"TRUE"], num3 = mz_dist[,"FALSE"])
     mz_dist_df$num4 = length(which(meta[,"species"] == "mz")) - mz_dist_df$num - mz_dist_df$num2 - mz_dist_df$num3
     mz_dist_df$v = unlist(mclapply(1:nrow(mz_dist_df), function(x) vcd::assocstats(matrix(c(mz_dist_df$num[x], mz_dist_df$num2[x], mz_dist_df$num3[x], mz_dist_df$num4[x]), ncol=2))$cramer, mc.cores=20))

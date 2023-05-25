@@ -24,7 +24,7 @@ message("Done.")
 
 # Human Object =================================================================
 # message("Creating a Human Object...")
-# mz.df = data.frame(mz = rownames(combined), human = gene_info$human[match(rownames(combined), gene_info$mzebra)])
+# mz.df = data.frame(mz = rownames(combined@assays$RNA@counts), human = gene_info$human[match(rownames(combined@assays$RNA@counts), gene_info$mzebra)])
 # mz.df$rowsums = rowSums(combined@assays$RNA@data)
 # mz.df = mz.df[order(-mz.df$rowsums),]
 # mz.df = mz.df[which(mz.df$rowsums != 0 & mz.df$human != "" & !is.na(mz.df$human)),]
@@ -66,6 +66,9 @@ CellChatWeights = function(x) {
   net_weight_vect = unlist(net_weight)
   name_rep = rep(rownames(net_weight), ncol(net_weight))
   names(net_weight_vect) = paste0(name_rep, ".", sort(name_rep))
+  # test = reshape2::melt(as.matrix(net_weight))
+  # colnames(test) = c("Sender", "Receiver", "value")
+  # return(list(df.net_lig_recept, test))
   return(net_weight_vect)
 }
 
@@ -89,6 +92,8 @@ n.success = length(run_outs)
 # out[, c("clust1", "clust2")] = reshape2::colsplit(names(run_outs[[1]]), "\\.", c("1", "2"))
 # out = out[, c(n.success+1, n.success+2, 1:n.success)]
 out = run_outs
+# test = reshape2::melt(as.matrix(net_weight))
+# colnames(test) = c("Sender", "Receiver", "value")
 message("Done.")
 
 # Save Output ==================================================================

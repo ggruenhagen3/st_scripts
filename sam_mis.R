@@ -85,18 +85,20 @@ geneOverlap2 = function(df1, df2, cluster1, cluster2, hgnc1, hgnc2, strict = T, 
   return(pct)
 }
 mz.dataset = "st"
-mm.dataset = "oritz"
+mm.dataset = "turtle"
 mouse.dataset = mm.dataset
 
 # mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/", mz.dataset, "_", mm.dataset, "_gene_ortholog2.csv"))
 # mz_mm_gene_map = processOrtholog(mz_mm_gene_map)
-mz.hgnc = read.csv(paste0("~/scratch/bcs/data/cichlid_egg_many.csv"))
-if (mm.dataset == "zeisel" || mm.dataset == "oritz") {
-  mm.hgnc = read.csv(paste0("~/scratch/bcs/data/", mm.dataset, "_human_many.csv"))
-  mm.hgnc = data.frame(X = 1:nrow(mm.hgnc), gene = mm.hgnc$mouse, hgnc = mm.hgnc$human, isOne = !mm.hgnc$multiple.mouse & !mm.hgnc$multiple.human)
-} else {
-  mm.hgnc = read.csv(paste0("~/scratch/bcs/data/", mm.dataset, "_egg_many.csv"))  
-}
+# mz.hgnc = read.csv(paste0("~/scratch/bcs/data/cichlid_egg_many.csv"))
+# if (mm.dataset == "zeisel" || mm.dataset == "oritz") {
+#   mm.hgnc = read.csv(paste0("~/scratch/bcs/data/", mm.dataset, "_human_many.csv"))
+#   mm.hgnc = data.frame(X = 1:nrow(mm.hgnc), gene = mm.hgnc$mouse, hgnc = mm.hgnc$human, isOne = !mm.hgnc$multiple.mouse & !mm.hgnc$multiple.human)
+# } else {
+#   mm.hgnc = read.csv(paste0("~/scratch/bcs/data/", mm.dataset, "_egg_many.csv"))
+# }
+mz.hgnc = ortho[["cichlid"]]
+mm.hgnc = ortho[[mm.dataset]]
 mz_deg = read.csv("~/scratch/brain/results/bb53_deg_012323.csv")
 if (mz.dataset == "st") {
   mz_deg = read.csv("~/scratch/bcs/results/c2b2_brain_structure_deg_042023.csv")
@@ -114,7 +116,7 @@ mouse.deg.path[["oritz"]]    = read.csv("~/scratch/bcs/results/oritzg_markers_04
 mouse.deg.path[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_cluster_region_subcluster_020723.csv")
 mouse.deg.path[["tasic"]]    = read.csv("~/scratch/bcs/results/tasic_subclass_020823.csv")
 mouse.deg.path[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_021523.csv")
-mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cluster_markers_041923.csv")
+# mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cluster_markers_041923.csv")
 mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cp_pallial_area_markers_042623.csv")
 # mouse.deg.path[["turtle_neurons"]]   = read.csv("~/scratch/bcs/results/turtle_neurons_area_markers_042023.csv")
 mouse.deg.path[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_020723.csv")
@@ -129,13 +131,8 @@ ovlp_df = expand.grid(mm_clusters, mz_clusters)
 colnames(ovlp_df) = c("mm_cluster", "mz_cluster")
 ovlp_df$mz_cluster = stringr::str_replace(as.character(as.vector(ovlp_df$mz_cluster)), "Astro", "RG")
 ovlp_df$id = paste0(ovlp_df$mz_cluster, "_", ovlp_df$mm_cluster)
-# ovlp_df$pct_loose  = unlist(mclapply(1:nrow(ovlp_df), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df$mz_cluster[x]), as.vector(ovlp_df$mm_cluster[x]), mz_mm_gene_map, strict = F, return_genes = F), mc.cores = 20))
-# ovlp_df$pct_strict = unlist(mclapply(1:nrow(ovlp_df), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df$mz_cluster[x]), as.vector(ovlp_df$mm_cluster[x]), mz_mm_gene_map, strict = T, return_genes = F), mc.cores = 20))
 ovlp_df$pct_loose  = unlist(mclapply(1:nrow(ovlp_df), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df$mz_cluster[x]), as.vector(ovlp_df$mm_cluster[x]), mz.hgnc, mm.hgnc, strict = F, return_genes = F), mc.cores = 20))
 ovlp_df$pct_strict = unlist(mclapply(1:nrow(ovlp_df), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df$mz_cluster[x]), as.vector(ovlp_df$mm_cluster[x]), mz.hgnc, mm.hgnc, strict = T, return_genes = F), mc.cores = 20))
-# ovlp_df[which(ovlp_df$mm_cluster == "TEGLU6" & ovlp_df$mz_cluster == "8.1_Glut"),]
-# mean(ovlp_df$pct_loose[which(ovlp_df$mz_cluster == "8.1_Glut")])
-# mean(ovlp_df$pct_loose[which(ovlp_df$mm_cluster == "TEGLU6")])
 
 hit_sup = read.csv(paste0("~/scratch/bcs/results/", mz.dataset, "_", mm.dataset, "_sig_hits.csv"))
 hit_sup$X = NULL
@@ -175,6 +172,7 @@ if (grepl("tasic", mm.dataset)) {
 ovlp_df$pct_loose = ovlp_df$pct_loose * 100
 ggplot(ovlp_df, aes(x = pct_loose, fill = p0, color = p0)) + geom_density(alpha = 0.75) + scale_color_manual(values = c(colorRampPalette(colors = col.pal)(100)[50], colorRampPalette(colors = col.pal)(100)[100])) + scale_fill_manual(values = c(colorRampPalette(colors = col.pal)(100)[30], colorRampPalette(colors = col.pal)(100)[80])) + theme_classic() + scale_x_continuous(expand = c(0,0), name = "") + scale_y_continuous(expand = expansion(mult = c(0, .05)), name = "") + theme(axis.text = element_text(size = 10))
 ggsave(paste0("~/scratch/bcs/results/", mz.dataset, "_", mm.dataset, "_pct_ovlp", ".pdf"), width = 5, height = 4)# ovlp_df$sig_level = plyr::revalue(as.character(ovlp_df$bh_sig), c("TRUE" = "sig", "FALSE" = "none"))
+system(paste0("rclone copy ~/scratch/bcs/results/", mz.dataset, "_", mm.dataset, "_pct_ovlp", ".pdf dropbox:BioSci-Streelman/George/Brain/spatial/analysis/samap/"))
 # ovlp_df$sig_level[which(ovlp_df$p0)] = "very sig"
 # ggplot(ovlp_df, aes(x = pct_loose, fill = sig_level, color = sig_level)) + geom_density(alpha = 0.6) + scale_color_manual(values = c(colorRampPalette(colors = col.pal)(100)[50], colorRampPalette(colors = col.pal)(100)[75], colorRampPalette(colors = col.pal)(100)[100])) + scale_fill_manual(values = c(colorRampPalette(colors = col.pal)(100)[30], colorRampPalette(colors = col.pal)(100)[55], colorRampPalette(colors = col.pal)(100)[80])) + theme_classic() + scale_x_continuous(expand = c(0,0), name = "") + scale_y_continuous(expand = expansion(mult = c(0, .05)), name = "") + theme(axis.text = element_text(size = 10))
 
@@ -213,8 +211,10 @@ ovlp_df_bird$col = "#FFB084"
 ovlp_df_bird$col[which(ovlp_df_bird$p0)] = "#CD700E"
 ovlp_df_bird$col = factor(ovlp_df_bird$col, levels = c("#FFB084", "#CD700E"))
 ovlp_df_vert = rbind(ovlp_df_axolotl, ovlp_df_turtle, ovlp_df_bird)
+ovlp_df_vert$species = factor(ovlp_df_vert$species, c("axolotl", "turtle", "bird"))
 ggplot(ovlp_df_vert, aes(x = pct_loose, fill = col, color = col)) + geom_density(alpha = 0.75) + scale_color_identity() + scale_fill_identity() + theme_classic() + scale_x_continuous(expand = c(0,0), name = "") + scale_y_continuous(expand = expansion(mult = c(0, .01)), name = "") + theme(axis.text = element_text(size = 10)) + facet_wrap(~ species, ncol = 1)
-ggsave(paste0("~/scratch/bcs/results/vert_pct_ovlp_dark", ".pdf"), width = 6, height = 10)# ovlp_df$sig_level = plyr::revalue(as.character(ovlp_df$bh_sig), c("TRUE" = "sig", "FALSE" = "none"))
+ggsave("~/scratch/bcs/results/vert_pct_ovlp_dark.pdf", width = 6, height = 10)# ovlp_df$sig_level = plyr::revalue(as.character(ovlp_df$bh_sig), c("TRUE" = "sig", "FALSE" = "none"))
+system("rclone copy ~/scratch/bcs/results/vert_pct_ovlp_dark.pdf dropbox:BioSci-Streelman/George/Brain/spatial/analysis/samap/")
 
 ovlp_df_turtle_neurons$species = "turtle"
 ovlp_df_turtle_neurons$col = "#8CB1A6"
@@ -227,10 +227,11 @@ ovlp_df_oritz$col = factor(ovlp_df_oritz$col, levels = c("#FDA284", "#8F0813"))
 ovlp_df_vert = rbind(ovlp_df_oritz, ovlp_df_turtle_neurons)
 ovlp_df_vert$species = factor(ovlp_df_vert$species, levels = c("turtle", "oritz"))
 ggplot(ovlp_df_vert, aes(x = pct_loose, fill = col, color = col)) + geom_density(alpha = 0.75) + scale_color_identity() + scale_fill_identity() + theme_classic() + scale_x_continuous(expand = c(0,0), name = "") + scale_y_continuous(expand = expansion(mult = c(0, .01)), name = "") + theme(axis.text = element_text(size = 10)) + facet_wrap(~ species, ncol = 1)
-ggsave(paste0("~/scratch/bcs/results/st_pct_ovlp_dark", ".pdf"), width = 3.5, height = 5)# ovlp_df$sig_level = plyr::revalue(as.character(ovlp_df$bh_sig), c("TRUE" = "sig", "FALSE" = "none"))
+ggsave(paste0("~/scratch/bcs/results/st_pct_ovlp_dark.pdf"), width = 3.5, height = 5)# ovlp_df$sig_level = plyr::revalue(as.character(ovlp_df$bh_sig), c("TRUE" = "sig", "FALSE" = "none"))
+system("rclone copy ~/scratch/bcs/results/st_pct_ovlp_dark.pdf dropbox:BioSci-Streelman/George/Brain/spatial/analysis/samap/")
 
 se <- function(x) sd(x)/sqrt(length(x))
-ovlp_df = ovlp_df_zeisel
+ovlp_df = ovlp_df_oritz
 this_p0 = ovlp_df$pct_loose[which(ovlp_df$p0)]
 this_not_p0 = ovlp_df$pct_loose[which(!ovlp_df$p0)]
 t.test(this_p0, this_not_p0)$p.value
@@ -277,12 +278,15 @@ mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
 mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
 Idents(mz) = mz$good_names53
 
+ovlp_df = ovlp_df_turtle_neurons
 ovlp_df_p0 = ovlp_df[which(ovlp_df$p0),]
 # ovlp_df_p0 = ovlp_df_p0[order(ovlp_df_p0$cor, decreasing = T),]
 # ovlp_df_p0 = ovlp_df_p0[which(!duplicated(ovlp_df_p0$mz_cluster)),]
 # ovlp_df_p0 = ovlp_df_p0[which(!duplicated(ovlp_df_p0$mm_cluster)),]
 res = mclapply(1:nrow(ovlp_df_p0), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df_p0$mz_cluster[x]), as.vector(ovlp_df_p0$mm_cluster[x]), mz.hgnc, mm.hgnc, strict = F, return_genes = T), mc.cores = 20)
 df_ortho = do.call('rbind', res)
+df_ortho_write = df_ortho
+colnames(df_ortho_write) = c("hgnc", "")
 ovlp_df_p0$mz_cluster = stringr::str_replace(as.character(as.vector(ovlp_df_p0$mz_cluster)), "Astro", "RG")
 
 df_ortho$id = paste0(df_ortho$cluster_1, "_", df_ortho$cluster_2)
@@ -432,19 +436,46 @@ deg[["cichlid"]] = read.csv("~/scratch/brain/results/bb53_deg_012323.csv")
 deg[["cichlid"]]$cluster = stringr::str_replace(as.character(as.vector(deg[["cichlid"]]$cluster)), "Astro", "RG")
 
 ortho = list()
-for (v in vert[1:length(vert)]) {
-  if (v == "mouse") {
-    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/", v, "_human_many.csv"))
-    mz_mm_gene_map = data.frame(X = 1:nrow(mz_mm_gene_map), gene = mz_mm_gene_map$mouse, hgnc = mz_mm_gene_map$human, isOne = !mz_mm_gene_map$multiple.mouse & !mz_mm_gene_map$multiple.human)
-  } else {
-    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/", v, "_egg_many.csv"))  
+for (v1 in vert[1:length(vert)]) {
+  if (v1 == "mouse") {
+    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/mouse_human_many.csv"))
+    mz_mm_gene_map = mz_mm_gene_map[,c("gene", "hgnc")]
+  } else if (v1 == "turtle") {
+    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/turtle_ortho_final.csv"))
+    mz_mm_gene_map$hgnc = mz_mm_gene_map$hgnc.many
+  } else if (v1 == "cichlid") {
+    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/gene_info_4.csv"))
+    mz_mm_gene_map$hgnc = mz_mm_gene_map$human_reasonable
+    mz_mm_gene_map$gene = mz_mm_gene_map$seurat_name
+  } else if (v1 == "bird") {
+    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/bird_ortho_final.csv"))
+    mz_mm_gene_map$hgnc = mz_mm_gene_map$hgnc.many
+  } else if (v1 == "axolotl") {
+    mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/", v1, "_egg_many.csv"))  
   }
-  
-  # mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/bb_", v, "_gene_ortholog2.csv"))
-  # mz_mm_gene_map = processOrtholog(mz_mm_gene_map)
-  ortho[[v]] = mz_mm_gene_map
+  mz_mm_gene_map = mz_mm_gene_map[,c("gene", "hgnc")]
+  mz_mm_gene_map$hgnc[which(mz_mm_gene_map$hgnc == "")] = NA
+  ortho[[v1]] = mz_mm_gene_map
 }
+ortho[["zeisel"]] = ortho[["mouse"]]
+ortho[["saunders"]] = ortho[["mouse"]]
+ortho[["oritz"]] = ortho[["mouse"]]
 length(which(ortho[["mouse"]]$hgnc %in% ortho[["axolotl"]]$hgnc & ortho[["mouse"]]$hgnc %in% ortho[["turtle"]]$hgnc & ortho[["mouse"]]$hgnc %in% ortho[["bird"]]$hgnc & ortho[["mouse"]]$hgnc %in% ortho[["cichlid"]]$hgnc))
+
+ortho2 = list()
+for (v1 in vert) {
+  if (v1 == "cichlid") {
+    ortho2[[v1]] = ortho[[v1]][which(ortho[[v1]]$gene %in% rownames(v[[v1]]@assays$RNA@counts)),]
+  } else {
+    ortho2[[v1]] = ortho[[v1]][which(ortho[[v1]]$gene %in% rownames(v[[v1]]@assays$SCT@counts)),]
+  }
+  ortho2[[v1]] = ortho2[[v1]][which(!duplicated(paste0(ortho2[[v1]]$gene, "_", ortho2[[v1]]$hgnc))),]
+  ortho2[[v1]]$dup = duplicated(ortho2[[v1]]$gene) | duplicated(ortho2[[v1]]$gene, fromLast = TRUE)
+  ortho2[[v1]]$dup[which(ortho2[[v1]]$dup & ortho2[[v1]]$hgnc == toupper(ortho2[[v1]]$gene))] = FALSE
+  ortho2[[v1]] = ortho2[[v1]][which(!ortho2[[v1]]$dup),]
+}
+common_gene = ortho2[["mouse"]]$hgnc[which(ortho2[["mouse"]]$hgnc %in% ortho2[["axolotl"]]$hgnc & ortho2[["mouse"]]$hgnc %in% ortho2[["turtle"]]$hgnc & ortho2[["mouse"]]$hgnc %in% ortho2[["bird"]]$hgnc & ortho2[["mouse"]]$hgnc %in% ortho2[["cichlid"]]$hgnc)]
+length(common_gene)
 
 # common_name = c("OLIG", "OB", "MGE1", "MGE2", "DGNBL", "CA3")
 # # common_name = c("OLIG", "OB", "MSN", "MGE1", "MGE2", "DGNBL", "CA3")
@@ -487,27 +518,28 @@ common_celltype_genes = data.frame()
 common_celltype_genes4 = data.frame()
 for (name_i in common_name) {
   cluster1 = common_celltype$celltype[which(common_celltype$name == name_i & common_celltype$species == "cichlid")]
-  for (v in vert[1:(length(vert)-1)]) {
-    cluster2 = common_celltype$celltype[which(common_celltype$name == name_i & common_celltype$species == v)]
+  for (v1 in vert[which(vert != "cichlid")]) {
+    print(v1)
+    cluster2 = common_celltype$celltype[which(common_celltype$name == name_i & common_celltype$species == v1)]
     
     df1 = deg[["cichlid"]]
-    df2 = deg[[v]]
+    df2 = deg[[v1]]
     df1 = df1[which(df1$cluster %in% cluster1),]
     df2 = df2[which(df2$cluster %in% cluster2),]
     
     df1$hgnc = ortho[["cichlid"]]$hgnc[match(df1$gene, ortho[["cichlid"]]$gene)]
-    df2$hgnc = ortho[[v]]$hgnc[match(df2$gene, ortho[[v]]$gene)]
+    df2$hgnc = ortho[[v1]]$hgnc[match(df2$gene, ortho[[v1]]$gene)]
     
-    ovlp = unique(df1$hgnc[which(df1$hgnc %in% df2$hgnc & !is.na(df1$hgnc))])
+    ovlp = unique(df1$hgnc[which(df1$hgnc %in% df2$hgnc & !is.na(df1$hgnc) & df1$hgnc != "")])
     if (length(ovlp) > 0) {
-      common_celltype_genes = rbind(common_celltype_genes, data.frame(name = name_i, species = v, gene = ovlp))
+      common_celltype_genes = rbind(common_celltype_genes, data.frame(name = name_i, species = v1, gene = ovlp))
     }
   }
   gene_rep = table(common_celltype_genes$gene[which(common_celltype_genes$name == name_i)])
+  print(table(gene_rep))
   if (length(which(gene_rep == 4)) > 0) { common_celltype_genes4 = rbind(common_celltype_genes4, data.frame(name = name_i, gene = names(gene_rep)[which(gene_rep == 4)])) }
 }
 write.csv(common_celltype_genes4, "~/scratch/bcs/results/vert_cons_genes.csv")
-
 
 common_pairwise = data.frame()
 for (name_i in common_name[which(common_name != "MSN")]) {
@@ -542,18 +574,18 @@ dev.off()
 
 common_celltype_genes_stats = data.frame()
 for (name_i in common_name[which(common_name != "MSN")]) {
-  for (v in vert) {
+  for (v1 in vert) {
     cluster1 = common_celltype$celltype[which(common_celltype$name == name_i & common_celltype$species == v)]
     
-    df1 = deg[[v]]
+    df1 = deg[[v1]]
     df1 = df1[which(df1$cluster %in% cluster1),]
-    df1$hgnc = ortho[[v]]$hgnc[match(df1$gene, ortho[[v]]$gene)]
+    df1$hgnc = ortho[[v1]]$hgnc[match(df1$gene, ortho[[v1]]$gene)]
     
     high_cons_genes = common_celltype_genes4$gene[which(common_celltype_genes4$name == name_i)]
     df1 = df1[which(df1$hgnc %in% high_cons_genes),]
     df1 = df1[order(df1$p_val_adj, decreasing = F),]
     df1 = df1[which(!duplicated(df1$hgnc)),]
-    common_celltype_genes_stats = rbind(common_celltype_genes_stats, data.frame(name = name_i, species = v, gene = df1$hgnc, p_val_adj = df1$p_val_adj, log2FC = df1$avg_log2FC))
+    common_celltype_genes_stats = rbind(common_celltype_genes_stats, data.frame(name = name_i, species = v1, gene = df1$hgnc, p_val_adj = df1$p_val_adj, log2FC = df1$avg_log2FC))
   }
 }
 neg_log_bon_thresh = 300
@@ -587,38 +619,6 @@ Idents(v[["axolotl"]]) = v[["axolotl"]]$cluster
 Idents(v[["turtle"]])  = v[["turtle"]]$cp_detail
 Idents(v[["bird"]])    = v[["bird"]]$cluster_orig2
 
-ortho2 = list()
-for (v1 in vert) {
-  if (v1 == "cichlid") {
-    ortho2[[v1]] = ortho[[v1]][which(ortho[[v1]]$gene %in% rownames(v[[v1]]@assays$RNA@counts)),]
-  } else {
-    ortho2[[v1]] = ortho[[v1]][which(ortho[[v1]]$gene %in% rownames(v[[v1]]@assays$SCT@counts)),]
-  }
-  ortho2[[v1]] = ortho2[[v1]][which(!duplicated(paste0(ortho2[[v1]]$gene, "_", ortho2[[v1]]$hgnc))),]
-  ortho2[[v1]] = ortho2[[v1]][!(duplicated(ortho2[[v1]]$gene) | duplicated(ortho2[[v1]]$gene, fromLast = TRUE)),]
-}
-common_gene = ortho2[["mouse"]]$hgnc[which(ortho2[["mouse"]]$hgnc %in% ortho2[["axolotl"]]$hgnc & ortho2[["mouse"]]$hgnc %in% ortho2[["turtle"]]$hgnc & ortho2[["mouse"]]$hgnc %in% ortho2[["bird"]]$hgnc & ortho2[["mouse"]]$hgnc %in% ortho2[["cichlid"]]$hgnc)]
-
-# this_idx = which(ortho2[["mouse"]]$hgnc[which(ortho2[["mouse"]]$isOne)] %in% ortho2[["axolotl"]]$hgnc[which(ortho2[["axolotl"]]$isOne)] & ortho2[["mouse"]]$hgnc[which(ortho2[["mouse"]]$isOne)] %in% ortho2[["turtle"]]$hgnc[which(ortho2[["turtle"]]$isOne)] & ortho2[["mouse"]]$hgnc[which(ortho2[["mouse"]]$isOne)] %in% ortho2[["bird"]]$hgnc[which(ortho2[["bird"]]$isOne)] & ortho2[["mouse"]]$hgnc[which(ortho2[["mouse"]]$isOne)] %in% ortho2[["cichlid"]]$hgnc[which(ortho2[["cichlid"]]$isOne)])
-
-# v_common_fc = list()
-# for (c1 in common_name) {
-#   for (v1 in vert) {
-#     this_idents = common_celltype$celltype[which(common_celltype$name == c1 & common_celltype$species == v1)]
-#     for (this_ident in this_idents) {
-#       print(paste0('common celltype = ', c1, ', species = ', v1, ", species celltype = ", this_ident))
-#       this_genes = ortho2[[v1]]$gene[which(ortho2[[v1]]$hgnc %in% common_gene)]
-#       this_fc = FoldChange(v[[v1]], features = this_genes, ident.1 = this_ident)
-#       this_fc$gene = rownames(this_fc)
-#       this_fc$hgnc = ortho2[[v1]]$hgnc[match(this_fc$gene, ortho2[[v1]]$gene)]
-#       this_fc$name = c1
-#       this_fc$species = v1
-#       this_fc$ident = this_ident
-#       v_common_fc[[paste(c1, v1, this_ident, sep = ",")]] = this_fc
-#     }
-#   }
-# }
-
 findSpeciesFC = function(i) {
   c1 = common_celltype$name[i]
   v1 = common_celltype$species[i]
@@ -642,20 +642,54 @@ fc_df = do.call('rbind', v_common_fc)
 hgnc_counts = fc_df[which(fc_df$name == "OLIG"),]
 hgnc_counts = table(hgnc_counts$hgnc, hgnc_counts$species)
 one_hgnc   = rownames(hgnc_counts)[which(rowSums(hgnc_counts) == 5)] 
-multi_hgnc = rownames(hgnc_counts)[which(rowSums(hgnc_counts) != 5)]
+multi_hgnc = rownames(hgnc_counts)[which(rowSums(hgnc_counts) != 5 & rowSums(hgnc_counts > 0) == 5)]
 one_common = data.frame()
 for (c1 in common_name) {
-  this_one = data.frame(hgnc = one_hgnc)
+  this_one = data.frame(hgnc = c(one_hgnc, multi_hgnc), isOne = c(rep("TRUE", length(one_hgnc)), rep("FALSE", length(multi_hgnc))))
   for (v1 in vert) {
-    this_df = fc_df[which(fc_df$name == c1 & fc_df$species == v1 & fc_df$hgnc %in% one_hgnc),]
-    this_df = this_df[match(one_hgnc, this_df$hgnc),]
-    this_one = cbind(this_one, this_df$avg_log2FC)
+    this_df = fc_df[which(fc_df$name == c1 & fc_df$species == v1 & fc_df$hgnc %in% c(one_hgnc, multi_hgnc)),]
+    multi_df = this_df[order(this_df$avg_log2FC, decreasing = T),]
+    multi_df = multi_df[which(multi_df$hgnc %in% c(one_hgnc, multi_hgnc)),]
+    multi_df = multi_df[which(!duplicated(multi_df$hgnc)),]
+    multi_df = multi_df[match(c(one_hgnc, multi_hgnc), multi_df$hgnc),]
+    this_one = cbind(this_one, multi_df$avg_log2FC)
   }
-  colnames(this_one) = c("hgnc", vert)
+  colnames(this_one) = c("hgnc", "isOne", vert)
   this_one$name = c1
   one_common = rbind(one_common, this_one)
 }
 one_common$same_sign = rowSums(one_common[,vert] > 0)
-table(one_common$same_sign)
-one_common[which(one_common$same_sign == 5),]
-table(x$species[which(x$value > 0)])
+table(one_common$same_sign, one_common$name)
+one_common2 = one_common[which(one_common$same_sign == 5 & rowSums(one_common[,vert] > 0.1) == 5),]
+
+all_hit = one_common2
+rownames(all_hit) = paste0("G", 1:nrow(all_hit))
+this_other = -all_hit[,vert]
+colnames(this_other) = paste0(colnames(this_other), "_other")
+all_hit = cbind(all_hit[,vert], this_other)
+all_hit = as.matrix(all_hit)
+fc_thresh = 1
+all_hit[which(all_hit >  fc_thresh)] =  fc_thresh
+all_hit[which(all_hit < -fc_thresh)] = -fc_thresh
+gene_annot = data.frame(annot = one_common2$name, row.names = rownames(all_hit))
+pheatmap::pheatmap(all_hit, annotation_row = gene_annot, cluster_rows = FALSE, cluster_cols = FALSE, show_rownames = FALSE, filename = paste0("~/scratch/st/results/loose_cons_genes_hit.pdf"))
+
+hit_genes = one_common2$hgnc
+hit_combos = paste0(one_common2$hgnc, "_", one_common2$name)
+for (v1 in vert) {
+  this_df = one_common[which(one_common$hgnc %in% hit_genes), c("hgnc", "name", v1)]
+  this_mat = reshape2::acast(this_df, hgnc ~ name, value.var = v1)
+  this_mat2 = this_mat[hit_genes,]
+  rownames(this_mat2) = 1:nrow(this_mat2)
+  this_df2 = reshape2::melt(this_mat2)
+  this_df2$Var1 = factor(this_df2$Var1, levels = 1:nrow(this_mat2))
+  print(ggplot(this_df2, aes(y = Var1, x = Var2, fill = value)) + geom_raster() + scale_fill_gradientn(colors = rev(RColorBrewer::brewer.pal(11, "RdBu")), limits = c(-2, 2), oob = scales::squish ) + scale_y_discrete(labels = hit_genes, name = "", expand = c(0,0)) + scale_x_discrete(name = "", expand = c(0,0)) + theme_classic() + theme(axis.line=element_blank(), axis.text.y = element_text(face = ifelse(one_common2$hgnc %in% common_celltype_genes4$gene, "bold", "plain"))))
+  ggsave(paste0("~/scratch/st/results/loose_cons_genes_hit_", v1, ".pdf"), width = 5, height = 12)
+  
+  # pheatmap::pheatmap(this_mat2, cluster_rows = FALSE, cluster_cols = FALSE, show_rownames = TRUE, filename = paste0("~/scratch/st/results/loose_cons_genes_hit_", v1, ".pdf"))
+  # this_df$comobo = paste0(this_df$hgnc, "_", this_df$name)
+  # this_df$hgnc_id = 
+  # this_df$hgnc = factor(this_df)
+  # print(ggplot(this_df, aes_string(x = "name", y = "hgnc", fill = v1)) + geom_tile() + scale_fill_gradientn(colors = rev(RColorBrewer::brewer.pal(11, "RdBu")), limits = c(-1, 1), oob = scales::squish ))
+  # ggsave(paste0("~/scratch/st/results/loose_cons_genes_hit_", v1, ".pdf"), width = 5, height = 6)
+}

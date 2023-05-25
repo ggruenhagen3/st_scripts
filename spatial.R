@@ -18,9 +18,8 @@ setwd(out_dir)
 #*******************************************************************************
 # Load Objects =================================================================
 #*******************************************************************************
-gene_info = read.table(paste0(main_path, "/all_research/gene_info_2.txt"), header = T, stringsAsFactors = F)
 gene_info = read.csv(paste0(main_path, "/all_research/gene_info_3.csv"))
-all_merge = readRDS(paste0(data_dir, "st_c2b2_hi_012723.rds"))
+all_merge = readRDS(paste0(data_dir, "st_c2b2_hi_033023.rds"))
 convert15 = read.csv("~/research/brain/results/convert15.csv")
 convert53 = read.csv("~/research/brain/results/convert53.csv")
 # all_merge = qs::qread(paste0(data_dir, "st_070822.qs"))
@@ -54,6 +53,23 @@ c2l.to.cluster$num = unlist(lapply(1:nrow(c2l.to.cluster), function(x) sum(c2l_m
 c2l.to.cluster$pct.of.cluster = c2l.to.cluster$num / c2l.to.cluster$cluster.sum.num.cells
 pdf(paste0( "cluster_to_c2l.pdf"), width = 8, height = 5)
 ggplot(c2l.to.cluster, aes(x = celltype, y = cluster, fill = pct.of.cluster)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), axis.ticks = element_blank(), axis.line = element_blank())
+dev.off()
+
+c2l.to.region = expand.grid(region = levels(all_merge$struct), celltype = colnames(c2l_mean))
+sum.cells.per.region = unlist(lapply(levels(all_merge$struct), function(x) sum(c2l_mean[colnames(all_merge)[which(all_merge$struct == x)],]) ))
+names(sum.cells.per.region) = levels(all_merge$struct)
+c2l.to.region$region.sum.num.cells = sum.cells.per.region[c2l.to.region$region]
+c2l.to.region$num = unlist(lapply(1:nrow(c2l.to.region), function(x) sum(c2l_mean[colnames(all_merge)[which(all_merge$struct == c2l.to.region$region[x])], c2l.to.region$celltype[x]]) ))
+c2l.to.region$pct.of.region = c2l.to.region$num / c2l.to.region$region.sum.num.cells
+c2l.to.region$maxed = c2l.to.region$pct.of.region * 100
+c2l.to.region$maxed[which(c2l.to.region$maxed > 50)] = 50
+c2l.to.region$col = convert53$col[match(c2l.to.region$celltype, convert53$new)]
+col2 = scales::hue_pal()(nrow(convert53))
+pdf(paste0( "region_to_c2l.pdf"), width = 6, height = 8)
+ggplot(c2l.to.region, aes(x = region, y = celltype, fill = maxed)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size=10, color = col2), axis.line = element_blank()) + force_panelsizes(rows = unit(length(colnames(c2l_mean))/8, "in"), cols = unit(length(levels(all_merge$struct))/8, "in"))
+dev.off()
+pdf(paste0( "region_to_c2l_t.pdf"), width = 8, height = 6)
+ggplot(c2l.to.region, aes(x = celltype, y = region, fill = maxed)) + geom_raster() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = "") + scale_y_discrete(expand = c(0,0), name = "") + theme_classic() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10, color = col2), axis.text.y = element_text(size=10), axis.line = element_blank()) + force_panelsizes(rows = unit(length(levels(all_merge$struct))/8, "in"), cols = unit(length(colnames(c2l_mean))/8, "in"))
 dev.off()
 
 all_merge$celltype = factor(st.celltype.char[match(colnames(all_merge), rownames(c2l_mean))], levels = convert53$new)
@@ -1584,9 +1600,9 @@ all_merge$structure = "unclassified"
 for (s in levels(all_merge$sample)) {
   this.fish = substr(s, 1, 2)
   if (this.fish == "c2") { 
-    this.struct = read.csv(paste0(out_dir, "structure_295_", toupper(substr(s, 3, 3)), "1_f1.csv"))
+    this.struct = read.csv(paste0("~/research/st/data/loupe_structure/structure_295_", toupper(substr(s, 3, 3)), "1_f2.csv"))
   } else {
-    this.struct = read.csv(paste0(out_dir, "structure_296_", toupper(substr(s, 3, 3)), "1_vdc.csv"))
+    this.struct = read.csv(paste0("~/research/st/data/loupe_structure/structure_296_", toupper(substr(s, 3, 3)), "1_vdc.csv"))
   }
   
   this.struct[,1] = paste0(s, "_", this.struct[,1])
@@ -1595,16 +1611,16 @@ for (s in levels(all_merge$sample)) {
 all_merge$structure[which(all_merge$structure == "Olf. tract")] = "tract"
 all_merge$structure[which(all_merge$structure == "Dc-1")] = "Dc-1/2"
 all_merge$structure[which(all_merge$structure == "Dc-2")] = "Dc-1/2"
-all_merge$structure[which(all_merge$structure == "Vs-m")] = "Vs-m"
-all_merge$structure[which(all_merge$structure == "Vs-l")] = "Vs-l"
+all_merge$structure[which(all_merge$structure == "Vs-m")] = "Vs"
+all_merge$structure[which(all_merge$structure == "Vs-l")] = "Vs"
 all_merge$structure[which(all_merge$structure == "Dm")] = "Dm-3"
-all_merge$structure[which(all_merge$structure == "Dl-d")] = "Dl-v"
+all_merge$structure[which(all_merge$structure == "Dl-d" & paste0(all_merge$fish, all_merge$area) != "c2d")] = "Dl-v"
 all_merge$structure[which(all_merge$structure == "tract")] = "ON"
 all_merge$structure[which(all_merge$structure == "NT")] = "Dl-vv"
 all_merge$structure[which(all_merge$structure == "SP-u")] = "Vx"
-b_order = read.csv("~/Downloads/b2c2_struct_order.csv")[,1]
+b_order = trimws( read.csv("~/Downloads/b2c2_struct_order.csv")[,1] )
 all_merge$structure_no_order = all_merge$structure
-all_merge$structure = factor(all_merge$structure, levels = b_order)
+all_merge$structure = factor(all_merge$structure_no_order, levels = b_order)
 all_merge$struct = all_merge$structure
 # all_merge$struct_b2_vdc = all_merge$struct
 
@@ -2302,6 +2318,7 @@ ctx.aba = get_aba_ish_data(mba_structure_id("CTX"))
 cnu.aba = get_aba_ish_structure_data(mba_structure_id("CNU"))
 
 # ABA v2 =======================================================================
+library(cocoframer)
 mz.homology.df = read.csv("~/research/st/results/aba_ish_mz_homology.csv")
 # mz.homology.df = read.csv("~/research/st/results/aba_ish_bb_homology.csv")
 # fetch_start_time <- proc.time()[[3]]
@@ -2331,7 +2348,7 @@ filtered_ontology_df$my_parent_atlas_id = ontology_df$atlas_id[match(filtered_on
 
 oa.mat = matrix(0L, nrow = length(all.gene.ish), ncol = length(sort(unique(ontology_df$atlas_id))), dimnames = list(names(all.gene.ish), sort(unique(ontology_df$atlas_id))))
 # for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$sum_pixel_intensity / all.gene.ish[[i]]$sum_pixels }
-for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$voxel_energy_mean }
+for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$energy }
 # for (i in 1:length(all.gene.ish)) { oa.mat[names(all.gene.ish)[i], all.gene.ish[[i]]$atlas_id] = all.gene.ish[[i]]$sum_pixel_intensity }
 oa.mat.acr = oa.mat
 colnames(oa.mat.acr) = ontology_df$acronym[match(colnames(oa.mat) , ontology_df$atlas_id)]
@@ -2400,6 +2417,58 @@ pdf("mz_aba_w_sig_020623.pdf", width = 6.5, height = 4)
 print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_viridis() + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
 # print(ggplot(real.cor.melt, aes(x = ABA, y = MZ, fill = maxed)) + geom_raster() + geom_point(data = real.cor.melt[which(real.cor.melt$isSig),], size = 0.5) + scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 11, name = "RdBu")))(100), limits = c(-0.2, 0.2)) + coord_fixed() + scale_x_discrete(expand = c(0,0), name = NULL) + scale_y_discrete(expand = c(0,0), name = NULL) + theme(axis.text.x = element_text(angle=270, vjust=0.5, hjust=0)))
 dev.off()
+
+# ABA v3 =======================================================================
+# gene_id = get_exp_gene_relationships()
+# gene_id_filt = gene_id[which(!is.na(gene_id$gene_symbol) & gene_id$gene_symbol != "" & !duplicated(gene_id$gene_symbol)),]
+# gene_id_filt = gene_id_filt[which(toupper(gene_id_filt$gene_symbol) %in% gene_info$one_to_one_human),]
+# gene_id_filt$mz = gene_info$seurat_name[match(toupper(gene_id_filt$gene_symbol), gene_info$one_to_one_human)]
+# # gene_id_filt = gene_id_filt[which(gene_id_filt$mz %in% all_merge@assays$SCT@var.features),]
+# write.csv(gene_id_filt, "~/research/st/results/aba_genes_hvg.csv")
+# 
+# fetch_start_time <- proc.time()[[3]]
+# all.gene.ish = mclapply(gene_id_filt$id, function(x) get_aba_ish_structure_data(x), mc.cores = 10)
+# names(all.gene.ish) = gene_id_filt$gene_symbol
+# fetch_stop_time <- proc.time()[[3]]
+# message(paste0("Fetching Genes Took: ", format(round(fetch_stop_time-fetch_start_time, 2), nsmall=2), " seconds"))
+# for (i in 1:length(all.gene.ish)) { if(nrow(all.gene.ish[[i]]) > 0) { all.gene.ish[[i]]$gene = gene_id_filt$gene_symbol[i]} }
+# gene_nrow = sapply(1:length(all.gene.ish), function(x) nrow(all.gene.ish[[x]]))
+# all.gene.ish.df = data.frame(data.table::rbindlist(all.gene.ish[which(gene_nrow > 0)]))
+# write.csv(all.gene.ish.df, "~/research/st/results/aba_genes_ish.csv")
+
+library(cocoframer)
+gene_id_filt = read.csv("~/research/st/results/aba_genes_hvg2.csv")
+all.gene.ish.df = read.csv("~/research/st/results/aba_genes_ish2.csv")
+gene_id_filt = gene_id_filt[which(gene_id_filt$gene_symbol %in% all.gene.ish.df$gene),]
+all.gene.ish.df = all.gene.ish.df[which(all.gene.ish.df$gene %in% gene_id_filt$gene_symbol),]
+ga <- get_ccf_grid_annotation()
+ontology <- get_mba_ontology()
+ontology_df <- flatten_mba_ontology(ontology)
+filtered_ontology_df = filter_mba_ontology_children(ontology_df, "CH")
+
+g_ont = read.csv("~/Downloads/g_ont_df.csv")
+g_ont$my_parent_atlas_id = filtered_ontology_df$atlas_id[match(g_ont$parent_id, filtered_ontology_df$id)]
+filtered_ontology_df = g_ont
+
+all.gene.ish.df$my_parent_atlas_id = g_ont$my_parent_atlas_id[match(all.gene.ish.df$atlas_id, g_ont$atlas_id)]
+all.gene.ish.df = all.gene.ish.df[which(!is.na(all.gene.ish.df$my_parent_atlas_id)),]
+all.gene.ish.df.mean = all.gene.ish.df %>% group_by(gene, my_parent_atlas_id) %>% summarise(mean = mean(voxel_energy_mean))
+# all.gene.ish.df.mean = all.gene.ish.df %>% group_by(gene, my_parent_atlas_id) %>% summarise(mean = mean(energy))
+all.gene.ish.df.mean$acr = filtered_ontology_df$acronym[match(all.gene.ish.df.mean$my_parent_atlas_id, filtered_ontology_df$atlas_id)]
+aba.input = reshape2::acast(all.gene.ish.df.mean, gene ~ acr, value.var = "mean")
+aba.input = aba.input[gene_id_filt$gene_symbol,]
+
+mz.exp = AverageExpression(all_merge, assay = "SCT", features = gene_id_filt$mz)[[1]]
+mz.input = log(mz.exp+1)+0.1
+mz.input = mz.input /  rowMeans(mz.input)
+mz.input[which(is.infinite(mz.input) | is.na(mz.input))] = 0
+aba.input = log(aba.input+1)+0.1
+aba.input = aba.input /  rowMeans(aba.input)
+aba.input[which(is.infinite(aba.input) | is.na(aba.input))] = 0
+mz.aba.cor = cor(mz.input, aba.input, method = "spearman")
+# mz.aba.cor[which(mz.aba.cor < 0)] = 0 # Colquitt Fig 3F: Negative correlations set to zero
+mz.aba.cor[which(is.na(mz.aba.cor))] = 0
+pheatmap::pheatmap(mz.aba.cor, color = viridis(100), border_color = NA, scale = "none", cellheight = 10, cellwidth = 10)
 
 #*******************************************************************************
 # Noise Zeisel =================================================================
@@ -2629,11 +2698,43 @@ json_df = do.call('rbind', json_me)
 # write.csv(json_df, "~/scratch/m_zebra_ref/bird_gene_prot_table2.csv")
 # length(which(unique(json_df$gene) %in% rownames(org@assays$RNA@counts)))
 
+ax_prot = data.table::fread("/storage/home/hcoda1/6/ggruenhagen3/scratch/m_zebra_ref/axolotl_proteome_names.txt", header=F, data.table = F)
+ax_prot$gene = reshape2::colsplit(ax_prot$V2, '"', c('1', '2'))[,2]
+ax_prot$gene2 = reshape2::colsplit(ax_prot$gene, '"', c('1', '2'))[,1]
+ax_prot$gene3 = reshape2::colsplit(ax_prot$V4, "\\[nr\\]\\|", c('1', '2'))[,2]
+ax_prot$gene3 = reshape2::colsplit(ax_prot$gene3, " \\[hs\\]", c('1', '2'))[,1]
+ax_prot$prot2 = reshape2::colsplit(substr(ax_prot$V1, 2, 100), "\\.", c('1','2'))[,1]
+ax_prot$gene_final = ax_prot$gene2
+ax_prot$gene_final[which(ax_prot$gene3 %in% rownames(axolotl@assays$RNA@counts))] = ax_prot$gene3[which(ax_prot$gene3 %in% rownames(axolotl@assays$RNA@counts))]
+ax_prot$gene_final[which(ax_prot$prot2 %in% rownames(axolotl@assays$RNA@counts))] = ax_prot$prot2[which(ax_prot$prot2 %in% rownames(axolotl@assays$RNA@counts))]
+ax_prot2 = data.frame(protein_id = substr(ax_prot$V1, 2, 100), gene = ax_prot$gene_final)
+length(unique(ax_prot2$gene[which(ax_prot2$gene %in% rownames(axolotl@assays$RNA@counts))]))
+
+ax_combo = rbind(ax_table[which(ax_table$gene %in% rownames(axolotl@assays$RNA@counts)), c("protein_id", "gene")], ax_prot2[which(ax_prot2$gene %in% rownames(axolotl@assays$RNA@counts)), c("protein_id", "gene")])
+length(unique(ax_combo$gene[which(ax_combo$gene %in% rownames(axolotl@assays$RNA@counts))]))
+write.csv(ax_combo, "/storage/home/hcoda1/6/ggruenhagen3/scratch/m_zebra_ref/axolotl_prot_table3.csv")
+
+mouse_syn = data.table::fread("~/scratch/bcs/data/mouse_synonyms.tsv", data.table = F)
+mouse_syn = tidyr::separate(mouse_syn, 'Synonyms', paste("Synonyms", 1:10, sep="_"), sep=",", extra="drop")
+mouse_syn$id = 1:nrow(mouse_syn)
+ortho[["mouse"]]$syn_id = match(ortho[["mouse"]]$gene, mouse_syn$Symbol)
+for (i in 1:10) {
+  this_syn = match(ortho[["mouse"]]$gene, mouse_syn[,paste0("Synonyms_", i)])
+  ortho[["mouse"]]$syn_id[which(!is.na(this_syn))] = this_syn[which(!is.na(this_syn))]
+}
+ortho[["mouse"]]$gene2 = ortho[["mouse"]]$gene
+ortho[["mouse"]]$gene2[which(!ortho[["mouse"]]$gene2 %in% rownames(v[["mouse"]]@assays$RNA@counts))] = NA
+for (i in 1:10) {
+  this_mouse_syn = mouse_syn[which(mouse_syn[,paste0("Synonyms_", i)] %in% rownames(v[["mouse"]]@assays$RNA@counts)), ]
+  ortho[["mouse"]]$gene2[which(ortho[["mouse"]]$syn_id %in% this_mouse_syn$id)] = this_mouse_syn[match(ortho[["mouse"]]$syn_id[which(ortho[["mouse"]]$syn_id %in% this_mouse_syn$id)], this_mouse_syn$id),paste0("Synonyms_", i)]
+}
+
 gtf = data.table::fread("~/scratch/m_zebra_ref/GCF_000241765.3_Chrysemys_picta_bellii-3.0.3_genomic.gtf", data.table = F)
 # gtf = data.table::fread("~/scratch/m_zebra_ref/GCF_000001635.27.gtf", data.table = F)
 gtf$loc_id = paste0("LOC", reshape2::colsplit( reshape2::colsplit(gtf$V9, 'db_xref "GeneID:', c('1', '2'))[,2], '"', c('1', '2'))[,1])
 gtf$gene_id = reshape2::colsplit( reshape2::colsplit(gtf$V9, '";', c('1', '2'))[,1], 'gene_id "', c('1', '2'))[,2]
 gtf$protein_id = reshape2::colsplit( reshape2::colsplit(gtf$V9, 'protein_id "', c('1', '2'))[,2], '";', c('1', '2') )[,1]
+# gtf$protein_id = reshape2::colsplit( reshape2::colsplit(gtf$V9, '\\[hs]\\|', c('1', '2'))[,2], '";', c('1', '2') )[,1]
 gtf_small = unique(gtf[,c("loc_id", "gene_id", "protein_id")])
 gtf_small = gtf_small[which(gtf_small$gene_id != "" & gtf_small$protein_id != ""),]
 write.csv(gtf_small, "~/scratch/m_zebra_ref/turtle_prot_table3.csv")
@@ -2663,6 +2764,28 @@ for (i in which(!gtf_small$gene %in% rownames(org@assays$RNA@counts) & !is.na(gt
     gtf_small$gene[i] = syns[which(syns_logical)[1]]
   }
 }
+
+# Axolotl
+tmp =  data.table::fread("~/scratch/m_zebra_ref/axolotl_protein_gene_tmp.tsv", data.table = F, header = F)
+tmp$protein_id = str_sub(reshape2::colsplit(tmp[,1], " gene_id", c('1', '2'))[,1], 2, 50)
+tmp$tmp = reshape2::colsplit(str_sub(tmp[,2], 10, 50), '"', c('1', '2'))[,1]
+tmp$gene_id = reshape2::colsplit( reshape2::colsplit(tmp[,4], 'annotation "', c('1', '2'))[,2], " ", c(1,2) )[,1]
+tmp$gene_id = reshape2::colsplit(tmp$gene_id, '\\|', c('1', '2'))[,1]
+tmp$gene2_id = reshape2::colsplit( reshape2::colsplit( reshape2::colsplit(tmp[,4], 'annotation "', c('1', '2'))[,2], "\\|", c(1,2) )[,2], " ", c('1', '2') )[,1]
+tmp$loc_id = tmp$gene_id
+gtf = tmp
+gtf_small = unique(gtf[,c("loc_id", "gene_id", "gene2_id", "protein_id")])
+gtf_small = gtf_small[which(gtf_small$gene_id != "" & gtf_small$protein_id != ""),]
+gtf_small$gene2_id = stringr::str_replace_all(gtf_small$gen2e_id, "_", "-")
+gtf_small$gene2_id_in_obj = gtf_small$gene2_id %in% rownames(org@assays$RNA@counts)
+gtf_small$gene_id_in_obj = gtf_small$gene_id %in% rownames(org@assays$RNA@counts)
+gtf_small$loc_id_in_obj  = gtf_small$loc_id %in% rownames(org@assays$RNA@counts)
+gtf_small$gene = gtf_small$gene_id
+gtf_small$gene[which(gtf_small$loc_id_in_obj)] = gtf_small$loc_id[which(gtf_small$loc_id_in_obj)]
+gtf_small$gene[which(gtf_small$gene2_id_in_obj)] = gtf_small$gene2_id[which(gtf_small$gene2_id_in_obj)]
+length(which(! unique(gtf_small$gene) %in% rownames(org@assays$RNA@counts) ))
+length(which(! rownames(org@assays$RNA@counts) %in% unique(gtf_small$gene) ))
+write.csv(gtf_small, "~/scratch/m_zebra_ref/axolotl_prot_table3.csv")
 
 gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
 json_df$loc = paste0("LOC", json_df$gene_id)
@@ -2742,6 +2865,38 @@ dev.off()
 # print(DimPlot(merged, split.by = "species", label = F, cols = c("#FBCBC7", RColorBrewer::brewer.pal(11, "PiYG")[2]), ncol = 1) + coord_fixed() + theme_bw() + theme(panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) + NoLegend())
 # dev.off()
 
+merged = LoadH5Seurat("~/scratch/bcs/data/bb_zeisel.h5seurat", meta.data = FALSE, misc = FALSE)
+meta = read.csv("~/scratch/bcs/results/tmp.csv")
+mm_over_mm_cluster = unclass(table(meta$species, meta$leiden_clusters))
+mm_over_mm_cluster = mm_over_mm_cluster[1,] / mm_over_mm_cluster[2,]
+mm_over_mz = length(which(meta$species == "mm")) / length(which(meta$species == "mz"))
+relative_prop = (mm_over_mm_cluster / mm_over_mz) / ((mm_over_mm_cluster / mm_over_mz) + 1)
+df_prop = rbind(data.frame(prop = relative_prop, species = 'mm', cluster = names(relative_prop)), 
+                data.frame(prop = 1-relative_prop, species = 'mz', cluster = names(relative_prop)))
+df_prop$cluster = factor(df_prop$cluster, levels = as.character(sort(unique(as.numeric(df_prop$cluster)))))
+df_prop$prop = df_prop$prop * 100
+df_prop$color = "goldenrod1"
+df_prop$color[which(df_prop$species == "mm")] = RColorBrewer::brewer.pal(9, "Greens")[6]
+pdf("~/scratch/bcs/results/mz_mm_zei_prop.pdf", width = 3, height = 8)
+# print(ggplot(df_prop, aes(x = prop, y = cluster, fill = species)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0))) + theme_classic()
+print(ggplot(df_prop, aes(x = prop, y = cluster, fill = color)) + geom_bar(stat='identity') + scale_x_continuous(expand = c(0,0)) + theme_classic() + scale_fill_identity()) 
+dev.off()
+
+mz.mouse.cor = read.csv("~/scratch/bcs/results/st_oritzg_cluster_cor2.csv")
+colnames(mz.mouse.cor)[which(startsWith(colnames(mz.mouse.cor), "X"))] = stringr::str_sub(colnames(mz.mouse.cor)[which(startsWith(colnames(mz.mouse.cor), "X"))], 2, 50)
+mzmm.melt = reshape2::melt(mz.mouse.cor)
+colnames(mzmm.melt) = c("mouse.cluster", "mz.cluster", "cor")
+# mz.mouse.cor.maxed.out.melt = 
+mzmm.mat = mz.mouse.cor; rownames(mzmm.mat) = mzmm.mat[,1]; mzmm.mat[,1] = NULL;
+mz.order  = hclust(dist(t(mzmm.mat)), method = "complete")
+mzmm.melt$mz.cluster = factor(as.vector(mzmm.melt$mz.cluster), levels = mz.order$labels[mz.order$order])
+mouse.order = hclust(dist(mzmm.mat), method = "complete")
+mzmm.melt$mouse.cluster = factor(as.vector(mzmm.melt$mouse.cluster), levels = mouse.order$labels[mouse.order$order])
+
+col.pal = RColorBrewer::brewer.pal(9, "Blues")
+ggplot(mzmm.melt, aes(x = mouse.cluster, y = mz.cluster, fill = cor)) + geom_raster() + scale_fill_gradientn(colors = col.pal) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + force_panelsizes(rows = unit(ncol(mz.mouse.cor)/8, "in"), cols = unit(nrow(mz.mouse.cor)/8, "in"))
+ggsave(paste0("st_oritzg_cluster_cor", "2.pdf"), width = (nrow(mz.mouse.cor)/5), height = (ncol(mz.mouse.cor)/5))
+
 # Celltype-Celltype mapping
 mzmm = read.csv("~/Downloads/mz_mm_oritz_mapping_table.csv")
 mzmm = mzmm[54:nrow(mzmm),1:54]
@@ -2770,7 +2925,7 @@ ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() +
 dev.off()
 
 # My mapping
-mzmm = as.matrix(read.csv("~/Downloads/bb_bird_mapping_mine3.csv", row.names = 1))
+mzmm = as.matrix(read.csv("~/Downloads/bb_tasic_mapping_mine3.csv", row.names = 1))
 # colnames(mzmm) = str_replace_all(colnames(mzmm), "\\.", "-")
 # colnames(mzmm) = plyr::revalue(colnames(mzmm), c("Dc-1-2" = "Dc-1/2"))
 colnames(mzmm) = str_sub(colnames(mzmm), 2, 50)
@@ -2784,7 +2939,7 @@ mzmm.melt = mzmm.melt[which(!is.na(mzmm.melt$value) & mzmm.melt$Var2 != ""),]
 colnames(mzmm.melt) = c("mm_name", "mz_name", "Score")
 mzmm.melt$id = paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name)
 
-mzmm.p = as.matrix(read.csv("~/Downloads/bb_bird_mapping_mine_p3.csv", row.names = 1))
+mzmm.p = as.matrix(read.csv("~/Downloads/bb_tasic_mapping_mine_p3.csv", row.names = 1))
 # colnames(mzmm.p) = str_replace_all(colnames(mzmm.p), "\\.", "-")
 # colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("Dc-1-2" = "Dc-1/2"))
 colnames(mzmm.p) = str_sub(colnames(mzmm.p), 2, 50)
@@ -2794,21 +2949,44 @@ mzmm.p.melt = reshape2::melt(mzmm.p)
 colnames(mzmm.p.melt) = c("mm_name", "mz_name", "p")
 mzmm.p.melt$id = paste0(mzmm.p.melt$mm_name, "_", mzmm.p.melt$mz_name)
 mzmm.melt$p_perm = mzmm.p.melt$p[match(mzmm.melt$id, mzmm.p.melt$id)]
-# mzmm.melt$bh_perm = p.adjust(mzmm.melt$p_perm, method = "BH")
 mzmm.melt$bh_perm = p.adjust(mzmm.melt$p_perm, method = "BH")
 mzmm.melt$bh_sig = mzmm.melt$bh_perm < 0.05
 mzmm.melt$p_sig  = mzmm.melt$p_perm < 0.05
 mzmm.melt$p0     = mzmm.melt$p_perm == 0
-# mzmm.melt$sig    = mzmm.melt$bh_perm < 0.05
-# mzmm.melt$sig    = mzmm.melt$p_perm == 0
 
-mz.order  = hclust(dist(t(mzmm)), method = "complete")
-mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz.order$labels[mz.order$order])
-mouse.order = hclust(dist(mzmm), method = "complete")
-mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
-# mzmm.melt$mm_num = reshape2::colsplit(mzmm.melt$mm_name, "_", c('1', '2'))[,2]
+# # tmp = expand.grid(levels(all_merge$sh), 0:32)
+# # mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = paste0(tmp[,1], "_", tmp[,2]))
+# mz.order  = hclust(dist(t(mzmm)), method = "complete")
+# mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz.order$labels[mz.order$order])
+# mouse.order = hclust(dist(mzmm), method = "complete")
+# mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
+# # mzmm.melt$mm_num = reshape2::colsplit(mzmm.melt$mm_name, "_", c('1', '2'))[,2]
 
-pdf("~/research/st/results/bb_bird_mine3.pdf", width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
+mzmm.melt$mm_name = as.vector(mzmm.melt$mm_name)
+mz_lge = c("4.1_GABA", "4.2_GABA", "4.3_GABA", "4.4_GABA", "4.5_GABA", "4.6_GABA", "4.7_GABA", "4.8_GABA", "7_GABA"); mz_cge = c("15.1_GABA/Glut", "15.2_GABA", "15.4_GABA"); mz_mge = c("15.3_GABA", "15.5_GABA", "6_GABA");
+mm_cge = unique(mzmm.melt$mm_name[which(startsWith(as.vector(mzmm.melt$mm_name), "Vip"))]); mm_mge = unique(mzmm.melt$mm_name[which(startsWith(as.vector(mzmm.melt$mm_name), "Sst") | startsWith(as.vector(mzmm.melt$mm_name), "Pvalb"))]);
+# mm_lge = c("MSN1", "MSN2", "MSN3", "MSN4", "MSN5"); mm_cge = c("TEINH1", "TEINH4", "TEINH12"); mm_mge = c("TEINH16", "TEINH17", "TEINH18", "TEINH19", "TEINH21");
+# cp_lge = c("i01", "i04", "i05", "i06"); cp_cge = c("i14", "i15", "i16", "i17", "i18"); cp_mge = c("i07", "i08", "i09", "i10", "i11", "i12", "i13");
+# # am_lge = c("1", "3", "9", "10", "11", "12", "13", "14", "15", "19", "22", "25", "26", "29"); am_cge = c("7", "16", "27", "28"); am_mge = c("2", "4", "6", "17", "18", "20", "23");
+# am_lge = c("1", "3", "9", "10", "11", "12", "22", "25", "29"); am_cge = c(); am_mge = c("2", "6", "17", "20");
+# # tg_lge = c("MSN1", "MSN2", "MSN3", "MSN4", "GABA-1-1", "GABA-1-2"); tg_cge = c("GABA-5-1", "GABA-5-2", "GABA-5-3"); tg_mge = c("GABA-Pre", "GABA-2", "GABA-3", "GABA-4", "GABA-6", "GABA-7");
+# # tg_lge = c("Area X_MSN1", "Area X_MSN2", "Area X_MSN3", "Area X_MSN4", "HVC_GABA-1-1", "HVC_GABA-1-2", "RA_GABA-1-1", "RA_GABA-1-2"); tg_cge = c(paste0("HVC_", tg_cge), paste0("RA_", tg_cge)); tg_mge = c(paste0("HVC_", tg_mge), paste0("RA_", tg_mge));
+# tg_lge = c("MSN1", "MSN2", "MSN3", "MSN4"); tg_cge = c("GABA-5-1", "GABA-5-2", "GABA-5-3"); tg_mge = c("GABA-2", "GABA-3", "GABA-4", "GABA-6");
+mzmm.melt = mzmm.melt[which(mzmm.melt$mz_name %in% c(mz_lge, mz_cge, mz_mge)),]
+mzmm.melt = mzmm.melt[which(mzmm.melt$mm_name %in% c(mm_cge, mm_mge)),]
+# mzmm.melt = mzmm.melt[which(mzmm.melt$mm_name %in% c(mm_lge, mm_cge, mm_mge)),]
+# mzmm.melt = mzmm.melt[which(mzmm.melt$mm_name %in% c(cp_lge, cp_cge, cp_mge)),]
+# mzmm.melt = mzmm.melt[which(mzmm.melt$mm_name %in% paste0("GABA", c(am_lge, am_cge, am_mge))),]
+# mzmm.melt = mzmm.melt[which(mzmm.melt$mm_name %in% c(tg_lge, tg_cge, tg_mge)),]
+mzmm.melt$mz_name = factor(as.vector(mzmm.melt$mz_name), levels = c(mz_lge, mz_cge, mz_mge))
+mzmm.melt$mm_name = factor(as.vector(mzmm.melt$mm_name), levels = c(mm_cge, mm_mge))
+# mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = c(mm_lge, mm_cge, mm_mge))
+# mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = c(cp_lge, cp_cge, cp_mge))
+# mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = paste0("GABA", c(am_lge, am_cge, am_mge)))
+# mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = c(tg_lge, tg_cge, tg_mge))
+mzmm = reshape2::acast(mzmm.melt, mm_name ~ mz_name, value.var = "bh_perm")
+
+pdf("~/research/st/results/bb_tasic_ge3_mine3.pdf", width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = brewer.pal(9, "Greens"), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = rev(brewer.pal(11, "PiYG")[1:6]), breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="", labels=mzmm.melt$mm_num[match(levels(mzmm.melt$mm_name), mzmm.melt$mm_name)]) + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
@@ -2816,6 +2994,41 @@ pdf("~/research/st/results/bb_bird_mine3.pdf", width = (nrow(mzmm)/5) + 2, heigh
 # ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis(breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$p_sig),], size = 0.6, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_viridis(breaks = c(min(mzmm.melt$Score), max(mzmm.melt$Score))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) + geom_point(data = mzmm.melt[which(mzmm.melt$p_sig),], size = 0.6, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$bh_sig),], size = 1.2, color = "gray") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.2, color = "white")
 dev.off()
+
+# Chord Diagram of significant hits
+library(circlize)
+mzmm.p = as.matrix(read.csv("~/Downloads/bb_zeisel_mapping_mine_p2_030823.csv", row.names = 1))
+# mzmm.p = as.matrix(read.csv("~/Downloads/bb_tasic_mapping_mine3.csv", row.names = 1))
+
+colnames(mzmm.p) = str_sub(colnames(mzmm.p), 2, 50)
+colnames(mzmm.p) = str_replace(colnames(mzmm.p), "Astro", "RG")
+colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
+
+mzmm.p.melt = reshape2::melt(mzmm.p)
+colnames(mzmm.p.melt) = c("mm_name", "mz_name", "p")
+mzmm.p.melt$bh_perm = p.adjust(mzmm.p.melt$p, method = "BH")
+mzmm.p.melt$neg_log_bh = -log10(mzmm.p.melt$bh_perm)
+mzmm.p.melt$neg_log_bh[which(mzmm.p.melt$neg_log_bh > 5)] = 5
+# mzmm.p.melt$neg_log_bh[which(mzmm.p.melt$bh_perm > 0.05)] = 0
+mzmm.p.melt$neg_log_bh[which(mzmm.p.melt$neg_log_bh < 5)] = 0
+mzmm.p2 = reshape2::acast(mzmm.p.melt, mm_name ~ mz_name, value.var = "neg_log_bh")
+mzmm.p2 = mzmm.p2[which(rowSums(mzmm.p2) != 0), which(colSums(mzmm.p2) != 0)]
+
+mz.order  = hclust(dist(t(mzmm.p2)), method = "complete")
+mzmm.p2 = mzmm.p2[,mz.order$labels[mz.order$order]]
+mouse.order = hclust(dist(mzmm.p2), method = "complete")
+mzmm.p2 = mzmm.p2[mouse.order$labels[mouse.order$order],]
+
+pdf("~/research/st/results/test.pdf", width = 6, height = 6)
+circos.par(circle.margin = 0.2)
+chordDiagram(mzmm.p2, annotationTrack = c("grid"), annotationTrackHeight = mm_h(c(1, 2)))
+circos.track(ylim = c(0, 1), panel.fun = function(x, y) {
+  circos.text(CELL_META$xcenter, CELL_META$cell.ylim[2] + mm_y(3),
+              CELL_META$sector.index, facing = "clockwise", niceFacing = TRUE,
+              adj = c(0, 0.5), cex = 0.6)
+}, bg.border = NA)
+dev.off()
+circos.clear()
 
 maxed.num = 1e-4
 mzmm.melt$maxed = mzmm.melt$Score
@@ -3006,17 +3219,155 @@ spot.mm.mat = as.matrix(spot.mm); rownames(spot.mm.mat) = spot.mm.mat[,1]; spot.
 spot.mm.melt = reshape2::melt(spot.mm, id.var = "struct")
 # colnames(spot.mm.melt) = c("struct", "variable", "value")
 mz.order  = hclust(dist(spot.mm.mat), method = "complete")
-spot.mm.melt$struct = factor(spot.mm.melt$struct, levels = mz.order$labels[mz.order$order])
+# spot.mm.melt$struct = factor(spot.mm.melt$struct, levels = mz.order$labels[mz.order$order])
+spot.mm.melt$struct = factor(spot.mm.melt$struct, levels = rev(c("Vx", "Vi", "Vl", "Dp", "Dl-v", "Dm-2c", "Dl-g", "Dm-2r", "Dc-4", "Dm-3", "Dc-3", "Dc-5", "Dd", "VZ", "Dc-1/2", "vVZ", "ON", "OB gml", "OB gc", "Dl-vv", "Dm-1", "Vs", "Vd-c", "Vd-r", "Vv", "Vc")))
 mouse.order = hclust(dist(t(spot.mm.mat)), method = "complete")
-spot.mm.melt$variable = factor(spot.mm.melt$variable, levels = mouse.order$labels[mouse.order$order])
-maxed.num = 30
+# spot.mm.melt$variable = factor(spot.mm.melt$variable, levels = mouse.order$labels[mouse.order$order])
+spot.mm.melt$variable = factor(spot.mm.melt$variable, levels = c("CA3", "DG", "ACB", "PAL", "LSX", "NLOT", "MEA", "sAMY-other", "MOB", "CP", "STRv-other", "OLF", "CEA", "sAMY", "fiber tracts", "AON", "VS", "CA2", "HIP-other", "DP", "PIR", "TT", "PAA", "TR", "CA1", "RHP", "Isocortex", "LA", "BMA", "PA", "FS", "BLA", "U_CTX", "CLA", "EP"))
+maxed.num = 0.05
 spot.mm.melt$maxed = spot.mm.melt$value
 spot.mm.melt$maxed[which(spot.mm.melt$maxed >  maxed.num)] =  maxed.num
 spot.mm.melt$maxed[which(spot.mm.melt$maxed < -maxed.num)] = -maxed.num
-pdf("~/research/st/results/bb_to_oritz_to_spatial_max.pdf", width = 6, height = 4.5)
-ggplot(spot.mm.melt, aes(x = variable, y = struct, fill = maxed)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + xlab("") + ylab("") + coord_fixed() + force_panelsizes(rows = unit(nrow(spot.mm.mat)/8, "in"), cols = unit(ncol(spot.mm.mat)/8, "in"))
+pdf("~/research/st/results/bb_to_oritz_to_spatial_max.pdf", width = 6, height = 4.3)
+ggplot(spot.mm.melt, aes(x = variable, y = struct, fill = maxed)) + geom_raster() + scale_fill_viridis() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10)) + xlab("") + ylab("") + coord_fixed() + force_panelsizes(rows = unit(nrow(spot.mm.mat)/8, "in"), cols = unit(ncol(spot.mm.mat)/8, "in"))
 dev.off()
 
+mzmm.melt = spot.mm.melt[c(2,1,3)]
+colnames(mzmm.melt) = c("mm_name",  "mz_name", "Score")
+mzmm.melt$mz_name = as.vector(mzmm.melt$mz_name)
+mzmm.melt$mz_name[which(mzmm.melt$mz_name == "OB gc")] = "OB-gc"
+mzmm.melt$mz_name[which(mzmm.melt$mz_name == "OB gml")] = "OB-gml"
+mzmm.melt$id = paste0(mzmm.melt$mm_name, "_", mzmm.melt$mz_name)
+mzmm.melt$p_perm = mzmm.melt$bh_perm = 1
+mzmm.melt$p_sig = mzmm.melt$bh_sig = mzmm.melt$p0 = mzmm.melt$bon_perm = FALSE
+
+pdf(paste0("~/research/st/results/bb_to_oritzg_to_c2l_mine4.pdf"), width = (nrow(mzmm)/5) + 2, height = (ncol(mzmm)/5) + 2)
+ggplot(mzmm.melt, aes(x = mm_name, y = mz_name, fill = Score)) + geom_raster() + scale_fill_gradientn(colors = col.pal, breaks=c(0,max(mzmm.melt$Score)), limits=c(0,max(mzmm.melt$Score)), oob=scales::squish) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), axis.text.y = element_text(size = 10), axis.line=element_blank()) + scale_x_discrete(expand=c(0,0), name="") + scale_y_discrete(expand=c(0,0), name="") + coord_fixed() + force_panelsizes(cols = unit(nrow(mzmm)/8, "in"), rows = unit(ncol(mzmm)/8, "in")) +  geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1.4, color = "black") + geom_point(data = mzmm.melt[which(mzmm.melt$p0),], size = 1, color = "white")
+dev.off()
+
+mzmm.melt.all = mzmm.melt
+mzmm.melt.all$weird = mzmm.melt.weird$Score[match(mzmm.melt$id, mzmm.melt.weird$id)]
+mzmm.melt.all$sum = (mzmm.melt.all$Score + mzmm.melt.all$weird)/2
+mzmm.melt.all$dif = -((mzmm.melt.all$Score - mzmm.melt.all$sum)^2 + (mzmm.melt.all$weird - mzmm.melt.all$sum)^2)
+pdf("~/research/st/results/st_oritzg_inferred_vs_direct.pdf", width = 2.8, height = 2.8)
+ggplot(mzmm.melt.all, aes(x = Score, y = weird, fill = dif)) + geom_point(alpha = 0.7, color = "black", pch=21) + scale_fill_viridis(option = "magma") + theme_classic() + scale_x_continuous(expand = expansion(mult = c(0, .05)), name = "Direct Comparison (Similarity Score)") + scale_y_continuous(expand = expansion(mult = c(0, .05)), name = "Inferred (Similarity Score)") + geom_smooth(method = "lm", se = FALSE, color = "black") + NoLegend()
+dev.off()
+
+#*******************************************************************************
+# Conserved Genes on ST ========================================================
+#*******************************************************************************
+genes = read.csv("~/research/st/results/st_turtle_genes_select.csv")
+pdf("~/research/st/results/alc_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "aLC")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(11, "BrBG")[6:11]), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+# print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = T, showLegend = T))
+dev.off()
+pdf("~/research/st/results/dmc_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "DMC")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(11, "BrBG")[6:11]), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+# print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = T, showLegend = T))
+dev.off()
+pdf("~/research/st/results/pDVR_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "pDVR")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(11, "BrBG")[6:11]), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+# print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = T, showLegend = T))
+dev.off()
+
+genes = read.csv("~/research/st/results/st_oritz_genes_select.csv")
+pdf("~/research/st/results/mob_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "MOB")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+dev.off()
+pdf("~/research/st/results/acb_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "ACB")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+dev.off()
+pdf("~/research/st/results/lsx_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "LSX")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+dev.off()
+pdf("~/research/st/results/ca3_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "CA3")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+dev.off()
+pdf("~/research/st/results/vis_sct.pdf", width = 14, height = 2, onefile = F)
+all_merge$tmp = colSums(all_merge@assays$SCT@data[unique(genes$gene_1[which(genes$cluster_2 == "VIS")]),])
+print(myC2B2SFPFew(all_merge, "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(brewer.pal(9, "Reds")), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = T))
+dev.off()
+
+#*******************************************************************************
+# Harmony ======================================================================
+#*******************************************************************************
+library("harmony")
+library("Seurat")
+
+mz_sums    = rowSums(mz@assays$RNA@counts)
+mouse_sums = rowSums(mouse@assays$RNA@counts)
+gene_info$human2 = gene_info$one_to_one_human
+gene_info$human2[which(gene_info$seurat_name %in% names(mz_sums)[which(mz_sums == 0)])] = NA
+gene_info$human2[which(gene_info$human2 %in% toupper(names(mouse_sums)[which(mouse_sums == 0)]) )] = NA
+gene_info$in_mouse = !is.na(gene_info$human2) & gene_info$human2 %in% toupper(rownames(mouse@assays$RNA@counts))
+
+mz_counts = mz@assays$RNA@counts[gene_info$seurat_name[which( gene_info$in_mouse )], ]
+rownames(mz_counts) = gene_info$human2[which( gene_info$in_mouse )]
+mz2    = CreateSeuratObject(counts = mz_counts, meta.data = cbind(mz@meta.data, data.frame(dataset = rep("mz", ncol(mz_counts)))))
+
+mouse_counts = mouse@assays$RNA@counts[which(toupper(rownames(mouse@assays$RNA@counts)) %in% gene_info$human2), ]
+rownames(mouse_counts) = toupper(rownames(mouse_counts))
+mouse_counts = mouse_counts[gene_info$human2[which( gene_info$in_mouse )], ]
+mouse2 = CreateSeuratObject(counts = mouse_counts, meta.data = cbind(mouse@meta.data, data.frame(dataset = rep("mm", ncol(mouse_counts)))))
+
+# turtle = readRDS("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/turtle_neurons_norm.rds")
+
+mz2 = SCTransform(mz2, variable.features.n = 5000)
+mouse2 = SCTransform(mouse2, variable.features.n = 5000)
+common.var.features = mz2@assays$SCT@var.features[which(mz2@assays$SCT@var.features %in% mouse2@assays$SCT@var.features)]
+
+mz_mm = merge(mz2, mouse2)
+rm(mz); rm(mz2);
+rm(mouse); rm(mouse2);
+mz_mm = SCTransform(mz_mm, vars.to.regress = "dataset")
+mz_mm@assays$SCT@var.features = common.var.features
+mz_mm@active.assay="SCT"
+mz_mm <- RunPCA(mz_mm, assay = "SCT", npcs = 50)
+print(unique(mz_mm$dataset))
+mz_mm <- RunHarmony(mz_mm, group.by.vars = "dataset", assay.use = "SCT")
+mz_mm2 = RunUMAP(mz_mm, reduction = "harmony", assay = "SCT", dims=1:50)
+Idents(mz_mm2) = "dataset"
+pdf("~/scratch/st/results/test9.pdf", width = 5, height = 5)
+DimPlot(mz_mm2, reduction = "umap")
+dev.off()
+
+mz_mm = merge(mz2, mouse2)
+mz_mm = SCTransform(mz_mm)
+mz_mm = RunPCA(mz_mm, assay = "SCT", npcs = 50)
+print(unique(mz_mm$dataset))
+mz_mm = RunHarmony(mz_mm, group.by.vars = "dataset", assay.use = "SCT")
+mz_mm2 = RunUMAP(mz_mm, reduction = "harmony", assay = "SCT", dims=1:50)
+Idents(mz_mm2) = "dataset"
+pdf("~/scratch/st/results/test5.pdf", width = 5, height = 5)
+DimPlot(mz_mm2, reduction = "umap")
+dev.off()
+
+# Seurat
+mz2 = SCTransform(mz2, variable.features.n = 5000)
+mouse2 = SCTransform(mouse2, variable.features.n = 5000)
+obj_list = list(mz2, mouse2)
+common.var.features = mz2@assays$SCT@var.features[which(mz2@assays$SCT@var.features %in% mouse2@assays$SCT@var.features)]
+# common.var.features = common.var.features[which(rowSums(mz2@assays$RNA@counts[common.var.features,] > 0)    >= 0.05*ncol(mz2))]
+# common.var.features = common.var.features[which(rowSums(mouse2@assays$RNA@counts[common.var.features,] > 0) >= 0.05*ncol(mouse2))]
+new_list = PrepSCTIntegration(obj_list, anchor.features = common.var.features)
+cm.anchors = FindIntegrationAnchors(object.list = new_list, normalization.method = "SCT", anchor.features = common.var.features)
+cm = IntegrateData(anchorset = cm.anchors)
+cm <- ScaleData(cm, verbose = FALSE)
+cm <- RunPCA(cm, npcs = 50, verbose = FALSE)
+cm <- RunUMAP(cm, reduction = "pca", dims = 1:50)
+cm <- FindNeighbors(cm, reduction = "pca", dims = 1:50)
+cm <- FindClusters(cm, resolution = 0.5)
+Idents(cm) = "dataset"
+pdf("~/scratch/st/results/test7.pdf", width = 5, height = 5)
+DimPlot(cm, reduction = "umap")
+dev.off()
 
 #*******************************************************************************
 # Trash Can ====================================================================
@@ -3070,6 +3421,18 @@ dev.off()
 pdf("~/research/st/results/paintings-cross-species/c2b2_neurod2.pdf", width = 14, height = 2, onefile = F)
 print(myC2B2SFPFew(all_merge, "neurod2", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
 dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_osbpl1a.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "LOC101469337", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_r3hdm1.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "LOC101479613", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_scna.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "LOC101468074", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
+pdf("~/research/st/results/paintings-cross-species/c2b2_mast3.pdf", width = 14, height = 2, onefile = F)
+print(myC2B2SFPFew(all_merge, "mast3", pt.size.multiplier = 0.9, pal = colorRampPalette(c("#DCDCDC", brewer.pal(9, "Reds")[2:8])), rm.zero = F, scale.alpha = F, same.col.scale = F, showLegend = F))
+dev.off()
 
 # Figure 2 C
 pdf(paste0(out_dir, "c2b2_npy_dark.pdf"), width = 14, height = 2, onefile = F)
@@ -3112,6 +3475,39 @@ for (i in 1:nrow(c2l_mean_melt)) {
 fake.stsc.meta$sh = my.b2$sh[match(fake.stsc.meta$spot, colnames(my.b2))]
 pdf(paste0(out_dir, "c2b2_mini_cells.pdf"), width = 25, height = 3, onefile = F)
 print(myC2B2SFPFew( my.b2, "ct", stsc.list = list(fake.stsc.mat, fake.stsc.meta), pal = scales::hue_pal()(length(levels(all_merge$ct))), showLegend = T, pt.size.multiplier = 1.1 ))
+dev.off()
+
+pdf(paste0(out_dir, "c2b2_mini_cells_8glut.pdf"), width = 25, height = 3, onefile = F)
+all_merge$ct2 = as.vector(all_merge$ct)
+all_merge$ct2[which(!startsWith(as.vector(all_merge$ct2), "8."))] = "NA"
+all_merge$ct2 = factor(all_merge$ct2, levels = c("NA", levels(all_merge$ct)[which( startsWith(levels(all_merge$ct), "8.") )]))
+this.pal = c("gray70", scales::hue_pal()(length(levels(all_merge$ct)))[which( startsWith(levels(all_merge$ct), "8.") )])
+bb$good_names = stringr::str_replace(bb$good_names, "Astro", "RG")
+stsc.meta$ct2 = bb$good_names[match(stsc.meta$cell_id, colnames(bb))]
+# print(myC2B2SFPFew( all_merge, "ct2", stsc.list = list(fake.stsc.mat, fake.stsc.meta), pal = this.pal, showLegend = T, pt.size.multiplier = 1.1 ))
+print(myC2B2SFPFew( all_merge, "ct2", stsc.list = list(stsc.mat, stsc.meta), pal = this.pal, showLegend = T, pt.size.multiplier = 1.1 ))
+dev.off()
+
+pdf(paste0(out_dir, "c2b2_mini_cells_9glut.pdf"), width = 25, height = 3, onefile = F)
+all_merge$ct2 = as.vector(all_merge$ct)
+all_merge$ct2[which(!startsWith(as.vector(all_merge$ct2), "9."))] = "NA"
+all_merge$ct2 = factor(all_merge$ct2, levels = c("NA", levels(all_merge$ct)[which( startsWith(levels(all_merge$ct), "9.") )]))
+this.pal = c("gray70", scales::hue_pal()(length(levels(all_merge$ct)))[which( startsWith(levels(all_merge$ct), "9.") )])
+bb$good_names = stringr::str_replace(bb$good_names, "Astro", "RG")
+stsc.meta$ct2 = bb$good_names[match(stsc.meta$cell_id, colnames(bb))]
+# print(myC2B2SFPFew( all_merge, "ct2", stsc.list = list(fake.stsc.mat, fake.stsc.meta), pal = this.pal, showLegend = T, pt.size.multiplier = 1.1 ))
+print(myC2B2SFPFew( all_merge, "ct2", stsc.list = list(stsc.mat, stsc.meta), pal = this.pal, showLegend = T, pt.size.multiplier = 1.1 ))
+dev.off()
+
+pdf(paste0(out_dir, "c2b2_mini_cells_10glut.pdf"), width = 25, height = 3, onefile = F)
+all_merge$ct2 = as.vector(all_merge$ct)
+all_merge$ct2[which(!startsWith(as.vector(all_merge$ct2), "10."))] = "NA"
+all_merge$ct2 = factor(all_merge$ct2, levels = c("NA", levels(all_merge$ct)[which( startsWith(levels(all_merge$ct), "10.") )]))
+this.pal = c("gray70", scales::hue_pal()(length(levels(all_merge$ct)))[which( startsWith(levels(all_merge$ct), "10.") )])
+bb$good_names = stringr::str_replace(bb$good_names, "Astro", "RG")
+stsc.meta$ct2 = bb$good_names[match(stsc.meta$cell_id, colnames(bb))]
+# print(myC2B2SFPFew( all_merge, "ct2", stsc.list = list(fake.stsc.mat, fake.stsc.meta), pal = this.pal, showLegend = T, pt.size.multiplier = 1.1 ))
+print(myC2B2SFPFew( all_merge, "ct2", stsc.list = list(stsc.mat, stsc.meta), pal = this.pal, showLegend = T, pt.size.multiplier = 1.1 ))
 dev.off()
 
 neg_log_bon_thresh = 200
@@ -3189,7 +3585,8 @@ for (i in as.character(0:52)) {
   print(paste0("---- ", i, " ----"))
   this.name = bb_convert53$new[match(i, bb_convert53$old)]
   this.name = str_replace(this.name, "/", "_")
-  all_merge_hi$tmp = means_round[,i]
+  all_merge_hi$tmp = means_round[,this.name]
+  # all_merge_hi$tmp = means_round[,i]
   all_merge$tmp = all_merge_hi$tmp[colnames(all_merge)]
   # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name, ".svg"), width = 7, height = 7, onefile = F)
   # myMultiSFP(all_merge_hi, feature = "tmp", pt.size.multiplier = 1, pal = colorRampPalette(viridis(100)), high.res = T)
@@ -3227,13 +3624,17 @@ for (i in 0:52) {
   this.name.clean = str_replace(this.name, "/", "_")
   all_merge$tmp = c2l_mean[colnames(all_merge),this.name]
   
+  grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name.clean, ".svg"), width = 16, height = 2, onefile = F)
+  myC2B2SFPFew(all_merge, feature = "tmp", pt.size.multiplier = 1.1, pal = colorRampPalette(viridis(100)), same.col.scale = F)
+  dev.off()
+  
   # grDevices::svg(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name.clean, ".svg"), width = 14, height = 4, onefile = F)
   # myC2B2SFPAll(all_merge, feature = "tmp", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)))
   # dev.off()
   
-  Cairo::Cairo(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name.clean, ".png"), width = 1400, height = 400, onefile = F)
-  myC2B2SFPAll(all_merge, feature = "tmp", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)))
-  dev.off()
+  # Cairo::Cairo(paste0(out_dir, "cell2location/bb_secondary/rounded_cell/", this.name.clean, ".png"), width = 1400, height = 400, onefile = F)
+  # myC2B2SFPAll(all_merge, feature = "tmp", pt.size.multiplier = 1.3, pal = colorRampPalette(viridis(100)))
+  # dev.off()
 }
 
 # Label Tissue Halves

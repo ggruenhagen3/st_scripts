@@ -95,12 +95,14 @@ if (isGABA) {
                             "oritzb"   = colnames(mouse),
                             "saunders" = colnames(mouse)[which( !(grepl("Slc17a6", mouse$class_marker) | grepl("Slc17a7", mouse$class_marker)) & (grepl("Gad1", mouse$class_marker) | grepl("Gad2", mouse$class_marker)) & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) > 0 )],
                             "tran"     = colnames(mouse)[which( grepl("Inhib", mouse$broad) & colSums(mouse@assays$RNA@counts[c("SLC17A6","SLC17A7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("GAD1","GAD2"),]) > 0 )],
+                            "turtle"   = colnames(mouse)[which( colSums(mouse@assays$RNA@counts[c("SLC17A6", "SLC17A7"),])==0 & colSums(mouse@assays$RNA@counts[c("GAD1", "GAD2"),])>0 & startsWith(mouse$clusters, "i") )],
                             "zeisel"   = colnames(mouse)[which( startsWith(mouse$ClusterName, "TEINH") | startsWith(mouse$ClusterName, "MSN") | startsWith(mouse$ClusterName, "OBINH") & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),])==0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),])>0 )],
                             "zei_yu"   = colnames(mouse)[which( (startsWith(mouse$my.specific, "TEINH") | startsWith(mouse$my.specific, "MSN") | startsWith(mouse$my.specific, "OBINH") | grepl("InN", mouse$my.specific)) & colSums(mouse@assays$RNA@counts[c("Slc17a6","Slc17a7"),]) == 0 & colSums(mouse@assays$RNA@counts[c("Gad1","Gad2"),]) > 0 )])
   mouse.deg.path.gaba = list()
   mouse.deg.path.gaba[["oritzb"]]   = mouse.deg
   mouse.deg.path.gaba[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_gaba_022423.csv")
   mouse.deg.path.gaba[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_gaba_021623.csv")
+  mouse.deg.path.gaba[["turtle"]]     = read.csv("~/scratch/bcs/results/turtle_neurons_gaba_cluster_markers_040623.csv")
   mouse.deg.path.gaba[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_gaba_020923.csv")
   mouse.deg.path.gaba[["zei_yu"]]   = read.csv("~/scratch/bcs/results/zei_yu_specific_gaba_022023.csv")
   
@@ -145,7 +147,7 @@ if (isBB) {
     mz.deg = read.csv("~/scratch/st/data/bb53_glut_deg.csv")
   } else if (isGABA) {
     message("Using cichlid gabaergic clusters")
-    # mz = readRDS("~/scratch/st/data/bb_gaba.rds")
+    mz = readRDS("~/scratch/st/data/bb_gaba.rds")
     mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
     Idents(mz) = "good_names53"
     mz.deg = read.csv("~/scratch/st/data/bb53_gaba_deg.csv")
