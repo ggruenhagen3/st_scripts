@@ -49,7 +49,7 @@ geneOverlap = function(df1, df2, cluster1, cluster2, gene_converter, strict = T,
 }
 
 
-geneOverlap2 = function(df1, df2, cluster1, cluster2, hgnc1, hgnc2, strict = T, return_genes = F) {
+geneOverlap2 = function(df1, df2, cluster1, cluster2, hgnc1, hgnc2, strict = T, return_genes = F, return_ovlp = F) {
   if (strict) {
     df1$pct.dif = df1$pct.1 - df1$pct.2
     df1$strict = df1$pct.2 < 0.15 & df1$pct.dif > 0.15 & df1$p_val_adj < 1e-5
@@ -66,11 +66,15 @@ geneOverlap2 = function(df1, df2, cluster1, cluster2, hgnc1, hgnc2, strict = T, 
   
   df1_genes = df1$hgnc[which(!is.na(df1$hgnc))]
   df2_genes = df2$hgnc[which(!is.na(df2$hgnc))]
-  
+
   ovlp = unique(df1_genes[which(df1_genes %in% df2_genes)])
   smallest_cluster = min(length(df1_genes), length(df2_genes))
   pct = length(ovlp) / smallest_cluster
   pct = ifelse(length(ovlp) == 0, 0, pct)
+  
+  if (return_ovlp) {
+    return(ifelse(length(ovlp) == 0, 0, ovlp))
+  }
   
   if (return_genes) {
     df_ortho = merge(df1[which(!is.na(df1$hgnc)),], df2[which(!is.na(df1$hgnc)),], by = "hgnc", suffixes = c("_1", "_2"))
@@ -84,8 +88,8 @@ geneOverlap2 = function(df1, df2, cluster1, cluster2, hgnc1, hgnc2, strict = T, 
   }
   return(pct)
 }
-mz.dataset = "st"
-mm.dataset = "turtle"
+mz.dataset = "turtle"
+mm.dataset = "zeisel"
 mouse.dataset = mm.dataset
 
 # mz_mm_gene_map = read.csv(paste0("~/scratch/bcs/data/", mz.dataset, "_", mm.dataset, "_gene_ortholog2.csv"))
@@ -116,8 +120,8 @@ mouse.deg.path[["oritz"]]    = read.csv("~/scratch/bcs/results/oritzg_markers_04
 mouse.deg.path[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_cluster_region_subcluster_020723.csv")
 mouse.deg.path[["tasic"]]    = read.csv("~/scratch/bcs/results/tasic_subclass_020823.csv")
 mouse.deg.path[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_021523.csv")
-# mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cluster_markers_041923.csv")
-mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cp_pallial_area_markers_042623.csv")
+mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cluster_markers_041923.csv")
+# mouse.deg.path[["turtle"]]   = read.csv("~/scratch/bcs/results/turtle_cp_pallial_area_markers_042623.csv")
 # mouse.deg.path[["turtle_neurons"]]   = read.csv("~/scratch/bcs/results/turtle_neurons_area_markers_042023.csv")
 mouse.deg.path[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_020723.csv")
 # mouse.deg.path[["zeisel"]]      = read.csv("~/scratch/bcs/results/l5_cluster_markers_tax_region_020723.csv")
@@ -141,6 +145,11 @@ hit_sup$id = paste0(hit_sup$mz_name, "_", hit_sup$mm_name)
 # ovlp_df[,colnames(hit_sup)[3:ncol(hit_sup)]] = hit_sup[match(ovlp_df$id, hit_sup$id), colnames(hit_sup)[3:ncol(hit_sup)]]
 ovlp_df[,"p0"] = hit_sup[match(ovlp_df$id, hit_sup$id), "p0"]
 ovlp_df[which(is.na(ovlp_df[,"p0"])),"p0"] = FALSE
+
+ovlp_df_p0 = ovlp_df[which(ovlp_df$p0),]
+res = mclapply(1:nrow(ovlp_df_p0), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df_p0$mz_cluster[x]), as.vector(ovlp_df_p0$mm_cluster[x]), mz.hgnc, mm.hgnc, strict = F, return_genes = T), mc.cores = 20)
+df_ortho = do.call('rbind', res)
+write.csv(df_ortho, paste0("~/scratch/bcs/results/", mz.dataset, "_", mm.dataset, "_hit_genes.csv"))
 
 if (grepl("tasic", mm.dataset)) {
   mm_col = "mm_cluster"
@@ -278,15 +287,16 @@ mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
 mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
 Idents(mz) = mz$good_names53
 
-ovlp_df = ovlp_df_turtle_neurons
+# ovlp_df = ovlp_df_turtle_neurons
 ovlp_df_p0 = ovlp_df[which(ovlp_df$p0),]
 # ovlp_df_p0 = ovlp_df_p0[order(ovlp_df_p0$cor, decreasing = T),]
 # ovlp_df_p0 = ovlp_df_p0[which(!duplicated(ovlp_df_p0$mz_cluster)),]
 # ovlp_df_p0 = ovlp_df_p0[which(!duplicated(ovlp_df_p0$mm_cluster)),]
 res = mclapply(1:nrow(ovlp_df_p0), function(x) geneOverlap2(mz_deg, mm_deg, as.vector(ovlp_df_p0$mz_cluster[x]), as.vector(ovlp_df_p0$mm_cluster[x]), mz.hgnc, mm.hgnc, strict = F, return_genes = T), mc.cores = 20)
 df_ortho = do.call('rbind', res)
-df_ortho_write = df_ortho
-colnames(df_ortho_write) = c("hgnc", "")
+write.csv(df_ortho, paste0("~/scratch/bcs/results/", mz.dataset, "_", mm.dataset, "_hit_genes.csv"))
+# df_ortho_write = df_ortho
+# colnames(df_ortho_write) = c("hgnc", "")
 ovlp_df_p0$mz_cluster = stringr::str_replace(as.character(as.vector(ovlp_df_p0$mz_cluster)), "Astro", "RG")
 
 df_ortho$id = paste0(df_ortho$cluster_1, "_", df_ortho$cluster_2)
@@ -693,3 +703,58 @@ for (v1 in vert) {
   # print(ggplot(this_df, aes_string(x = "name", y = "hgnc", fill = v1)) + geom_tile() + scale_fill_gradientn(colors = rev(RColorBrewer::brewer.pal(11, "RdBu")), limits = c(-1, 1), oob = scales::squish ))
   # ggsave(paste0("~/scratch/st/results/loose_cons_genes_hit_", v1, ".pdf"), width = 5, height = 6)
 }
+
+#*******************************************************************************
+# TF Analysis ==================================================================
+#*******************************************************************************
+# tfs = data.table::fread("~/scratch/msc/tosches_tf_list.txt", data.table = F)
+# zeisel = readRDS("~/scratch/bcs/data/l5_tel_norm.rds")
+# turtle = readRDS("/storage/home/hcoda1/6/ggruenhagen3/scratch/bcs/data/turtle_neurons_norm.rds")
+# gene_info = read.csv("~/scratch/m_zebra_ref/gene_info_3.csv")
+# tfs_turtle = tfs[which(tfs$x %in% rownames(turtle@assays$RNA@counts)),]
+# tfs_turtle = tfs[which(tfs_turtle$x %in% toupper(rownames(zeisel@assays$RNA@counts))),]
+# write.csv(tfs_turtle, "~/scratch/msc/tosches_tf_list_filtered.csv")
+
+tfs_turtle = read.csv("~/scratch/msc/tosches_tf_list_filtered.csv")
+tfs_turtle$X=NULL
+# df = read.csv("~/scratch/bcs/results/turtle_zeisel_hit_genes.csv")
+# df = read.csv("~/scratch/bcs/results/bb_zeisel_hit_genes.csv")
+df = read.csv("~/scratch/bcs/results/st_oritz_genes.csv")
+df_sum = unique(df[,c("cluster_1", "cluster_2")])
+df_sum$num_tf = unlist(mclapply(1:nrow(df_sum), function(x) length(which(df$hgnc[which(df$cluster_1 == df_sum$cluster_1[x] & df$cluster_2 == df_sum$cluster_2[x])] %in% tfs_turtle[,2])), mc.cores = 20))
+df_sum$pct_tf = unlist(mclapply(1:nrow(df_sum), function(x) df_sum$num_tf[x] / length(which(df$cluster_1 == df_sum$cluster_1[x] & df$cluster_2 == df_sum$cluster_2[x])), mc.cores = 20))
+
+this_id = which(df_sum$cluster_1 == "8.1_Glut" & df_sum$cluster_2 == "TEGLU10")
+df[which(df$cluster_1 == df_sum$cluster_1[this_id] & df$cluster_2 == df_sum$cluster_2[this_id] & df$hgnc %in% tfs_turtle[,2]),]
+df$hgnc[which(df$cluster_1 == df_sum$cluster_1[this_id] & df$cluster_2 == df_sum$cluster_2[this_id] & df$hgnc %in% tfs_turtle[,2])]
+
+library("plyr")
+library("dplyr")
+library("ggplot2")
+cat1_ct = c("e07", "e08", "e14")
+cat2_ct = c("e01")
+neo_ct = c("TEGLU4", "TEGLU6", "TEGLU9", "TEGLU10")
+df_sum$cat = "other"
+df_sum$cat[which(df_sum$cluster_1 %in% cat1_ct & df_sum$cluster_2 %in% neo_ct)] = "aDC"
+df_sum$cat[which(df_sum$cluster_1 %in% cat2_ct & df_sum$cluster_2 %in% neo_ct)] = "aDVR"
+df_p = df_sum %>% group_by(cat) %>% summarize(mean = mean(num_tf), sd = sd(num_tf))
+df_p$sd[which(is.na(df_p$sd))] = 0 
+
+cat1_ct = c("8.1_Glut", "12_Glut")
+df_sum$cat = "other"
+df_sum$cat[which(df_sum$cluster_1 %in% cat1_ct & df_sum$cluster_2 %in% neo_ct)] = "Dl-g"
+df_p = df_sum %>% group_by(cat) %>% summarize(mean = mean(num_tf), sd = sd(num_tf))
+df_p$sd[which(is.na(df_p$sd))] = 0 
+
+cat1_ct = c("Dl-g")
+neo_ct = c("VIS")
+df_sum$cat = "other"
+df_sum$cat[which(df_sum$cluster_1 %in% cat1_ct & df_sum$cluster_2 %in% neo_ct)] = "Dl-g"
+df_p = df_sum %>% group_by(cat) %>% summarize(mean = mean(num_tf), sd = sd(num_tf))
+df_p$sd[which(is.na(df_p$sd))] = 0 
+
+fname = "~/scratch/st/results/st_oritz_tf_num.pdf"
+ggplot(df_p, aes(x = cat, y = mean, fill = cat)) + geom_bar(stat="identity", color = "black") + geom_errorbar(aes(ymin=mean, ymax=mean+sd), width=.2) + theme_classic() + scale_y_continuous(expand= expansion(mult = c(0, .1)), name = "# of TF in Shared DEGs") + xlab("")
+ggsave(fname, width = 3.5, height = 4)
+system(paste0("rclone copy ", fname, " dropbox:BioSci-Streelman/George/Brain/spatial/analysis/samap/oritz/"))
+
