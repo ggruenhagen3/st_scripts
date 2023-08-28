@@ -1,5 +1,5 @@
-mz.dataset = "turtle"
-mm.dataset = "zeisel_tfeasy"
+mz.dataset = "bb"
+mm.dataset = "zeisel2"
 isGE = F
 species_specific = F
 
@@ -18,15 +18,15 @@ if (mz.dataset == "st") {
 } else {
   colnames(mzmm)[which(startsWith(colnames(mzmm), "X"))] = str_sub(colnames(mzmm)[which(startsWith(colnames(mzmm), "X"))], 2, 50)
   colnames(mzmm) = str_replace(colnames(mzmm), "Astro", "RG")
-  colnames(mzmm) = plyr::revalue(colnames(mzmm), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
   colnames(mzmm)[which(startsWith(colnames(mzmm), "mz_"))] = str_sub(colnames(mzmm)[which(startsWith(colnames(mzmm), "mz_"))], 4, 50)
   rownames(mzmm)[which(startsWith(rownames(mzmm), "mm_"))] = str_sub(rownames(mzmm)[which(startsWith(rownames(mzmm), "mm_"))], 4, 50)
-  
+  colnames(mzmm) = plyr::revalue(colnames(mzmm), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
+
   colnames(mzmm.p)[which(startsWith(colnames(mzmm.p), "X"))] = str_sub(colnames(mzmm.p)[which(startsWith(colnames(mzmm.p), "X"))], 2, 50)
   colnames(mzmm.p) = str_replace(colnames(mzmm.p), "Astro", "RG")
-  colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
   colnames(mzmm.p)[which(startsWith(colnames(mzmm.p), "mz_"))] = str_sub(colnames(mzmm.p)[which(startsWith(colnames(mzmm.p), "mz_"))], 4, 50)
   rownames(mzmm.p)[which(startsWith(rownames(mzmm.p), "mm_"))] = str_sub(rownames(mzmm.p)[which(startsWith(rownames(mzmm.p), "mm_"))], 4, 50)
+  colnames(mzmm.p) = plyr::revalue(colnames(mzmm.p), c("8.9_Glut"="8-9_Glut", "8.9_Glut.1"="8.9_Glut", "8.9_Glut.1"="8.9_Glut", "15.1_GABA.Glut"="15.1_GABA/Glut", "15.5_GABA.Glut"="15.5_GABA/Glut"))
 }
 
 # mzmm = scale(mzmm) # scale by cichlid cluster
@@ -48,6 +48,34 @@ mzmm.melt$p0     = mzmm.melt$p_perm == 0
 mzmm.melt$bon_perm = p.adjust(mzmm.melt$p_perm, method = "bonferroni")
 mzmm.melt$p0 = mzmm.melt$bon_perm < 0.05
 
+# Color Pallette for plot
+col.pal = viridis(100)
+mouse.order = ""
+if (grepl("tasic", mm.dataset)) {
+  col.pal = rev(brewer.pal(11, "PRGn")[1:6])
+} else if (grepl("saunders", mm.dataset)) {
+  col.pal = rev(brewer.pal(11, "PRGn")[1:6])
+} else if (grepl("oritz", mm.dataset)) {
+  col.pal = brewer.pal(9, "Reds")
+} else if (mm.dataset == "zeisel") {
+  col.pal = brewer.pal(9, "Greens")
+  mouse.order = read.csv("~/research/st/results/zeisel_cell-type_order_070323.csv")[,1]
+} else if (mm.dataset == "zeisel2") {
+  col.pal = brewer.pal(9, "Greens")
+  mouse.order = read.csv("~/research/st/results/zeisel_cell-type_order_new_081523.csv")[,1]
+} else if (grepl("turtle", mm.dataset)) {
+  col.pal = brewer.pal(11, "BrBG")[6:11]
+  mouse.order = read.csv("~/research/st/results/turtle_cell-type_order_070423.csv")[,1]
+} else if (grepl("axolotl", mm.dataset)) {
+  # col.pal = magma(100)
+  col.pal = rev(brewer.pal(11, "PiYG")[1:6])
+  mouse.order = read.csv("~/research/st/results/axolotl_cell-type_order_070423.csv")[,1]
+} else if (grepl("bird", mm.dataset)) {
+  col.pal = rev(brewer.pal(11, "PuOr")[1:6])
+  mouse.order = read.csv("~/research/st/results/bird_cell-type_order_070423.csv")[,1]
+}
+
+# Order the axis labels
 if ( isGE ) {
   mzmm.melt$mm_name = as.vector(mzmm.melt$mm_name)
   mz_lge = c("4.1_GABA", "4.2_GABA", "4.3_GABA", "4.4_GABA", "4.5_GABA", "4.6_GABA", "4.7_GABA", "4.8_GABA", "7_GABA"); mz_cge = c("15.1_GABA/Glut", "15.2_GABA", "15.4_GABA"); mz_mge = c("15.3_GABA", "15.5_GABA", "6_GABA");
@@ -81,6 +109,10 @@ if ( isGE ) {
     # mouse.order = hclust(dist(mzmm), method = "complete")
     # mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
     mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mm.order)
+  } else if (mouse.order != "") {
+    mz.order = c("1.1_RG", "1.2_RG", "2.2_Oligo", "2.1_OPC", "1.3_MG", "3_Peri", "9.5_Glut", "15.5_GABA/Glut", "15.7_Glut", "14_Glut", "15.6_Glut", "5.1_GABA", "5.2_GABA", "6_GABA", "15.3_GABA", "15.4_GABA", "15.1_GABA/Glut", "15.2_GABA", "4.8_GABA", "4.4_GABA", "4.3_GABA", "4.6_GABA", "4.5_GABA", "4.2_GABA", "4.1_GABA", "4.7_GABA", "7_GABA", "8.1_Glut", "8.2_Glut", "8.8_Glut", "8.11_Glut", "12_Glut", "8.10_Glut", "8.7_Glut", "11.3_Glut", "11.2_Glut", "10.2_Glut", "10.1_Glut", "11.1_Glut", "8.4_Glut", "8.3_Glut", "8.9_Glut", "8.5_Glut", "8.6_Glut", "8-9_Glut", "9.8_Glut", "13_Glut", "9.6_Glut", "9.7_Glut", "9.4_Glut", "9.1_Glut", "9.2_Glut", "9.3_Glut")
+    mzmm.melt$mz_name = factor(as.vector(mzmm.melt$mz_name), levels = mz.order)
+    mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order)
   } else {
     mz.order = c("1.1_RG", "1.2_RG", "2.2_Oligo", "2.1_OPC", "1.3_MG", "3_Peri", "9.5_Glut", "15.5_GABA/Glut", "15.7_Glut", "14_Glut", "15.6_Glut", "5.1_GABA", "5.2_GABA", "6_GABA", "15.3_GABA", "15.4_GABA", "15.1_GABA/Glut", "15.2_GABA", "4.8_GABA", "4.4_GABA", "4.3_GABA", "4.6_GABA", "4.5_GABA", "4.2_GABA", "4.1_GABA", "4.7_GABA", "7_GABA", "8.1_Glut", "8.2_Glut", "8.8_Glut", "8.11_Glut", "12_Glut", "8.10_Glut", "8.7_Glut", "11.3_Glut", "11.2_Glut", "10.2_Glut", "10.1_Glut", "11.1_Glut", "8.4_Glut", "8.3_Glut", "8.9_Glut", "8.5_Glut", "8.6_Glut", "8-9_Glut", "9.8_Glut", "13_Glut", "9.6_Glut", "9.7_Glut", "9.4_Glut", "9.1_Glut", "9.2_Glut", "9.3_Glut")
     mzmm.melt$mz_name = factor(as.vector(mzmm.melt$mz_name), levels = mz.order)
@@ -92,26 +124,8 @@ if ( isGE ) {
     # mzmm.melt$mz_name = factor(mzmm.melt$mz_name, levels = mz.order$labels[mz.order$order])
     # mouse.order = hclust(dist(mzmm), method = "complete")
     # mzmm.melt$mm_name = factor(mzmm.melt$mm_name, levels = mouse.order$labels[mouse.order$order])
-    # # mzmm.melt$mm_num = reshape2::colsplit(mzmm.melt$mm_name, "_", c('1', '2'))[,2]
+    # mzmm.melt$mm_num = reshape2::colsplit(mzmm.melt$mm_name, "_", c('1', '2'))[,2]
   }
-  
-}
-
-col.pal = viridis(100)
-if (grepl("tasic", mm.dataset)) {
-  col.pal = rev(brewer.pal(11, "PRGn")[1:6])
-} else if (grepl("saunders", mm.dataset)) {
-  col.pal = rev(brewer.pal(11, "PiYG")[1:6])
-} else if (grepl("oritz", mm.dataset)) {
-  col.pal = brewer.pal(9, "Reds")
-} else if (grepl("zeisel", mm.dataset)) {
-  col.pal = brewer.pal(9, "Greens")
-} else if (grepl("turtle", mm.dataset)) {
-  col.pal = brewer.pal(11, "BrBG")[6:11]
-} else if (grepl("axolotl", mm.dataset)) {
-  col.pal = magma(100)
-} else if (grepl("bird", mm.dataset)) {
-  col.pal = rev(brewer.pal(11, "PuOr")[1:6])
 }
 
 ge_str = ifelse(isGE, "_ge3", "")
