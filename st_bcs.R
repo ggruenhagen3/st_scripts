@@ -171,7 +171,7 @@ if (isBB) {
     mz = readRDS("~/scratch/brain/data/bb_demux_102021.rds")
     mz$good_names53 = factor(convert53$new[match(mz$seurat_clusters, convert53$old)], levels = rev(convert53$new))
     Idents(mz) = "good_names53"
-    mz.deg = read.csv("~/scratch/brain/results/bb53_deg_012323")
+    mz.deg = read.csv("~/scratch/brain/results/bb53_deg_012323.csv")
   }
   mz.deg$cluster = stringr::str_replace(mz.deg$cluster, "Astro", "RG")
 } else { 
