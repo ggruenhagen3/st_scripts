@@ -87,7 +87,7 @@ if (isGlut) {
   mouse.deg.path.glut[["tasic"]]    = read.csv("~/scratch/bcs/results/tasic_subclass_glut_020823.csv")
   mouse.deg.path.glut[["tran"]]    = read.csv("~/scratch/bcs/results/tran_broad_glut_021623.csv")
   mouse.deg.path.glut[["turtle"]]    = read.csv("~/scratch/bcs/results/turtle_neurons_glut_cluster_markers_022123.csv")
-  mouse.deg.path.glut[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_glut_020823.csv")
+  mouse.deg.path.glut[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_glut_083023.csv")
   mouse.deg.path.glut[["zei_yu"]]   = read.csv("~/scratch/bcs/results/zei_yu_specific_glut_022023.csv")
   
   message("Using mouse glutamatergic clusters")
@@ -107,7 +107,7 @@ if (isGABA) {
   mouse.deg.path.gaba[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_gaba_022423.csv")
   mouse.deg.path.gaba[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_gaba_021623.csv")
   mouse.deg.path.gaba[["turtle"]]     = read.csv("~/scratch/bcs/results/turtle_neurons_gaba_cluster_markers_040623.csv")
-  mouse.deg.path.gaba[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_gaba_020923.csv")
+  mouse.deg.path.gaba[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_gaba_083023.csv")
   mouse.deg.path.gaba[["zei_yu"]]   = read.csv("~/scratch/bcs/results/zei_yu_specific_gaba_022023.csv")
   
   message("Using mouse inhibitory clusters")
@@ -122,7 +122,7 @@ if (isNN) {
   mouse.deg.path.nn = list()
   mouse.deg.path.nn[["saunders"]] = read.csv("~/scratch/bcs/results/saunders_subcluster_nn_022423.csv")
   mouse.deg.path.nn[["tran"]]     = read.csv("~/scratch/bcs/results/tran_broad_nn_021623.csv")
-  mouse.deg.path.nn[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_cluster_markers_nn_021623.csv")
+  mouse.deg.path.nn[["zeisel"]]   = read.csv("~/scratch/bcs/results/l5_nn_083023.csv")
   
   message("Using mouse non-neuronal clusters")
   mouse = subset(mouse, cells=mouse.nn.cells)
